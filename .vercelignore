@@ -34,11 +34,11 @@ temp
 .env
 .env.*
 
-# Documentation exclue, sauf le schema importe par le code TypeScript
-docs/**
-!docs/contracts/
-docs/contracts/**
-!docs/contracts/research-dossier.schema.json
+# Documentation locale exclue ; le schema importe par TypeScript reste inclus
+docs/ARCHITECTURE.md
+docs/PRODUCT_TRUTH_CONTRACT.md
+docs/evidence/
+docs/contracts/contract-fixtures.json
 
 # Outillage local exclu, sauf le lanceur requis par le script de build
 tools/**
