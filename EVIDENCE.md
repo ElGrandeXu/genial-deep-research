@@ -57,6 +57,7 @@
 - `pwsh -NoProfile -File tools/verify-source-integrity.ps1`
 - `pwsh -NoProfile -File tools/scan-secrets.ps1 -Mode Staged`
 - `pwsh -NoProfile -File tools/scan-secrets.ps1 -Mode Tracked`
+- `pwsh -NoProfile -File tools/scan-secrets.ps1 -Mode WorkingTree`
 - `pwsh -NoProfile -File tools/verify-m0.ps1`
 - `git check-attr text -- epreuve-deep-research.md AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md`
 - `git status --short --ignored`
@@ -85,3 +86,33 @@ Les sorties de scan indiquent uniquement le chemin, le numéro de ligne et l'ide
 - **FAIT VALIDÉ** — Appels : deux inventaires et quatre générations, aucun retry ; coût conservateur estimé à 0,04687090 USD.
 - **FAIT VALIDÉ** — OpenAI et Gemini : authentification, génération, sortie structurée, recherche effective, citations, URLs, usage et latence observés.
 - **DÉCISION** — Les sorties textuelles des modèles ne sont pas conservées ; seule la preuve autorisée est enregistrée.
+
+## Preuves M2 — 2026-08-26
+
+### Baseline avant mutation
+
+- **FAIT VALIDÉ** — Racine `C:\Users\maxer\Desktop\GENIAL` ; HEAD `dfb2734c84ef36d07d3817cdb7173778c6bad286` ; titre `test: audit provided API capabilities` ; worktree propre ; aucun remote.
+- **FAIT VALIDÉ** — Empreintes recalculées : brief `4bc823833f1c943059c5a9746837dcc75592b31b5ca130143b583323336388e1`, audit `691622c46b7df65bda9649bf6aae64f4b764e0bc5c17f2d44cd77505beba0e17`, plan `c67b75a058c579cca766c4c3d6cf65b700104d9956b7d01f586506547757270b` ; `SOURCE_INTEGRITY_OK: 3 files`.
+- **FAIT VALIDÉ** — `SECRET_SCAN_OK: mode=Tracked files=21`.
+- **FAIT VALIDÉ** — Deux passations présentes, ignorées, non suivies et non lues.
+- **FAIT VALIDÉ** — Aucun chemin ressemblant à un magasin DPAPI n’est suivi ; la preuve M1 conserve seulement `external_dpapi`. M2 n’a pas accédé au magasin.
+- **FAIT VALIDÉ — DIVERGENCE EXPLIQUÉE** — Le contrôle M0 initial a rejeté uniquement les trois chemins M1 absents de son allowlist exacte : rapport M1, JSON M1 et probe M1. La racine, les sources, attributs, exclusions, secrets, remotes, hooks, identité et G0 restaient conformes.
+- **DÉCISION** — `verify-m0.ps1` vérifie désormais la présence du socle M0 au lieu d’interdire les artefacts des missions ultérieures ; aucune protection d’intégrité, d’exclusion, de secrets ou de remote n’a été retirée.
+
+### Contrats et tests
+
+- **FAIT VALIDÉ** — `docs/PRODUCT_TRUTH_CONTRACT.md` contient le contrat produit, le contrat de vérité et 14 relations de traçabilité explicites au brief.
+- **FAIT VALIDÉ** — Le JSON Schema et les fixtures sont syntaxiquement valides ; chaque dossier synthétique passe le schéma.
+- **FAIT VALIDÉ** — Six scénarios acceptés : affirmation soutenue, homonyme, conflit, silence, historique et erreur technique.
+- **FAIT VALIDÉ** — Cinq mutations en mémoire rejetées pour la raison attendue : preuve supprimée, identité ambiguë complète, silence avec fait, conflit aplati, fait actuel sans qualification temporelle.
+- **FAIT VALIDÉ** — Sortie reproductible : `M2_VERIFY_OK: fixtures=6 negative_mutations=5`.
+- **FAIT VALIDÉ** — Scan avant staging : `SECRET_SCAN_OK: mode=WorkingTree files=27`.
+- **FAIT VALIDÉ** — Scan de l’index : `SECRET_SCAN_OK: mode=Staged files=14`.
+- **FAIT VALIDÉ** — Les fixtures portent `synthetic_contract_fixture=true`, `not_demo_data=true`, `not_application_output=true`, utilisent uniquement des noms synthétiques et des domaines réservés `.invalid`.
+- **FAIT VALIDÉ** — Le contrat ne contient aucun choix de fournisseur, modèle, stack, architecture, interface ou hébergement ; aucune API n’a été appelée et aucune donnée réelle n’a été collectée.
+
+### Jalons
+
+- **DÉCISION** — G1 est validé selon son critère existant : mission intronisée, ressources comprises et plan de contingence suffisant ; la deadline contractuelle exacte reste explicitement inconnue.
+- **FAIT VALIDÉ** — G2 est validé : périmètre, entrée, sortie, vérité, sources, conflits, silence, péremption, erreurs, fixtures et vérificateur sont cohérents avec le brief.
+- **DÉCISION** — G3 à G7 restent non terminés.

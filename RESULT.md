@@ -18,3 +18,12 @@
 - **FAIT VALIDÉ** — Preuves : `docs/evidence/M1_API_CAPABILITIES.md` et `docs/evidence/m1-api-capabilities-result.json`.
 - **DÉCISION** — G1 reste partiel et non terminé ; G2 à G7 restent non terminés.
 - **DÉCISION** — Aucune stack, architecture, interface ou solution d'hébergement n'a été choisie.
+
+## Résultat M2 — 2026-08-26
+
+- **FAIT VALIDÉ** — Statut `M2_VALIDATED`.
+- **FAIT VALIDÉ** — `docs/PRODUCT_TRUTH_CONTRACT.md` fige utilisateur, entrée, identité, sortie, états, attente, vérité, sources, conflits, silence, temporalité, périmètre et vie privée.
+- **FAIT VALIDÉ** — `docs/contracts/research-dossier.schema.json` et `docs/contracts/contract-fixtures.json` matérialisent le contrat sans stack ni données réelles.
+- **FAIT VALIDÉ** — `tools/verify-m2-contract.ps1` accepte six fixtures et rejette cinq mutations négatives temporaires en mémoire.
+- **DÉCISION** — G1 et G2 sont validés ; G3 à G7 restent non terminés.
+- **DÉCISION** — Aucun fournisseur, modèle, stack, architecture, interface ou hébergement n’est choisi ; aucun appel API ou accès DPAPI n’a eu lieu.

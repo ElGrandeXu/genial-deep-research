@@ -1,4 +1,4 @@
-# Entrées M0 et M1
+# Entrées M0 à M2
 
 ## Registre d'autorité
 
@@ -32,3 +32,11 @@ Statut commun : `OBSOLETE — EXCLUDED FROM AUTHORITY, HISTORY AND PROGRESS EVID
 
 - **FAIT VALIDÉ — 2026-08-26** — Documentation API consultée uniquement sur `developers.openai.com`, `platform.openai.com` et `ai.google.dev`.
 - **FAIT VALIDÉ** — URLs exactes, tarifs et statuts documentés dans `docs/evidence/M1_API_CAPABILITIES.md` ; inventaires et résultats expurgés dans `docs/evidence/m1-api-capabilities-result.json`.
+
+## Entrées M2
+
+- **FAIT VALIDÉ — 2026-08-26** — Baseline M2 reçue : HEAD `dfb2734c84ef36d07d3817cdb7173778c6bad286`, titre `test: audit provided API capabilities`, M0 et M1 validés, M1 audité extérieurement, G0 validé, G1 partiel, worktree propre et aucun remote.
+- **DÉCISION** — M2 exploite selon l’ordre d’autorité les trois sources immuables, la capsule M0/M1 et les deux preuves M1.
+- **DÉCISION** — Les observations M1 restent des capacités API datées du 26 août 2026 ; aucun fournisseur, modèle ou choix d’architecture n’en est déduit.
+- **FAIT VALIDÉ — baseline M2** — Les deux passations obsolètes restent présentes, ignorées, non suivies et non lues.
+- **FAIT VALIDÉ — baseline M2** — Aucun chemin de magasin DPAPI n’est suivi dans GENIAL ; sa localisation reste `external_dpapi` d’après la preuve expurgée M1. M2 n’y accède pas.

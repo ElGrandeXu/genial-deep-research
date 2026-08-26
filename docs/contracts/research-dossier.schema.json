@@ -1,0 +1,1518 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genial.invalid/contracts/research-dossier.schema.json",
+  "title": "Genial Research Dossier Contract",
+  "description": "Stack-independent M2 product and truth contract for one research dossier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dossier_id",
+    "origin",
+    "request",
+    "identity",
+    "sources",
+    "evidence",
+    "claims",
+    "inferences",
+    "contradictions",
+    "unknowns",
+    "execution_steps",
+    "presentation",
+    "receipt",
+    "result_mode",
+    "global_status",
+    "error",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "dossier_id": {
+      "$ref": "#/$defs/id"
+    },
+    "origin": {
+      "enum": [
+        "runtime",
+        "synthetic_contract_fixture"
+      ]
+    },
+    "request": {
+      "$ref": "#/$defs/request"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim"
+      }
+    },
+    "inferences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/inference"
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/contradiction"
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unknown"
+      }
+    },
+    "execution_steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/executionStep"
+      }
+    },
+    "presentation": {
+      "$ref": "#/$defs/presentation"
+    },
+    "receipt": {
+      "$ref": "#/$defs/receipt"
+    },
+    "result_mode": {
+      "enum": [
+        "standard",
+        "silence",
+        "technical_error"
+      ]
+    },
+    "global_status": {
+      "enum": [
+        "complete_within_scope",
+        "partial",
+        "needs_clarification",
+        "insufficient_evidence",
+        "technical_failure"
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/technicalError"
+        }
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonBlankText"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "global_status": {
+            "const": "complete_within_scope"
+          }
+        },
+        "required": [
+          "global_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "identity": {
+            "properties": {
+              "status": {
+                "const": "resolved"
+              }
+            }
+          },
+          "result_mode": {
+            "const": "standard"
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "global_status": {
+            "const": "needs_clarification"
+          }
+        },
+        "required": [
+          "global_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "identity": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "ambiguous",
+                  "insufficient_context"
+                ]
+              }
+            }
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "global_status": {
+            "const": "insufficient_evidence"
+          }
+        },
+        "required": [
+          "global_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result_mode": {
+            "const": "silence"
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "global_status": {
+            "const": "technical_failure"
+          }
+        },
+        "required": [
+          "global_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result_mode": {
+            "const": "technical_error"
+          },
+          "error": {
+            "$ref": "#/$defs/technicalError"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "error": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "nonBlankText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "nullableText": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/nonBlankText"
+        }
+      ]
+    },
+    "httpUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "maxLength": 2048
+    },
+    "nullableHttpUrl": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/httpUrl"
+        }
+      ]
+    },
+    "nullableDateTime": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time"
+        }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "submitted_at",
+        "name",
+        "suggested_type",
+        "context",
+        "total_character_count"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "submitted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": ".*\\S.*"
+        },
+        "suggested_type": {
+          "enum": [
+            "person",
+            "company",
+            "unknown"
+          ]
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": ".*\\S.*"
+            },
+            "country": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": ".*\\S.*"
+            },
+            "industry": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": ".*\\S.*"
+            },
+            "employer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": ".*\\S.*"
+            },
+            "official_site": {
+              "$ref": "#/$defs/httpUrl"
+            },
+            "discriminating_hint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": ".*\\S.*"
+            }
+          }
+        },
+        "total_character_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_id",
+        "entity_type",
+        "display_name",
+        "discriminators",
+        "match_rationale"
+      ],
+      "properties": {
+        "subject_id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity_type": {
+          "enum": [
+            "person",
+            "company"
+          ]
+        },
+        "display_name": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "discriminators": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "$ref": "#/$defs/nonBlankText"
+            },
+            "country": {
+              "$ref": "#/$defs/nonBlankText"
+            },
+            "industry": {
+              "$ref": "#/$defs/nonBlankText"
+            },
+            "employer": {
+              "$ref": "#/$defs/nonBlankText"
+            },
+            "official_site": {
+              "$ref": "#/$defs/httpUrl"
+            },
+            "legal_identifier": {
+              "$ref": "#/$defs/nonBlankText"
+            }
+          }
+        },
+        "match_rationale": {
+          "$ref": "#/$defs/nonBlankText"
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "selected_subject_id",
+        "candidates",
+        "resolution_reason",
+        "clarification_fields"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "resolved",
+            "ambiguous",
+            "insufficient_context",
+            "not_found_within_scope"
+          ]
+        },
+        "selected_subject_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/id"
+            }
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/candidate"
+          }
+        },
+        "resolution_reason": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "clarification_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "city",
+              "country",
+              "industry",
+              "employer",
+              "official_site",
+              "discriminating_hint"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "resolved"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "selected_subject_id": {
+                "$ref": "#/$defs/id"
+              },
+              "candidates": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "selected_subject_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ambiguous"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidates": {
+                "minItems": 2
+              },
+              "clarification_fields": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "person",
+            "company",
+            "group",
+            "subsidiary",
+            "brand",
+            "country",
+            "establishment",
+            "undetermined"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/nullableText"
+        }
+      }
+    },
+    "factPeriod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "start",
+        "end",
+        "as_of",
+        "label"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "stated",
+            "derived",
+            "unknown"
+          ]
+        },
+        "start": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "end": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "as_of": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "label": {
+          "$ref": "#/$defs/nullableText"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "provider_url",
+        "resolved_url",
+        "canonical_url",
+        "title",
+        "publisher",
+        "source_type",
+        "published_at",
+        "accessed_at",
+        "collection_method",
+        "collection_compliance",
+        "accessibility_status",
+        "assumed_entity_id",
+        "assumed_scope"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "provider_url": {
+          "$ref": "#/$defs/httpUrl"
+        },
+        "resolved_url": {
+          "$ref": "#/$defs/nullableHttpUrl"
+        },
+        "canonical_url": {
+          "$ref": "#/$defs/nullableHttpUrl"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "publisher": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "source_type": {
+          "enum": [
+            "institutional_registry",
+            "official_publication",
+            "independent_press",
+            "specialized_source",
+            "aggregator",
+            "search_result"
+          ]
+        },
+        "published_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "accessed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "collection_method": {
+          "enum": [
+            "institutional_api",
+            "provider_search",
+            "direct_access",
+            "manual_verification"
+          ]
+        },
+        "collection_compliance": {
+          "enum": [
+            "permitted",
+            "not_verified"
+          ]
+        },
+        "accessibility_status": {
+          "enum": [
+            "accessible",
+            "redirect_only",
+            "inaccessible",
+            "paywalled",
+            "unknown"
+          ]
+        },
+        "assumed_entity_id": {
+          "$ref": "#/$defs/id"
+        },
+        "assumed_scope": {
+          "$ref": "#/$defs/scope"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "source_id",
+        "claim_id",
+        "excerpt",
+        "locator",
+        "entity_id",
+        "fact_period",
+        "scope",
+        "relation",
+        "verification_method",
+        "verified_at"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "claim_id": {
+          "$ref": "#/$defs/id"
+        },
+        "excerpt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": ".*\\S.*"
+        },
+        "locator": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "entity_id": {
+          "$ref": "#/$defs/id"
+        },
+        "fact_period": {
+          "$ref": "#/$defs/factPeriod"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "relation": {
+          "enum": [
+            "supports",
+            "contradicts",
+            "context_only",
+            "entity_mismatch",
+            "insufficient"
+          ]
+        },
+        "verification_method": {
+          "enum": [
+            "source_content",
+            "institutional_record",
+            "manual_verification",
+            "provider_annotation",
+            "search_snippet"
+          ]
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "structuredValue": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "value_type"
+          ],
+          "properties": {
+            "value": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "value_type": {
+              "enum": [
+                "text",
+                "number",
+                "boolean"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "subject_id",
+        "statement",
+        "predicate",
+        "structured_value",
+        "unit",
+        "fact_period",
+        "scope",
+        "temporal_status",
+        "evidence_ids",
+        "claim_state",
+        "reconciliation_state",
+        "presentation_decision",
+        "presentation_reason"
+      ],
+      "properties": {
+        "claim_id": {
+          "$ref": "#/$defs/id"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/id"
+        },
+        "statement": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "predicate": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "structured_value": {
+          "$ref": "#/$defs/structuredValue"
+        },
+        "unit": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "fact_period": {
+          "$ref": "#/$defs/factPeriod"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "temporal_status": {
+          "enum": [
+            "current",
+            "historical",
+            "unknown"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "claim_state": {
+          "enum": [
+            "supported",
+            "contested",
+            "historical",
+            "ambiguous",
+            "rejected"
+          ]
+        },
+        "reconciliation_state": {
+          "enum": [
+            "confirmation",
+            "explainable_difference",
+            "contradiction",
+            "indetermination",
+            "not_applicable"
+          ]
+        },
+        "presentation_decision": {
+          "enum": [
+            "display_fact",
+            "display_ambiguity",
+            "reject"
+          ]
+        },
+        "presentation_reason": {
+          "$ref": "#/$defs/nonBlankText"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "claim_state": {
+                "enum": [
+                  "supported",
+                  "contested",
+                  "historical"
+                ]
+              }
+            },
+            "required": [
+              "claim_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence_ids": {
+                "minItems": 1
+              },
+              "presentation_decision": {
+                "const": "display_fact"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim_state": {
+                "const": "historical"
+              }
+            },
+            "required": [
+              "claim_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "temporal_status": {
+                "const": "historical"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim_state": {
+                "const": "contested"
+              }
+            },
+            "required": [
+              "claim_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reconciliation_state": {
+                "const": "contradiction"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim_state": {
+                "const": "ambiguous"
+              }
+            },
+            "required": [
+              "claim_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "presentation_decision": {
+                "const": "display_ambiguity"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim_state": {
+                "const": "rejected"
+              }
+            },
+            "required": [
+              "claim_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "presentation_decision": {
+                "const": "reject"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "temporal_status": {
+                "const": "current"
+              },
+              "presentation_decision": {
+                "const": "display_fact"
+              }
+            },
+            "required": [
+              "temporal_status",
+              "presentation_decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "fact_period": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "stated",
+                      "derived"
+                    ]
+                  }
+                },
+                "anyOf": [
+                  {
+                    "properties": {
+                      "as_of": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "start": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "end": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inference_id",
+        "label",
+        "statement",
+        "based_on_claim_ids",
+        "presentation_style"
+      ],
+      "properties": {
+        "inference_id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "const": "inference"
+        },
+        "statement": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "based_on_claim_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "presentation_style": {
+          "const": "derived_not_directly_sourced"
+        }
+      }
+    },
+    "contradictionVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "evidence_ids",
+        "normalized_value",
+        "unit",
+        "currency"
+      ],
+      "properties": {
+        "claim_id": {
+          "$ref": "#/$defs/id"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "normalized_value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "unit": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "currency": {
+          "$ref": "#/$defs/nullableText"
+        }
+      }
+    },
+    "contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contradiction_id",
+        "predicate",
+        "period",
+        "scope",
+        "metric_definition",
+        "published_or_estimated_checked",
+        "classification",
+        "versions",
+        "explanation",
+        "visible"
+      ],
+      "properties": {
+        "contradiction_id": {
+          "$ref": "#/$defs/id"
+        },
+        "predicate": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "period": {
+          "$ref": "#/$defs/factPeriod"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "metric_definition": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "published_or_estimated_checked": {
+          "type": "boolean"
+        },
+        "classification": {
+          "enum": [
+            "confirmation",
+            "explainable_difference",
+            "contradiction",
+            "indetermination"
+          ]
+        },
+        "versions": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/contradictionVersion"
+          }
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      }
+    },
+    "unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unknown_id",
+        "category",
+        "description",
+        "explored_scope",
+        "source_categories",
+        "stop_reason",
+        "retry_context"
+      ],
+      "properties": {
+        "unknown_id": {
+          "$ref": "#/$defs/id"
+        },
+        "category": {
+          "enum": [
+            "no_reliable_source",
+            "not_verified",
+            "out_of_scope",
+            "identity_ambiguity",
+            "source_inaccessible",
+            "other"
+          ]
+        },
+        "description": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "explored_scope": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonBlankText"
+          }
+        },
+        "source_categories": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "institutional_registry",
+              "official_publication",
+              "independent_press",
+              "specialized_source",
+              "aggregator",
+              "search_result"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "retry_context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonBlankText"
+          }
+        }
+      }
+    },
+    "executionStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "invocation_id",
+        "operation",
+        "status",
+        "attempt",
+        "retry_of",
+        "started_at",
+        "ended_at",
+        "duration_ms",
+        "error_code"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "invocation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "operation": {
+          "enum": [
+            "interpretation",
+            "candidate_search",
+            "identity_resolution",
+            "collection",
+            "extraction",
+            "reconciliation",
+            "verification",
+            "composition"
+          ]
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+            "skipped"
+          ]
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retry_of": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/id"
+            }
+          ]
+        },
+        "started_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "duration_ms": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0
+            }
+          ]
+        },
+        "error_code": {
+          "$ref": "#/$defs/nullableText"
+        }
+      }
+    },
+    "presentationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref_id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "claim",
+            "inference"
+          ]
+        },
+        "ref_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary_items",
+        "key_fact_claim_ids",
+        "recent_signal_claim_ids",
+        "ambiguity_claim_ids",
+        "contradiction_ids",
+        "unknown_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "summary_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/presentationRef"
+          }
+        },
+        "key_fact_claim_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "recent_signal_claim_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "ambiguity_claim_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "contradiction_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "unknown_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "started_at",
+        "completed_at",
+        "total_duration_ms",
+        "latency_ms",
+        "provider_calls",
+        "usage",
+        "cost",
+        "search_scope",
+        "resumed_from_run_id"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "total_duration_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "provider_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "input_tokens",
+            "output_tokens",
+            "total_tokens"
+          ],
+          "properties": {
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount_usd",
+            "status",
+            "assumptions"
+          ],
+          "properties": {
+            "amount_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "status": {
+              "enum": [
+                "exact",
+                "estimated",
+                "unknown"
+              ]
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nonBlankText"
+              }
+            }
+          }
+        },
+        "search_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "categories",
+            "stop_reason"
+          ],
+          "properties": {
+            "categories": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nonBlankText"
+              }
+            },
+            "stop_reason": {
+              "$ref": "#/$defs/nonBlankText"
+            }
+          }
+        },
+        "resumed_from_run_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/id"
+            }
+          ]
+        }
+      }
+    },
+    "technicalError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "timeout",
+            "provider_error",
+            "quota_exceeded",
+            "invalid_response",
+            "source_access_failure",
+            "internal_failure"
+          ]
+        },
+        "code": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "message": {
+          "$ref": "#/$defs/nonBlankText"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

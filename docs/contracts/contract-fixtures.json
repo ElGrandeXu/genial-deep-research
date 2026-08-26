@@ -1,0 +1,1028 @@
+{
+  "schema_version": "1.0.0",
+  "synthetic_contract_fixture": true,
+  "not_demo_data": true,
+  "not_application_output": true,
+  "description": "Fixtures entièrement synthétiques destinées uniquement à vérifier le contrat M2.",
+  "fixtures": [
+    {
+      "fixture_id": "fixture-supported-claim",
+      "scenario": "supported_claim",
+      "description": "Une affirmation atomique actuelle est soutenue par une preuve finale vérifiable.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-supported-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-supported-001",
+          "submitted_at": "2026-08-26T10:00:00Z",
+          "name": "Entreprise Synthétique Aster",
+          "suggested_type": "company",
+          "context": {
+            "country": "Pays Synthétique"
+          },
+          "total_character_count": 47
+        },
+        "identity": {
+          "status": "resolved",
+          "selected_subject_id": "subject-supported-aster",
+          "candidates": [
+            {
+              "subject_id": "subject-supported-aster",
+              "entity_type": "company",
+              "display_name": "Entreprise Synthétique Aster",
+              "discriminators": {
+                "country": "Pays Synthétique",
+                "legal_identifier": "SYN-ASTER-001"
+              },
+              "match_rationale": "Le nom, le pays et l’identifiant synthétique concordent."
+            }
+          ],
+          "resolution_reason": "Un candidat synthétique unique concorde avec le contexte.",
+          "clarification_fields": []
+        },
+        "sources": [
+          {
+            "source_id": "source-supported-register",
+            "provider_url": "https://registry.example.invalid/aster",
+            "resolved_url": "https://registry.example.invalid/aster",
+            "canonical_url": "https://registry.example.invalid/aster",
+            "title": "Fiche institutionnelle synthétique Aster",
+            "publisher": "Registre Synthétique",
+            "source_type": "institutional_registry",
+            "published_at": "2026-08-25T08:00:00Z",
+            "accessed_at": "2026-08-26T10:00:02Z",
+            "collection_method": "institutional_api",
+            "collection_compliance": "permitted",
+            "accessibility_status": "accessible",
+            "assumed_entity_id": "subject-supported-aster",
+            "assumed_scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Aster"
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "evidence_id": "evidence-supported-status",
+            "source_id": "source-supported-register",
+            "claim_id": "claim-supported-status",
+            "excerpt": "L’entité synthétique est enregistrée comme active au 25 août 2026.",
+            "locator": "section synthétique statut, ligne 1",
+            "entity_id": "subject-supported-aster",
+            "fact_period": {
+              "status": "stated",
+              "start": null,
+              "end": null,
+              "as_of": "2026-08-25T00:00:00Z",
+              "label": "au 25 août 2026"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Aster"
+            },
+            "relation": "supports",
+            "verification_method": "institutional_record",
+            "verified_at": "2026-08-26T10:00:03Z"
+          }
+        ],
+        "claims": [
+          {
+            "claim_id": "claim-supported-status",
+            "subject_id": "subject-supported-aster",
+            "statement": "L’entité synthétique Aster est enregistrée comme active au 25 août 2026.",
+            "predicate": "legal_status",
+            "structured_value": {
+              "value": "active",
+              "value_type": "text"
+            },
+            "unit": null,
+            "fact_period": {
+              "status": "stated",
+              "start": null,
+              "end": null,
+              "as_of": "2026-08-25T00:00:00Z",
+              "label": "au 25 août 2026"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Aster"
+            },
+            "temporal_status": "current",
+            "evidence_ids": [
+              "evidence-supported-status"
+            ],
+            "claim_state": "supported",
+            "reconciliation_state": "confirmation",
+            "presentation_decision": "display_fact",
+            "presentation_reason": "Une preuve institutionnelle synthétique soutient exactement le fait daté."
+          }
+        ],
+        "inferences": [],
+        "contradictions": [],
+        "unknowns": [],
+        "execution_steps": [
+          {
+            "step_id": "step-supported-verify",
+            "invocation_id": "invocation-supported-verify-1",
+            "operation": "verification",
+            "status": "completed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:00:03Z",
+            "ended_at": "2026-08-26T10:00:04Z",
+            "duration_ms": 1000,
+            "error_code": null
+          }
+        ],
+        "presentation": {
+          "summary_items": [
+            {
+              "kind": "claim",
+              "ref_id": "claim-supported-status"
+            }
+          ],
+          "key_fact_claim_ids": [
+            "claim-supported-status"
+          ],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [],
+          "unknown_ids": [],
+          "source_ids": [
+            "source-supported-register"
+          ]
+        },
+        "receipt": {
+          "run_id": "run-supported-001",
+          "started_at": "2026-08-26T10:00:00Z",
+          "completed_at": "2026-08-26T10:00:04Z",
+          "total_duration_ms": 4000,
+          "latency_ms": 4000,
+          "provider_calls": 1,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "estimated",
+            "assumptions": [
+              "Valeurs synthétiques sans facturation réelle."
+            ]
+          },
+          "search_scope": {
+            "categories": [
+              "registre institutionnel synthétique"
+            ],
+            "stop_reason": "Le fait contractuel synthétique a été vérifié."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "standard",
+        "global_status": "complete_within_scope",
+        "error": null,
+        "limitations": [
+          "Fixture synthétique ; aucune conclusion sur une entité réelle."
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture-homonym-clarification",
+      "scenario": "homonym_clarification",
+      "description": "Deux personnes synthétiques restent plausibles et imposent une clarification.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-homonym-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-homonym-001",
+          "submitted_at": "2026-08-26T10:10:00Z",
+          "name": "Personne Synthétique Delta",
+          "suggested_type": "person",
+          "context": {},
+          "total_character_count": 27
+        },
+        "identity": {
+          "status": "ambiguous",
+          "selected_subject_id": null,
+          "candidates": [
+            {
+              "subject_id": "subject-homonym-alpha",
+              "entity_type": "person",
+              "display_name": "Personne Synthétique Delta — candidat Alpha",
+              "discriminators": {
+                "city": "Ville Synthétique Nord",
+                "employer": "Organisation Synthétique Un"
+              },
+              "match_rationale": "Le nom correspond, mais aucun contexte ne privilégie ce candidat synthétique."
+            },
+            {
+              "subject_id": "subject-homonym-beta",
+              "entity_type": "person",
+              "display_name": "Personne Synthétique Delta — candidat Bêta",
+              "discriminators": {
+                "city": "Ville Synthétique Sud",
+                "employer": "Organisation Synthétique Deux"
+              },
+              "match_rationale": "Le nom correspond, mais aucun contexte ne privilégie ce candidat synthétique."
+            }
+          ],
+          "resolution_reason": "Deux candidats synthétiques distincts partagent le nom demandé.",
+          "clarification_fields": [
+            "city",
+            "employer"
+          ]
+        },
+        "sources": [],
+        "evidence": [],
+        "claims": [],
+        "inferences": [],
+        "contradictions": [],
+        "unknowns": [
+          {
+            "unknown_id": "unknown-homonym-identity",
+            "category": "identity_ambiguity",
+            "description": "L’identité ne peut pas être résolue sans ville ou employeur.",
+            "explored_scope": [
+              "comparaison de deux candidats synthétiques"
+            ],
+            "source_categories": [],
+            "stop_reason": "Contexte discriminant absent.",
+            "retry_context": [
+              "ville",
+              "employeur"
+            ]
+          }
+        ],
+        "execution_steps": [
+          {
+            "step_id": "step-homonym-resolution",
+            "invocation_id": "invocation-homonym-resolution-1",
+            "operation": "identity_resolution",
+            "status": "completed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:10:00Z",
+            "ended_at": "2026-08-26T10:10:01Z",
+            "duration_ms": 1000,
+            "error_code": null
+          }
+        ],
+        "presentation": {
+          "summary_items": [],
+          "key_fact_claim_ids": [],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [],
+          "unknown_ids": [
+            "unknown-homonym-identity"
+          ],
+          "source_ids": []
+        },
+        "receipt": {
+          "run_id": "run-homonym-001",
+          "started_at": "2026-08-26T10:10:00Z",
+          "completed_at": "2026-08-26T10:10:01Z",
+          "total_duration_ms": 1000,
+          "latency_ms": 1000,
+          "provider_calls": 0,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "exact",
+            "assumptions": []
+          },
+          "search_scope": {
+            "categories": [
+              "candidats synthétiques"
+            ],
+            "stop_reason": "Clarification requise avant tout dossier factuel."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "standard",
+        "global_status": "needs_clarification",
+        "error": null,
+        "limitations": [
+          "Aucune fiche certaine tant que l’utilisateur n’a pas clarifié l’identité."
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture-conflict-two-versions",
+      "scenario": "conflict_two_versions",
+      "description": "Deux valeurs synthétiques incompatibles sont conservées avec leurs preuves concurrentes.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-conflict-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-conflict-001",
+          "submitted_at": "2026-08-26T10:20:00Z",
+          "name": "Entreprise Synthétique Borée",
+          "suggested_type": "company",
+          "context": {
+            "country": "Pays Synthétique"
+          },
+          "total_character_count": 47
+        },
+        "identity": {
+          "status": "resolved",
+          "selected_subject_id": "subject-conflict-boree",
+          "candidates": [
+            {
+              "subject_id": "subject-conflict-boree",
+              "entity_type": "company",
+              "display_name": "Entreprise Synthétique Borée",
+              "discriminators": {
+                "country": "Pays Synthétique",
+                "legal_identifier": "SYN-BOREE-001"
+              },
+              "match_rationale": "L’identifiant synthétique est commun aux deux sources."
+            }
+          ],
+          "resolution_reason": "L’entité synthétique est résolue ; la valeur financière reste contestée.",
+          "clarification_fields": []
+        },
+        "sources": [
+          {
+            "source_id": "source-conflict-official",
+            "provider_url": "https://official.example.invalid/boree-2025",
+            "resolved_url": "https://official.example.invalid/boree-2025",
+            "canonical_url": "https://official.example.invalid/boree-2025",
+            "title": "Rapport synthétique Borée 2025",
+            "publisher": "Entreprise Synthétique Borée",
+            "source_type": "official_publication",
+            "published_at": "2026-02-01T09:00:00Z",
+            "accessed_at": "2026-08-26T10:20:02Z",
+            "collection_method": "direct_access",
+            "collection_compliance": "permitted",
+            "accessibility_status": "accessible",
+            "assumed_entity_id": "subject-conflict-boree",
+            "assumed_scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            }
+          },
+          {
+            "source_id": "source-conflict-specialized",
+            "provider_url": "https://specialized.example.invalid/boree-2025",
+            "resolved_url": "https://specialized.example.invalid/boree-2025",
+            "canonical_url": "https://specialized.example.invalid/boree-2025",
+            "title": "Analyse synthétique Borée 2025",
+            "publisher": "Observatoire Synthétique",
+            "source_type": "specialized_source",
+            "published_at": "2026-02-10T09:00:00Z",
+            "accessed_at": "2026-08-26T10:20:03Z",
+            "collection_method": "direct_access",
+            "collection_compliance": "permitted",
+            "accessibility_status": "accessible",
+            "assumed_entity_id": "subject-conflict-boree",
+            "assumed_scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "evidence_id": "evidence-conflict-value-a",
+            "source_id": "source-conflict-official",
+            "claim_id": "claim-conflict-value-a",
+            "excerpt": "La valeur synthétique publiée pour l’exercice 2025 est 10 millions d’unités.",
+            "locator": "tableau synthétique, ligne A",
+            "entity_id": "subject-conflict-boree",
+            "fact_period": {
+              "status": "stated",
+              "start": "2025-01-01T00:00:00Z",
+              "end": "2025-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "exercice 2025"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            },
+            "relation": "supports",
+            "verification_method": "source_content",
+            "verified_at": "2026-08-26T10:20:04Z"
+          },
+          {
+            "evidence_id": "evidence-conflict-value-b",
+            "source_id": "source-conflict-specialized",
+            "claim_id": "claim-conflict-value-b",
+            "excerpt": "La valeur synthétique publiée pour l’exercice 2025 est 12 millions d’unités.",
+            "locator": "tableau synthétique, ligne B",
+            "entity_id": "subject-conflict-boree",
+            "fact_period": {
+              "status": "stated",
+              "start": "2025-01-01T00:00:00Z",
+              "end": "2025-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "exercice 2025"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            },
+            "relation": "supports",
+            "verification_method": "source_content",
+            "verified_at": "2026-08-26T10:20:05Z"
+          }
+        ],
+        "claims": [
+          {
+            "claim_id": "claim-conflict-value-a",
+            "subject_id": "subject-conflict-boree",
+            "statement": "La valeur synthétique de Borée pour 2025 est 10 millions d’unités.",
+            "predicate": "synthetic_financial_metric",
+            "structured_value": {
+              "value": 10,
+              "value_type": "number"
+            },
+            "unit": "million synthetic units",
+            "fact_period": {
+              "status": "stated",
+              "start": "2025-01-01T00:00:00Z",
+              "end": "2025-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "exercice 2025"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            },
+            "temporal_status": "historical",
+            "evidence_ids": [
+              "evidence-conflict-value-a"
+            ],
+            "claim_state": "contested",
+            "reconciliation_state": "contradiction",
+            "presentation_decision": "display_fact",
+            "presentation_reason": "Version A conservée avec sa preuve concurrente."
+          },
+          {
+            "claim_id": "claim-conflict-value-b",
+            "subject_id": "subject-conflict-boree",
+            "statement": "La valeur synthétique de Borée pour 2025 est 12 millions d’unités.",
+            "predicate": "synthetic_financial_metric",
+            "structured_value": {
+              "value": 12,
+              "value_type": "number"
+            },
+            "unit": "million synthetic units",
+            "fact_period": {
+              "status": "stated",
+              "start": "2025-01-01T00:00:00Z",
+              "end": "2025-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "exercice 2025"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            },
+            "temporal_status": "historical",
+            "evidence_ids": [
+              "evidence-conflict-value-b"
+            ],
+            "claim_state": "contested",
+            "reconciliation_state": "contradiction",
+            "presentation_decision": "display_fact",
+            "presentation_reason": "Version B conservée avec sa preuve concurrente."
+          }
+        ],
+        "inferences": [],
+        "contradictions": [
+          {
+            "contradiction_id": "contradiction-conflict-metric",
+            "predicate": "synthetic_financial_metric",
+            "period": {
+              "status": "stated",
+              "start": "2025-01-01T00:00:00Z",
+              "end": "2025-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "exercice 2025"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Borée"
+            },
+            "metric_definition": "Même métrique synthétique, unité et périmètre après contrôle.",
+            "published_or_estimated_checked": true,
+            "classification": "contradiction",
+            "versions": [
+              {
+                "claim_id": "claim-conflict-value-a",
+                "evidence_ids": [
+                  "evidence-conflict-value-a"
+                ],
+                "normalized_value": 10,
+                "unit": "million synthetic units",
+                "currency": null
+              },
+              {
+                "claim_id": "claim-conflict-value-b",
+                "evidence_ids": [
+                  "evidence-conflict-value-b"
+                ],
+                "normalized_value": 12,
+                "unit": "million synthetic units",
+                "currency": null
+              }
+            ],
+            "explanation": "Les deux valeurs restent incompatibles après contrôle de l’unité, période, clôture, définition, périmètre et nature publiée.",
+            "visible": true
+          }
+        ],
+        "unknowns": [],
+        "execution_steps": [
+          {
+            "step_id": "step-conflict-reconcile",
+            "invocation_id": "invocation-conflict-reconcile-1",
+            "operation": "reconciliation",
+            "status": "completed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:20:04Z",
+            "ended_at": "2026-08-26T10:20:06Z",
+            "duration_ms": 2000,
+            "error_code": null
+          }
+        ],
+        "presentation": {
+          "summary_items": [],
+          "key_fact_claim_ids": [
+            "claim-conflict-value-a",
+            "claim-conflict-value-b"
+          ],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [
+            "contradiction-conflict-metric"
+          ],
+          "unknown_ids": [],
+          "source_ids": [
+            "source-conflict-official",
+            "source-conflict-specialized"
+          ]
+        },
+        "receipt": {
+          "run_id": "run-conflict-001",
+          "started_at": "2026-08-26T10:20:00Z",
+          "completed_at": "2026-08-26T10:20:06Z",
+          "total_duration_ms": 6000,
+          "latency_ms": 6000,
+          "provider_calls": 2,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "estimated",
+            "assumptions": [
+              "Valeurs synthétiques sans facturation réelle."
+            ]
+          },
+          "search_scope": {
+            "categories": [
+              "publication officielle synthétique",
+              "source spécialisée synthétique"
+            ],
+            "stop_reason": "Contradiction synthétique conservée après normalisation."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "standard",
+        "global_status": "partial",
+        "error": null,
+        "limitations": [
+          "La contradiction synthétique empêche de retenir une valeur unique."
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture-honest-silence",
+      "scenario": "honest_silence",
+      "description": "Aucune preuve fiable n’est trouvée ; le résultat reste vide et borné.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-silence-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-silence-001",
+          "submitted_at": "2026-08-26T10:30:00Z",
+          "name": "Personne Synthétique Muette",
+          "suggested_type": "person",
+          "context": {
+            "city": "Ville Synthétique Est"
+          },
+          "total_character_count": 49
+        },
+        "identity": {
+          "status": "not_found_within_scope",
+          "selected_subject_id": null,
+          "candidates": [],
+          "resolution_reason": "Aucun candidat synthétique suffisamment attribuable dans le périmètre décrit.",
+          "clarification_fields": [
+            "employer",
+            "discriminating_hint"
+          ]
+        },
+        "sources": [],
+        "evidence": [],
+        "claims": [],
+        "inferences": [],
+        "contradictions": [],
+        "unknowns": [
+          {
+            "unknown_id": "unknown-silence-no-source",
+            "category": "no_reliable_source",
+            "description": "Aucune source suffisamment fiable n’a été trouvée dans le périmètre de cette recherche.",
+            "explored_scope": [
+              "nom et ville synthétiques",
+              "recherche bornée à deux catégories synthétiques"
+            ],
+            "source_categories": [
+              "institutional_registry",
+              "independent_press"
+            ],
+            "stop_reason": "Critère d’arrêt synthétique atteint sans preuve attribuable.",
+            "retry_context": [
+              "employeur",
+              "autre indice discriminant"
+            ]
+          }
+        ],
+        "execution_steps": [
+          {
+            "step_id": "step-silence-search",
+            "invocation_id": "invocation-silence-search-1",
+            "operation": "candidate_search",
+            "status": "completed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:30:00Z",
+            "ended_at": "2026-08-26T10:30:03Z",
+            "duration_ms": 3000,
+            "error_code": null
+          }
+        ],
+        "presentation": {
+          "summary_items": [],
+          "key_fact_claim_ids": [],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [],
+          "unknown_ids": [
+            "unknown-silence-no-source"
+          ],
+          "source_ids": []
+        },
+        "receipt": {
+          "run_id": "run-silence-001",
+          "started_at": "2026-08-26T10:30:00Z",
+          "completed_at": "2026-08-26T10:30:03Z",
+          "total_duration_ms": 3000,
+          "latency_ms": 3000,
+          "provider_calls": 1,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "estimated",
+            "assumptions": [
+              "Valeurs synthétiques sans facturation réelle."
+            ]
+          },
+          "search_scope": {
+            "categories": [
+              "registre institutionnel synthétique",
+              "presse indépendante synthétique"
+            ],
+            "stop_reason": "Périmètre synthétique épuisé sans preuve fiable."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "silence",
+        "global_status": "insufficient_evidence",
+        "error": null,
+        "limitations": [
+          "Le silence porte uniquement sur le périmètre synthétique exploré."
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture-historical-information",
+      "scenario": "historical_information",
+      "description": "Une information ancienne est présentée uniquement comme historique.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-historical-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-historical-001",
+          "submitted_at": "2026-08-26T10:40:00Z",
+          "name": "Entreprise Synthétique Cyprès",
+          "suggested_type": "company",
+          "context": {
+            "country": "Pays Synthétique"
+          },
+          "total_character_count": 48
+        },
+        "identity": {
+          "status": "resolved",
+          "selected_subject_id": "subject-historical-cypres",
+          "candidates": [
+            {
+              "subject_id": "subject-historical-cypres",
+              "entity_type": "company",
+              "display_name": "Entreprise Synthétique Cyprès",
+              "discriminators": {
+                "country": "Pays Synthétique",
+                "legal_identifier": "SYN-CYPRES-001"
+              },
+              "match_rationale": "Le contexte synthétique et l’identifiant concordent."
+            }
+          ],
+          "resolution_reason": "Identité synthétique résolue par identifiant.",
+          "clarification_fields": []
+        },
+        "sources": [
+          {
+            "source_id": "source-historical-archive",
+            "provider_url": "https://archive.example.invalid/cypres-2022",
+            "resolved_url": "https://archive.example.invalid/cypres-2022",
+            "canonical_url": "https://archive.example.invalid/cypres-2022",
+            "title": "Annonce synthétique archivée de 2022",
+            "publisher": "Entreprise Synthétique Cyprès",
+            "source_type": "official_publication",
+            "published_at": "2022-04-01T09:00:00Z",
+            "accessed_at": "2026-08-26T10:40:02Z",
+            "collection_method": "direct_access",
+            "collection_compliance": "permitted",
+            "accessibility_status": "accessible",
+            "assumed_entity_id": "subject-historical-cypres",
+            "assumed_scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Cyprès"
+            }
+          }
+        ],
+        "evidence": [
+          {
+            "evidence_id": "evidence-historical-role",
+            "source_id": "source-historical-archive",
+            "claim_id": "claim-historical-role",
+            "excerpt": "La Personne Synthétique Oméga occupait le rôle synthétique durant l’année 2022.",
+            "locator": "annonce synthétique, paragraphe 1",
+            "entity_id": "subject-historical-cypres",
+            "fact_period": {
+              "status": "stated",
+              "start": "2022-01-01T00:00:00Z",
+              "end": "2022-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "année 2022"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Cyprès"
+            },
+            "relation": "supports",
+            "verification_method": "source_content",
+            "verified_at": "2026-08-26T10:40:03Z"
+          }
+        ],
+        "claims": [
+          {
+            "claim_id": "claim-historical-role",
+            "subject_id": "subject-historical-cypres",
+            "statement": "La Personne Synthétique Oméga occupait le rôle synthétique chez Cyprès en 2022.",
+            "predicate": "historical_role",
+            "structured_value": {
+              "value": "Personne Synthétique Oméga",
+              "value_type": "text"
+            },
+            "unit": null,
+            "fact_period": {
+              "status": "stated",
+              "start": "2022-01-01T00:00:00Z",
+              "end": "2022-12-31T23:59:59Z",
+              "as_of": null,
+              "label": "année 2022"
+            },
+            "scope": {
+              "type": "company",
+              "label": "Entreprise Synthétique Cyprès"
+            },
+            "temporal_status": "historical",
+            "evidence_ids": [
+              "evidence-historical-role"
+            ],
+            "claim_state": "historical",
+            "reconciliation_state": "not_applicable",
+            "presentation_decision": "display_fact",
+            "presentation_reason": "La période passée est explicite ; aucune validité actuelle n’est affirmée."
+          }
+        ],
+        "inferences": [],
+        "contradictions": [],
+        "unknowns": [
+          {
+            "unknown_id": "unknown-historical-current-role",
+            "category": "not_verified",
+            "description": "Le titulaire actuel du rôle synthétique n’est pas établi par cette source ancienne.",
+            "explored_scope": [
+              "archive synthétique de 2022"
+            ],
+            "source_categories": [
+              "official_publication"
+            ],
+            "stop_reason": "Fixture limitée à la démonstration de la qualification historique.",
+            "retry_context": [
+              "source synthétique plus récente"
+            ]
+          }
+        ],
+        "execution_steps": [
+          {
+            "step_id": "step-historical-verify",
+            "invocation_id": "invocation-historical-verify-1",
+            "operation": "verification",
+            "status": "completed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:40:02Z",
+            "ended_at": "2026-08-26T10:40:03Z",
+            "duration_ms": 1000,
+            "error_code": null
+          }
+        ],
+        "presentation": {
+          "summary_items": [],
+          "key_fact_claim_ids": [
+            "claim-historical-role"
+          ],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [],
+          "unknown_ids": [
+            "unknown-historical-current-role"
+          ],
+          "source_ids": [
+            "source-historical-archive"
+          ]
+        },
+        "receipt": {
+          "run_id": "run-historical-001",
+          "started_at": "2026-08-26T10:40:00Z",
+          "completed_at": "2026-08-26T10:40:03Z",
+          "total_duration_ms": 3000,
+          "latency_ms": 3000,
+          "provider_calls": 1,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "estimated",
+            "assumptions": [
+              "Valeurs synthétiques sans facturation réelle."
+            ]
+          },
+          "search_scope": {
+            "categories": [
+              "archive officielle synthétique"
+            ],
+            "stop_reason": "Fait historique synthétique qualifié ; état actuel laissé inconnu."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "standard",
+        "global_status": "complete_within_scope",
+        "error": null,
+        "limitations": [
+          "Aucun état actuel n’est déduit de l’archive synthétique."
+        ]
+      }
+    },
+    {
+      "fixture_id": "fixture-technical-failure",
+      "scenario": "technical_failure",
+      "description": "Un timeout technique est distingué d’une absence de preuve.",
+      "dossier": {
+        "schema_version": "1.0.0",
+        "dossier_id": "dossier-technical-001",
+        "origin": "synthetic_contract_fixture",
+        "request": {
+          "request_id": "request-technical-001",
+          "submitted_at": "2026-08-26T10:50:00Z",
+          "name": "Entreprise Synthétique Échec",
+          "suggested_type": "company",
+          "context": {
+            "country": "Pays Synthétique"
+          },
+          "total_character_count": 47
+        },
+        "identity": {
+          "status": "resolved",
+          "selected_subject_id": "subject-technical-echec",
+          "candidates": [
+            {
+              "subject_id": "subject-technical-echec",
+              "entity_type": "company",
+              "display_name": "Entreprise Synthétique Échec",
+              "discriminators": {
+                "country": "Pays Synthétique",
+                "legal_identifier": "SYN-ECHEC-001"
+              },
+              "match_rationale": "Identité synthétique résolue avant l’échec de collecte."
+            }
+          ],
+          "resolution_reason": "Identité synthétique résolue ; collecte interrompue techniquement.",
+          "clarification_fields": []
+        },
+        "sources": [],
+        "evidence": [],
+        "claims": [],
+        "inferences": [],
+        "contradictions": [],
+        "unknowns": [],
+        "execution_steps": [
+          {
+            "step_id": "step-technical-collection",
+            "invocation_id": "invocation-technical-collection-1",
+            "operation": "collection",
+            "status": "failed",
+            "attempt": 1,
+            "retry_of": null,
+            "started_at": "2026-08-26T10:50:01Z",
+            "ended_at": "2026-08-26T10:50:31Z",
+            "duration_ms": 30000,
+            "error_code": "SYNTHETIC_TIMEOUT"
+          }
+        ],
+        "presentation": {
+          "summary_items": [],
+          "key_fact_claim_ids": [],
+          "recent_signal_claim_ids": [],
+          "ambiguity_claim_ids": [],
+          "contradiction_ids": [],
+          "unknown_ids": [],
+          "source_ids": []
+        },
+        "receipt": {
+          "run_id": "run-technical-001",
+          "started_at": "2026-08-26T10:50:00Z",
+          "completed_at": "2026-08-26T10:50:31Z",
+          "total_duration_ms": 31000,
+          "latency_ms": 31000,
+          "provider_calls": 1,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0
+          },
+          "cost": {
+            "amount_usd": 0,
+            "status": "unknown",
+            "assumptions": [
+              "Le coût synthétique du timeout n’est pas attribué."
+            ]
+          },
+          "search_scope": {
+            "categories": [
+              "collecte synthétique interrompue"
+            ],
+            "stop_reason": "Timeout technique synthétique avant collecte exploitable."
+          },
+          "resumed_from_run_id": null
+        },
+        "result_mode": "technical_error",
+        "global_status": "technical_failure",
+        "error": {
+          "kind": "timeout",
+          "code": "SYNTHETIC_TIMEOUT",
+          "message": "La collecte synthétique a dépassé sa durée autorisée.",
+          "retryable": true
+        },
+        "limitations": [
+          "L’échec technique n’autorise aucune conclusion sur la disponibilité des preuves."
+        ]
+      }
+    }
+  ]
+}

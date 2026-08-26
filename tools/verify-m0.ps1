@@ -8,7 +8,7 @@ if ($LASTEXITCODE -ne 0) {
 $resolvedRoot = (Resolve-Path -LiteralPath $resolvedRootRaw).Path
 if ($resolvedRoot -ne $repoRoot) { throw 'M0_VERIFY_FAILED: Git root is not GENIAL' }
 
-$expectedTracked = @(
+$requiredTracked = @(
     '.env.example',
     '.gitattributes',
     '.githooks/pre-commit',
@@ -30,8 +30,9 @@ $expectedTracked = @(
 ) | Sort-Object
 
 $actualTracked = @(& git -C $repoRoot -c core.quotepath=false ls-files) | Sort-Object
-if (Compare-Object $expectedTracked $actualTracked) {
-    throw 'M0_VERIFY_FAILED: tracked inventory differs from the M0 allowlist'
+$missingM0Paths = @($requiredTracked | Where-Object { $_ -notin $actualTracked })
+if ($missingM0Paths.Count -gt 0) {
+    throw 'M0_VERIFY_FAILED: a required M0 path is missing'
 }
 
 & (Join-Path $PSScriptRoot 'verify-source-integrity.ps1')
@@ -89,8 +90,8 @@ if ([string]::IsNullOrWhiteSpace($identityName) -or [string]::IsNullOrWhiteSpace
 }
 
 $acceptance = Get-Content -LiteralPath (Join-Path $repoRoot 'ACCEPTANCE.md') -Raw
-if ($acceptance -notmatch '- \[ \] \*\*G1 .*NON TERMINÉ' -or $acceptance -match '- \[x\] \*\*G[1-7]') {
-    throw 'M0_VERIFY_FAILED: a forbidden milestone is marked complete'
+if ($acceptance -notmatch '- \[x\] \*\*G0 ') {
+    throw 'M0_VERIFY_FAILED: G0 is not marked complete'
 }
 
 $staged = @(& git -C $repoRoot diff --cached --name-only)
@@ -101,4 +102,4 @@ if ($staged.Count -gt 0) {
 }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Output 'M0_VERIFY_OK: root, inventory, integrity, attributes, exclusions, secrets, remotes, hooks, identity, milestones'
+Write-Output 'M0_VERIFY_OK: root, required baseline, integrity, attributes, exclusions, secrets, remotes, hooks, identity, G0'

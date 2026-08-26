@@ -1,4 +1,4 @@
-# Mission M0 — Intronisation native
+# Capsule de mission — M0 à M2
 
 ## Finalité contractuelle
 
@@ -41,3 +41,16 @@ Une contradiction est résolue en faveur de la source de rang supérieur. Les st
 ## Condition de sortie
 
 - **DÉCISION** — M0 s'arrête après un premier commit atomique validé et attend l'audit externe de Maxime/ChatGPT. G1 reste non terminé.
+
+## Mission M2 — Figer le produit et le contrat de vérité
+
+- **EXIGENCE EXPLICITE** — Transformer les autorités et les faits M1 en contrats produit et vérité indépendants d’une stack, structurés pour devenir types et tests, couvrant succès, ambiguïtés, conflits, silences, péremption et erreurs.
+- **DÉCISION** — Revendiquer HOMONYME, CONFLIT et SILENCE ; traiter PÉREMPTION transversalement ; différer explicitement MARQUE et FILIALE.
+- **DÉCISION** — Créer le document canonique, le JSON Schema, six fixtures entièrement synthétiques, le vérificateur déterministe, le journal d’arbitrage et le registre de risques.
+- **DÉCISION** — Aucun appel API, accès DPAPI, choix de fournisseur/modèle/stack, squelette, interface, hébergement, déploiement, donnée réelle ou travail M3.
+- **DÉCISION** — G2 n’est validable qu’après intégrité, secrets, JSON, fixtures, cinq mutations négatives, traçabilité et état Git cohérents.
+
+## Condition de sortie M2
+
+- **DÉCISION** — Un commit atomique contient les contrats et leurs preuves reproductibles.
+- **DÉCISION** — Après validation, attendre l’audit externe de M2 avant tout travail M3.

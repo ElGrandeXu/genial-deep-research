@@ -1,4 +1,4 @@
-# Acceptation M0 et M1
+# Acceptation M0 à M2
 
 ## Critères observables
 
@@ -17,8 +17,8 @@
 ## Jalons G0 à G7
 
 - [x] **G0 — Poste opérationnel.** **FAIT VALIDÉ** — Session lancée depuis le workspace canonique ; racine EGX Settings résolue par marqueur ; doctrine chargée prouvée par `codex debug prompt-input` ; PowerShell, Git et Codex disponibles. L'ancienne migration laptop est obsolète et n'a pas été exécutée.
-- [ ] **G1 — Mission intronisée.** **DÉCISION — PARTIEL / NON TERMINÉ** — Frontière, capsule, historique, sécurité, clés et capacités API sont validés ; la deadline contractuelle exacte reste non confirmée et l'audit externe M1 reste requis.
-- [ ] **G2 — Contrat produit figé.** **FAIT VALIDÉ — NON COMMENCÉ**.
+- [x] **G1 — Mission intronisée.** **FAIT VALIDÉ** — M0 et M1 sont validés, M1 a été audité extérieurement, les ressources API et clés étaient opérationnelles le 26 août 2026, et la contingence calendrier traite vendredi 28 août comme échéance opérationnelle la plus contraignante sans la présenter comme deadline contractuelle. Aucune réponse d’Antonin ne bloque la suite autorisée.
+- [x] **G2 — Contrat produit figé.** **FAIT VALIDÉ** — Périmètre, entrée, sortie, affirmation-preuve, sources, conflits, silence, péremption et erreurs sont figés ; schéma, six fixtures et vérificateur avec cinq mutations négatives sont verts.
 - [ ] **G3 — Boucle verticale en ligne.** **FAIT VALIDÉ — NON COMMENCÉ**.
 - [ ] **G4 — Noyau digne de confiance.** **FAIT VALIDÉ — NON COMMENCÉ**.
 - [ ] **G5 — Qualité mesurée.** **FAIT VALIDÉ — NON COMMENCÉ**.
@@ -36,3 +36,14 @@ Une case vide ne peut être cochée que par une mission ultérieure explicitemen
 - [x] **FAIT VALIDÉ** — Recherche prouvée par métadonnées fournisseur, citations et URLs ; aucune plausibilité textuelle utilisée comme preuve.
 - [x] **FAIT VALIDÉ** — Quatre appels de génération, aucun retry, coût conservateur estimé à 0,04687090 USD.
 - [x] **FAIT VALIDÉ** — Aucun secret, header d'authentification, choix de stack, architecture, interface ou hébergement conservé.
+
+## Critères observables M2
+
+- [x] **FAIT VALIDÉ** — Baseline exacte confirmée ; la divergence du contrôle M0 était limitée à son allowlist M0 figée, devenue obsolète avec les trois artefacts M1 suivis, puis corrigée sans relâcher les invariants M0.
+- [x] **FAIT VALIDÉ** — Contrat produit et vérité canonique indépendant d’une stack, avec statuts d’autorité explicites et matrice de traçabilité au brief.
+- [x] **FAIT VALIDÉ** — HOMONYME, CONFLIT et SILENCE revendiqués ; PÉREMPTION transversale ; MARQUE et FILIALE non revendiqués.
+- [x] **FAIT VALIDÉ** — JSON Schema valide couvrant demande, identité, sources, preuves, affirmations, inférences, contradictions, inconnues, exécution, reçu et état global.
+- [x] **FAIT VALIDÉ** — Six fixtures exclusivement synthétiques portent les trois marqueurs anti-démo obligatoires.
+- [x] **FAIT VALIDÉ** — Vérificateur sans dépendance accepte les six fixtures et rejette cinq mutations négatives en mémoire.
+- [x] **FAIT VALIDÉ** — Vie privée figée : aucun compte, aucune persistance métier, données professionnelles publiques seulement, métriques minimales expurgées.
+- [x] **FAIT VALIDÉ** — Aucun appel API, accès DPAPI, choix de fournisseur/modèle/stack, squelette, interface, hébergement, déploiement, donnée réelle ou travail M3.

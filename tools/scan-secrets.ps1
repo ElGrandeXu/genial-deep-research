@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Staged', 'Tracked')]
+    [ValidateSet('Staged', 'Tracked', 'WorkingTree')]
     [string]$Mode = 'Staged'
 )
 
@@ -14,8 +14,10 @@ if ($gitRoot -ne $repoRoot) { throw 'SECRET_SCAN_FAILED: unexpected Git root' }
 
 if ($Mode -eq 'Staged') {
     $files = @(& git -C $repoRoot -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR)
-} else {
+} elseif ($Mode -eq 'Tracked') {
     $files = @(& git -C $repoRoot -c core.quotepath=false ls-files)
+} else {
+    $files = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached --others --exclude-standard)
 }
 
 $rules = @(
