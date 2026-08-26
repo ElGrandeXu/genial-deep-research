@@ -1,4 +1,4 @@
-# Entrées M0
+# Entrées M0 et M1
 
 ## Registre d'autorité
 
@@ -21,3 +21,14 @@ Statut commun : `OBSOLETE — EXCLUDED FROM AUTHORITY, HISTORY AND PROGRESS EVID
 
 - **FAIT VALIDÉ** — Seuls leurs noms et métadonnées de fichier ont été inspectés ; leur contenu n'a pas été lu.
 - **DÉCISION** — Ils restent présents localement, ignorés, non suivis et hors du premier commit.
+
+## Entrées locales M1 non livrables
+
+- **FAIT VALIDÉ — 2026-08-26** — Le magasin DPAPI externe contient exactement deux `PSCredential` nommés `OPENAI_API_KEY` et `GEMINI_API_KEY`, avec `SecureString` non vide.
+- **DÉCISION** — Seuls les états `PRESENT` sont conservés. Le magasin, ses valeurs et leurs caractéristiques restent hors de GENIAL, de Git, des logs et des artefacts.
+- **DÉCISION** — Ce magasin sert exclusivement aux probes locaux M1 ; il ne préjuge pas du mécanisme de secrets serveur de la future application.
+
+## Sources documentaires M1
+
+- **FAIT VALIDÉ — 2026-08-26** — Documentation API consultée uniquement sur `developers.openai.com`, `platform.openai.com` et `ai.google.dev`.
+- **FAIT VALIDÉ** — URLs exactes, tarifs et statuts documentés dans `docs/evidence/M1_API_CAPABILITIES.md` ; inventaires et résultats expurgés dans `docs/evidence/m1-api-capabilities-result.json`.

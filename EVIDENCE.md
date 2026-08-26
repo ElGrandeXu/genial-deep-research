@@ -74,3 +74,14 @@ Les sorties de scan indiquent uniquement le chemin, le numéro de ligne et l'ide
 - **FAIT VALIDÉ** — Attribut `text` non défini pour chacune des trois sources ; blob Git indexé identique aux octets du worktree.
 - **FAIT VALIDÉ** — Aucun diff worktree/index sur les sources ; aucun remote ; identité Git disponible sans modification de configuration globale.
 - **FAIT VALIDÉ** — Les deux passations sont présentes avec statut Git ignoré et absentes de l'index.
+
+## Preuves M1 — 2026-08-26
+
+- **FAIT VALIDÉ** — Baseline M1 : racine exacte, HEAD `48fd09af8759e59be19e3d06ebe18dc4a3521a5f`, worktree propre, contrôles M0 réussis, trois sources intactes, aucun remote, passations obsolètes ignorées et non lues.
+- **FAIT VALIDÉ** — Magasin externe validé sans exposition : `OPENAI_API_KEY=PRESENT`, `GEMINI_API_KEY=PRESENT`.
+- **FAIT VALIDÉ** — Probe reproductible : `tools/probes/m1-api-capabilities.ps1`.
+- **FAIT VALIDÉ** — Rapport humain : `docs/evidence/M1_API_CAPABILITIES.md`.
+- **FAIT VALIDÉ** — Inventaires et résultats machine expurgés : `docs/evidence/m1-api-capabilities-result.json`.
+- **FAIT VALIDÉ** — Appels : deux inventaires et quatre générations, aucun retry ; coût conservateur estimé à 0,04687090 USD.
+- **FAIT VALIDÉ** — OpenAI et Gemini : authentification, génération, sortie structurée, recherche effective, citations, URLs, usage et latence observés.
+- **DÉCISION** — Les sorties textuelles des modèles ne sont pas conservées ; seule la preuve autorisée est enregistrée.
