@@ -173,3 +173,35 @@ Les décisions ci-dessous sont subordonnées au brief, à l’audit formel et au
 - **Justification** : l’ancienne allowlist comparait le projet courant à l’inventaire M0 et rejetait mécaniquement chaque artefact légitime ultérieur.
 - **Conséquence** : l’état historique à 18 fichiers reste prouvable sans interdire de nouveaux fichiers ni exiger l’absence de remote pour toujours. L’absence actuelle de remote reste une validation Git M3 distincte.
 - **Déclencheur de révision** : ajout d’un invariant durable ou d’un nouveau gate contractuel, jamais simple croissance d’inventaire.
+
+## D-M4-001 — Scope et projet Vercel
+
+- **Statut** : accepté.
+- **Décision** : utiliser l’unique scope `team` du plan Hobby et créer `genial-deep-research` sans intégration Git, remote ni domaine personnalisé.
+- **Justification** : le type de compte ne permet pas de scope personnel distinct ; l’unique équipe Hobby élimine l’ambiguïté et n’engage aucun plan payant.
+- **Conséquence** : aucun identifiant personnel ou interne n’est conservé dans les preuves, hors URLs et identifiants publics de déploiement requis.
+- **Déclencheur de révision** : transfert de propriété, ajout d’une équipe ou besoin contractuel de facturation.
+
+## D-M4-002 — Frontière d’upload explicite
+
+- **Statut** : accepté après correction mesurée.
+- **Décision** : exclure les fichiers locaux par chemins explicites et conserver le JSON Schema importé ainsi que `tools/run-next.mjs`.
+- **Justification** : la première frontière à négations a exclu le schéma et fait échouer le typecheck distant ; la liste explicite produit un build vert avec 18 fichiers téléchargés.
+- **Conséquence** : autorités, passations, gouvernance, preuves, tests, Git, `.vercel`, hooks et `.env*` restent hors upload.
+- **Déclencheur de révision** : nouvel import de build hors frontière ou changement des règles `.vercelignore`.
+
+## D-M4-003 — Accès public du projet
+
+- **Statut** : accepté pour M4.
+- **Décision** : désactiver Vercel Authentication uniquement sur le projet dédié, sans modifier la politique d’équipe/global.
+- **Justification** : la Preview retournait 302 ; la documentation Vercel confirme une gestion par projet et l’autorise sur Hobby.
+- **Conséquence** : Preview, URL immuable et alias canonique sont publics ; les tests n’utilisent aucun bypass ou cookie.
+- **Déclencheur de révision** : ajout de données, de recherche métier ou d’authentification applicative ; réévaluer alors la protection.
+
+## D-M4-004 — Coûts et limites observables
+
+- **Statut** : accepté.
+- **Décision** : conserver coût IA à 0 USD, coût Vercel à `UNKNOWN`, Fluid Compute à `true` selon la configuration de ressources du projet et limite maximale de plateforme à `UNKNOWN`.
+- **Justification** : aucun appel fournisseur n’existe ; le plan est prouvé mais l’usage facturé et la limite effective ne le sont pas.
+- **Conséquence** : aucune revendication de gratuité Vercel ni de compatibilité avec une future recherche longue.
+- **Déclencheur de révision** : première facture, métrique d’usage ou route métier longue mesurée.

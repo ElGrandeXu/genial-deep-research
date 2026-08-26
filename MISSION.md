@@ -1,4 +1,4 @@
-# Capsule de mission — M0 à M2
+# Capsule de mission — M0 à M4
 
 ## Finalité contractuelle
 
@@ -67,3 +67,17 @@ Une contradiction est résolue en faveur de la source de rang supérieur. Les st
 
 - **DÉCISION** — Architecture, dépendances, baseline, vérificateur cumulatif, build sans secrets, santé locale, audit et preuves sont réunis dans un commit atomique.
 - **DÉCISION** — Après validation, attendre l’audit externe de M3 avant tout travail M4.
+
+## Mission M4 — Déploiement Vercel précoce
+
+- **EXIGENCE EXPLICITE** — Établir et prouver un premier déploiement Vercel public du socle M3 sans recherche métier, clé fournisseur, appel OpenAI/Gemini, intégration Git ni domaine personnalisé.
+- **DÉCISION** — Déployer un commit propre d’abord en Preview puis en Production, vérifier publiquement `/`, `/api/health`, la non-divulgation et les logs, puis conserver les preuves séparément du runtime déployé.
+- **DÉCISION** — Utiliser le projet dédié `genial-deep-research` dans l’unique scope `team` Hobby disponible ; ne toucher ni à la facturation ni aux protections globales.
+- **DÉCISION** — La protection Vercel du seul projet M4 peut être désactivée pour satisfaire l’exigence d’accès public, conformément à la documentation de gestion par projet sur Hobby.
+- **DÉCISION** — M4 ne valide pas G3 : la recherche métier, l’attente longue, la provenance réelle et le dossier contractuel restent absents.
+
+## Condition de sortie M4
+
+- **FAIT VALIDÉ** — Preview et Production du même `deployedCommit` en état `READY`, accessibles sans authentification, avec HTTP 200 sur `/` et `/api/health`.
+- **FAIT VALIDÉ** — Aucun environnement fournisseur, appel IA, secret public, source d’autorité, passation ou chemin local divulgué.
+- **DÉCISION** — G0 à G2 restent validés ; G3 reste partiel et non validé ; G4 à G7 restent non terminés.

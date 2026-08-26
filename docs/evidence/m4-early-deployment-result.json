@@ -1,0 +1,136 @@
+{
+  "status": "M4_VALIDATED",
+  "observed_at_utc": "2026-08-26T17:42:55.1569559Z",
+  "classification": {
+    "objective": "EXIGENCE EXPLICITE",
+    "deployment_boundary": "DECISION",
+    "measurements": "FAIT VALIDÉ",
+    "future_product_claims": "DÉCISION — NON REVENDIQUÉS"
+  },
+  "baseline": {
+    "initial_head": "9f3b92834918fe8c3182d7e51d26e33752a5340a",
+    "initial_title": "feat: establish application architecture baseline",
+    "worktree_clean": true,
+    "remote_count": 0
+  },
+  "vercel": {
+    "cli_version": "59.6.2",
+    "authentication": "EXISTING_USABLE",
+    "scope_type": "team",
+    "scope_plan": "HOBBY",
+    "usable_scope_count": 1,
+    "project_name": "genial-deep-research",
+    "project_created": true,
+    "git_integration": false,
+    "custom_domain": false,
+    "node_version": "24.x",
+    "fluid_compute_project_setting": true,
+    "platform_max_duration": "UNKNOWN",
+    "configured_health_max_duration_seconds": 5,
+    "environment_variable_count": 0,
+    "provider_environment_variable_count": 0,
+    "project_level_vercel_authentication": "DISABLED_FOR_PUBLIC_M4_ACCESS",
+    "team_or_global_protection_changed": false,
+    "billing_changed": false
+  },
+  "commits": {
+    "preparation": "634d963496d6492eb53fada9296e6bc4a41fec75",
+    "upload_boundary_fix": "0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010",
+    "deployed_commit": "0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010",
+    "evidence_commit_title": "docs: record early production deployment"
+  },
+  "deployments": {
+    "initial_failed": {
+      "id": "dpl_7h1UpTiSszCX9Hn2h84wANTjCiXp",
+      "url": "https://genial-deep-research-7vn95v242-el-grande-xue.vercel.app",
+      "target": "production",
+      "state": "ERROR",
+      "deployed_commit": "634d963496d6492eb53fada9296e6bc4a41fec75",
+      "build_seconds": 32.706,
+      "uploaded_files": 17,
+      "cause": "contract schema excluded from the first upload boundary",
+      "resource_left_in_place": true
+    },
+    "preview": {
+      "id": "dpl_AkVQZZ2MuMKis5AcR4DtM8878dPh",
+      "url": "https://genial-deep-research-fgnjwpd6k-el-grande-xue.vercel.app",
+      "state": "READY",
+      "deployed_commit": "0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010",
+      "build_seconds": 33.407,
+      "uploaded_files": 18,
+      "public_without_authentication": true,
+      "root_http_status": 200,
+      "health_http_status": 200
+    },
+    "production": {
+      "id": "dpl_nECpH2Kw7evgBhwQpLzUhaWmYc2m",
+      "immutable_url": "https://genial-deep-research-9fox16480-el-grande-xue.vercel.app",
+      "canonical_url": "https://genial-deep-research.vercel.app",
+      "state": "READY",
+      "deployed_commit": "0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010",
+      "build_seconds": 31.142,
+      "uploaded_files": 18
+    }
+  },
+  "public_validation": {
+    "https": true,
+    "dns_resolved": true,
+    "ordinary_client_without_authentication": true,
+    "root": {
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "baseline_boundary_present": true,
+      "latency_ms_samples": [647.03, 47.12, 49.38, 175.48, 45.81],
+      "latency_ms_median": 49.38
+    },
+    "health": {
+      "status": 200,
+      "content_type": "application/json",
+      "body": { "status": "ok" },
+      "latency_ms_samples": [467.19, 167.03, 145.61, 154.57, 222.81],
+      "latency_ms_median": 167.03
+    },
+    "non_disclosure": {
+      "all_status": 404,
+      "redirect_count": 0,
+      "paths": [
+        "/.env",
+        "/.env.local",
+        "/.git/config",
+        "/SOURCE_SHA256SUMS",
+        "/epreuve-deep-research.md",
+        "/AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md",
+        "/PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md",
+        "/PASSATION_CHATGPT_GENIAL_2026-08-26.md",
+        "/PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md"
+      ]
+    },
+    "public_assets_checked": 7,
+    "bundle_findings": 0,
+    "raw_authority_excerpt_findings": 0,
+    "production_log_records_checked": 12,
+    "production_log_http_5xx": 0,
+    "production_log_secret_findings": 0
+  },
+  "provider_usage": {
+    "openai_calls": 0,
+    "gemini_calls": 0,
+    "ai_cost_usd": 0,
+    "vercel_cost_usd": "UNKNOWN"
+  },
+  "source_integrity": {
+    "epreuve-deep-research.md": "4bc823833f1c943059c5a9746837dcc75592b31b5ca130143b583323336388e1",
+    "AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md": "691622c46b7df65bda9649bf6aae64f4b764e0bc5c17f2d44cd77505beba0e17",
+    "PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md": "c67b75a058c579cca766c4c3d6cf65b700104d9956b7d01f586506547757270b"
+  },
+  "milestones": {
+    "G0": "VALIDATED",
+    "G1": "VALIDATED",
+    "G2": "VALIDATED",
+    "G3": "PARTIAL_NOT_VALIDATED",
+    "G4": "NOT_COMPLETED",
+    "G5": "NOT_COMPLETED",
+    "G6": "NOT_COMPLETED",
+    "G7": "NOT_COMPLETED"
+  }
+}

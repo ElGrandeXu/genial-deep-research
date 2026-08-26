@@ -1,4 +1,4 @@
-# Entrées M0 à M2
+# Entrées M0 à M4
 
 ## Registre d'autorité
 
@@ -48,3 +48,11 @@ Statut commun : `OBSOLETE — EXCLUDED FROM AUTHORITY, HISTORY AND PROGRESS EVID
 - **FAIT VALIDÉ** — Aucun chemin DPAPI suivi ; M3 se fonde uniquement sur la preuve expurgée M1 et n’accède pas au magasin externe.
 - **FAIT VALIDÉ** — Recherche technique limitée aux documentations officielles Node.js, Next.js, React, AI SDK, OpenAI, Google AI et Vercel, plus les dist-tags du registre npm, datés du 26 août 2026.
 - **DÉCISION** — Les versions et contraintes retenues sont enregistrées dans `docs/ARCHITECTURE.md`, `package.json` et `pnpm-lock.yaml`.
+
+## Entrées M4
+
+- **FAIT VALIDÉ — 2026-08-26** — Baseline reçue : HEAD `9f3b92834918fe8c3182d7e51d26e33752a5340a`, titre `feat: establish application architecture baseline`, worktree propre, aucun remote, G0 à G2 validés et G3 partiel.
+- **FAIT VALIDÉ** — Les trois empreintes externes, exclusions des passations, scans de secrets, vérificateurs M0/M2/M3/cumulatif, installation figée, lint, typecheck, tests et build étaient verts avant mutation.
+- **FAIT VALIDÉ** — Documentation M4 limitée aux pages officielles Vercel de déploiement CLI, link, deploy, inspect, Node.js, durée, build et Deployment Protection ; Vercel CLI stable `59.6.2`.
+- **FAIT VALIDÉ** — Authentification existante ; unique scope utilisable de type `team`, plan `HOBBY`, sans ambiguïté ni modification de facturation.
+- **DÉCISION** — Les clés fournisseur, le magasin DPAPI et les deux passations restent hors entrée M4 ; aucune valeur n’est chargée, copiée ou envoyée.

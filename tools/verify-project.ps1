@@ -49,4 +49,7 @@ if ($SkipBuild) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+& (Join-Path $PSScriptRoot 'verify-deployment.ps1')
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Output "PROJECT_VERIFY_OK: build=$(-not $SkipBuild)"

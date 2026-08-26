@@ -156,3 +156,12 @@ Les sorties de scan indiquent uniquement le chemin, le numéro de ligne et l'ide
 
 - **FAIT VALIDÉ** — Appels OpenAI : 0 ; appels Gemini : 0 ; accès DPAPI : 0 ; recherche métier : 0 ; déploiement : 0.
 - **DÉCISION** — G0 à G2 préservés ; G3 non validé ; G4 à G7 non terminés.
+
+## Preuves M4 — 2026-08-26
+
+- **FAIT VALIDÉ** — Dossier humain : `docs/evidence/M4_EARLY_DEPLOYMENT.md` ; résultat machine : `docs/evidence/m4-early-deployment-result.json`.
+- **FAIT VALIDÉ** — Vercel CLI `59.6.2`, scope `team` Hobby, projet `genial-deep-research`, `deployedCommit` `0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010`.
+- **FAIT VALIDÉ** — Preview et Production `READY`, Node `24.x`, pnpm `11.24.0`, lockfile figé ; URL canonique <https://genial-deep-research.vercel.app>.
+- **FAIT VALIDÉ** — `tools/verify-deployment.ps1` utilise un client HTTP ordinaire sans authentification et vérifie santé, contenu honnête, neuf chemins de non-divulgation et bundles publics.
+- **FAIT VALIDÉ** — Appels OpenAI 0, Gemini 0, accès DPAPI 0, recherche métier 0, coût IA 0 USD ; coût Vercel `UNKNOWN`.
+- **DÉCISION** — La preuve M4 étend le vérificateur cumulatif sans modifier l’allowlist historique M0.

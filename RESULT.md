@@ -37,3 +37,13 @@
 - **FAIT VALIDÉ** — Vérificateur cumulatif et tests négatifs protègent sources, secrets, fixtures et faits sans preuve.
 - **FAIT VALIDÉ** — Aucun appel fournisseur, accès DPAPI, recherche métier, donnée réelle, formulaire fonctionnel, remote ou déploiement.
 - **DÉCISION** — G0 à G2 restent validés ; G3 n’est pas validé ; G4 à G7 restent non terminés.
+
+## Résultat M4 — 2026-08-26
+
+- **FAIT VALIDÉ** — Statut `M4_VALIDATED` pour l’infrastructure de déploiement précoce.
+- **FAIT VALIDÉ** — Projet Vercel dédié `genial-deep-research`, scope `team` Hobby, aucune intégration Git, variable fournisseur ou facturation modifiée.
+- **FAIT VALIDÉ** — `deployedCommit` `0c4278a0d93ee5b5acb6c7aa3b926003ef4fd010` déployé en Preview puis Production `READY`.
+- **FAIT VALIDÉ** — Production canonique publique : <https://genial-deep-research.vercel.app> ; `/` et `/api/health` retournent HTTP 200 sans authentification.
+- **FAIT VALIDÉ** — Neuf chemins sensibles retournent 404 sans redirection ; bundles et logs ne contiennent aucune forme de clé ou donnée d’autorité brute.
+- **FAIT VALIDÉ** — Appels OpenAI 0, appels Gemini 0, coût IA 0 USD, coût Vercel `UNKNOWN`.
+- **DÉCISION** — G0 à G2 restent validés ; G3 reste partiel et non validé ; G4 à G7 restent non terminés.

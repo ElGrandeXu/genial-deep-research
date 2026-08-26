@@ -31,3 +31,13 @@ Registre concentré sur les risques restant après M1 et le gel contractuel. L�
 | R-M3-008 | Fuite dans le bundle client | Import accidentel d’un SDK ou d’une variable serveur depuis un composant client. | Composants serveur par défaut, module `server-only`, aucun `NEXT_PUBLIC_*`, scan de `.next/static`. | Nom, forme de clé ou endpoint fournisseur dans le bundle → build rejeté. |
 | R-M3-009 | Compatibilité outillage | ESLint 10 et TypeScript 7 sont les dist-tags courants mais les plugins Next observés bornent ESLint à 9 et TypeScript à `<6.1`. | ESLint `9.39.5` et TypeScript `6.0.3`, dernières versions cohérentes avec les peer ranges ; peer check vert. | Mettre à niveau dès compatibilité stable sans overrides. |
 | R-M3-010 | Redirections Gemini finales | Le provider et Google exposent grounding et citations, mais M1 a observé des redirections Google. | Gemini hors chemin critique ; redirection non résolue jamais citation finale. | Absence d’URL directe vérifiable → source rejetée, pas de fallback final. |
+
+## Risques de déploiement M4
+
+| ID | Risque | État / signal M4 | Réponse retenue | Risque résiduel / déclencheur |
+|---|---|---|---|---|
+| R-M4-001 | Coût Vercel réel | Plan Hobby prouvé, mais aucune preuve de valorisation de l’usage. | Coût Vercel conservé à `UNKNOWN`; aucun domaine ou option payante. | Vérifier usage/facturation avant toute charge durable. |
+| R-M4-002 | Protection publique désactivée | Le projet dédié est public pour satisfaire M4. | Projet sans donnée, recherche, clé ni résultat ; modification limitée au projet, jamais à l’équipe. | Réactiver ou remplacer par auth applicative avant toute donnée sensible. |
+| R-M4-003 | Dérive de frontière d’upload | Une première règle a exclu le schéma requis. | Liste explicite, build distant, 18 fichiers observés, tests de non-divulgation et vérificateur public. | Nouvel import hors frontière → build bloqué jusqu’à correction et redéploiement. |
+| R-M4-004 | Déploiement en erreur conservé | Premier déploiement classé Production et terminé `ERROR`. | Aucun nettoyage automatique ; état, cause et URL consignés. | Bruit opérationnel seulement ; suppression future exige accord explicite. |
+| R-M4-005 | Capacité longue non prouvée | Fluid Compute est activé, mais limite de plateforme et recherche réelle non testées. | `maxDuration=5` uniquement sur santé ; aucune conclusion sur la future route métier. | Mesurer plan, durée et streaming avant toute revendication G3. |

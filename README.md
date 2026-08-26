@@ -1,6 +1,14 @@
 # Génial Deep Research
 
-Baseline technique locale d’une future application de recherche sourcée. Le dépôt contient actuellement une application Next.js minimale, un endpoint de santé et l’intégration testable du contrat M2. Il ne contient encore ni formulaire fonctionnel, ni moteur de recherche, ni appel fournisseur, ni déploiement.
+Socle technique public d’une future application de recherche sourcée. Le dépôt contient une application Next.js minimale, un endpoint de santé et l’intégration testable du contrat M2. Il ne contient encore ni formulaire fonctionnel, ni moteur de recherche, ni appel fournisseur, ni résultat de démonstration.
+
+## Déploiement public précoce
+
+- URL canonique : <https://genial-deep-research.vercel.app>
+- santé : <https://genial-deep-research.vercel.app/api/health>
+- preuve M4 : [`docs/evidence/M4_EARLY_DEPLOYMENT.md`](docs/evidence/M4_EARLY_DEPLOYMENT.md)
+
+Ce déploiement valide uniquement le socle technique. La recherche métier et la capacité contractuelle finale ne sont pas disponibles ; G3 reste partiel et non validé.
 
 ## Prérequis
 
@@ -29,7 +37,7 @@ corepack pnpm start
 corepack pnpm verify
 ```
 
-`dev`, `build` et `start` désactivent la télémétrie Next.js via le lanceur local. Le vérificateur cumulatif exécute intégrité, secrets, contrats, tests négatifs, lint, typecheck, tests, build et scan du bundle client.
+`dev`, `build` et `start` désactivent la télémétrie Next.js via le lanceur local. Le vérificateur cumulatif exécute intégrité, secrets, contrats, tests négatifs, lint, typecheck, tests, build, scan du bundle client et vérification HTTP publique M4.
 
 Pour omettre exceptionnellement le build, une justification est obligatoire :
 
@@ -53,6 +61,7 @@ Les valeurs restent absentes de `.env.example`. Elles ne sont ni publiques ni re
 - JSON Schema M2 canonique validé par Ajv et contrôlé par le vérificateur sémantique existant ;
 - types TypeScript générés depuis le schéma, avec contrôle de dérive ;
 - configuration fournisseur serveur préparée, jamais invoquée en M3 ;
+- aucune variable fournisseur configurée sur Vercel et aucun appel IA pendant M4 ;
 - aucune base, authentification, persistance métier, queue, télémétrie distante ou SDK d’hébergement ;
 - aucune recherche métier n’existe encore ; G3 n’est pas validé.
 
