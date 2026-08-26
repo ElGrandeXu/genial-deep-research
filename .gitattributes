@@ -1,0 +1,13 @@
+* text=auto
+*.md text eol=lf
+*.ps1 text eol=lf
+.githooks/* text eol=lf
+.env.example text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+SOURCE_SHA256SUMS text eol=lf
+
+# Contrat original et documents d'autorité : octets bruts immuables.
+epreuve-deep-research.md -text
+AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md -text
+PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md -text
