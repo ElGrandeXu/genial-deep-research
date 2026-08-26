@@ -1,0 +1,44 @@
+{
+  "name": "genial-deep-research",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Baseline technique locale de Génial Deep Research",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "11.24.0"
+  },
+  "scripts": {
+    "dev": "node tools/run-next.mjs dev",
+    "build": "node tools/run-next.mjs build",
+    "start": "node tools/run-next.mjs start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "node tools/contract-types.mjs --check && tsc --noEmit",
+    "test": "vitest run",
+    "contract:types": "node tools/contract-types.mjs --write",
+    "contract:types:check": "node tools/contract-types.mjs --check",
+    "verify": "pwsh -NoProfile -File tools/verify-project.ps1"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "4.0.51",
+    "@ai-sdk/openai": "4.0.47",
+    "ai": "7.0.79",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.3",
+    "json-schema-to-typescript": "15.0.4",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

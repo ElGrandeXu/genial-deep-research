@@ -116,3 +116,43 @@ Les sorties de scan indiquent uniquement le chemin, le numéro de ligne et l'ide
 - **DÉCISION** — G1 est validé selon son critère existant : mission intronisée, ressources comprises et plan de contingence suffisant ; la deadline contractuelle exacte reste explicitement inconnue.
 - **FAIT VALIDÉ** — G2 est validé : périmètre, entrée, sortie, vérité, sources, conflits, silence, péremption, erreurs, fixtures et vérificateur sont cohérents avec le brief.
 - **DÉCISION** — G3 à G7 restent non terminés.
+
+## Preuves M3 — 2026-08-26
+
+### Baseline avant mutation
+
+- **FAIT VALIDÉ** — Racine `C:\Users\maxer\Desktop\GENIAL` ; HEAD `4d9967a9734c4826d21d5369e83d6482ab705763` ; titre `docs: define product and truth contracts` ; worktree propre ; aucun remote.
+- **FAIT VALIDÉ** — `SOURCE_INTEGRITY_OK: 3 files`, scans WorkingTree et Staged verts, `M0_VERIFY_OK` historique/courant avant refactorisation et `M2_VERIFY_OK: fixtures=6 negative_mutations=5`.
+- **FAIT VALIDÉ** — Six fixtures marquées synthétiques ; aucun chemin DPAPI suivi ; magasin externe non lu.
+
+### Recherche et versions
+
+- **FAIT VALIDÉ** — Node Current `26.8.0`, Node LTS `24.20.0`, Vercel disponible `24.x` ; cible retenue Node `24.x`. Validation locale initiale sous Node `24.14.1`, même major LTS.
+- **FAIT VALIDÉ** — Dist-tags stables : Next `16.3.3`, React `19.2.8`, AI SDK `7.0.79`, OpenAI provider `4.0.47`, Google provider `4.0.51`, Ajv `8.20.0`, Vitest `4.1.11`, pnpm `11.24.0`.
+- **DÉCISION** — TypeScript `6.0.3` et ESLint `9.39.5` sont les dernières versions cohérentes avec les peer ranges de la chaîne Next observée ; TypeScript 7 et ESLint 10 sont différés.
+- **FAIT VALIDÉ** — OpenAI Docs confirme `gpt-5.6-luna` stable, Responses, streaming, Structured Outputs et Web Search. AI SDK documente Responses, `store: false`, sources et provider metadata. Google et AI SDK documentent grounding et provider metadata.
+- **FAIT VALIDÉ** — Vercel documente `maxDuration`, streaming Node, `300 s` Hobby avec Fluid Compute et jusqu’à `800 s` Pro/Enterprise ; plan réel non connu.
+
+### Baseline applicative et contrat
+
+- **FAIT VALIDÉ** — pnpm `11.24.0`, `pnpm-lock.yaml` unique et installation `--frozen-lockfile` sans clé.
+- **FAIT VALIDÉ** — TypeScript strict, types dérivés du JSON Schema canonique et `CONTRACT_TYPES_OK`.
+- **FAIT VALIDÉ** — Vitest accepte six fixtures dans leurs états attendus et réexécute le vérificateur M2 ; trois tests verts.
+- **FAIT VALIDÉ** — Build Next.js `16.3.3` sans clé : page statique et `/api/health` dynamique Node.
+- **FAIT VALIDÉ** — Santé production locale : HTTP 200, `application/json`, corps exact `{"status":"ok"}` ; page HTTP 200 sans formulaire.
+- **FAIT VALIDÉ** — `CLIENT_BUNDLE_OK: files=10` ; aucun nom/forme de clé ni endpoint fournisseur dans `.next/static`.
+- **FAIT VALIDÉ** — `M3_BOUNDARY_OK` : aucun AI Gateway, appel fournisseur, route de recherche ou variable publique fournisseur.
+- **FAIT VALIDÉ** — Audit pnpm complet et `--prod` : `No known vulnerabilities found`.
+
+### Vérificateurs
+
+- **FAIT VALIDÉ** — Le `verify-m0.ps1` original comparait chaque état courant à une allowlist exacte de 18 fichiers et exigeait G1 à G7 non validés ; toute croissance légitime échouait.
+- **FAIT VALIDÉ** — M2 avait remplacé l’égalité d’inventaire par la présence du socle et réduit le contrôle des jalons à G0, mais conservait encore dans M0 des conditions courantes et l’absence de remote.
+- **DÉCISION** — M3 sépare : `verify-m0.ps1` contrôle l’arbre exact du commit M0 ; `verify-foundation.ps1` contrôle les invariants durables courants ; `verify-project.ps1` orchestre contrat, JSON, secrets, lint, typecheck, tests, build et bundle.
+- **FAIT VALIDÉ** — `VERIFIER_NEGATIVE_PATHS_OK` prouve le rejet d’une empreinte source modifiée, d’un secret synthétique injecté, d’une fixture invalide et d’un fait sans preuve.
+- **FAIT VALIDÉ** — Aucune protection n’a été supprimée pour obtenir un résultat vert ; l’absence actuelle de remote est vérifiée au gate Git M3 sans devenir une contrainte historique éternelle.
+
+### Périmètre
+
+- **FAIT VALIDÉ** — Appels OpenAI : 0 ; appels Gemini : 0 ; accès DPAPI : 0 ; recherche métier : 0 ; déploiement : 0.
+- **DÉCISION** — G0 à G2 préservés ; G3 non validé ; G4 à G7 non terminés.

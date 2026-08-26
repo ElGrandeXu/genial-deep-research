@@ -1,6 +1,7 @@
 param(
     [ValidateSet('Staged', 'Tracked', 'WorkingTree')]
-    [string]$Mode = 'Staged'
+    [string]$Mode = 'Staged',
+    [switch]$ProbeSyntheticSecret
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,9 @@ if ($LASTEXITCODE -ne 0) {
 $gitRoot = (Resolve-Path -LiteralPath $gitRootRaw).Path
 if ($gitRoot -ne $repoRoot) { throw 'SECRET_SCAN_FAILED: unexpected Git root' }
 
-if ($Mode -eq 'Staged') {
+if ($ProbeSyntheticSecret) {
+    $files = @('__synthetic_secret_probe__')
+} elseif ($Mode -eq 'Staged') {
     $files = @(& git -C $repoRoot -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR)
 } elseif ($Mode -eq 'Tracked') {
     $files = @(& git -C $repoRoot -c core.quotepath=false ls-files)
@@ -25,7 +28,7 @@ $rules = @(
     @{ Name = 'google-api-key'; Pattern = 'AIza[0-9A-Za-z_-]{20,}' },
     @{ Name = 'aws-access-key'; Pattern = '(?:AKIA|ASIA)[A-Z0-9]{16}' },
     @{ Name = 'private-key'; Pattern = '-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----' },
-    @{ Name = 'nonempty-secret-assignment'; Pattern = '(?i)^\s*(?:(?:const|let|var|export)\s+)?[\$"'']?[A-Z0-9_.-]*(?:api[_-]?key|secret|token|password|credentials?)[A-Z0-9_.-]*["'']?\s*[:=]\s*["'']?[^\s"''#;]{8,}' }
+    @{ Name = 'nonempty-secret-assignment'; Pattern = '(?i)^\s*(?:(?:const|let|var|export)\s+)?[\$"'']?[A-Z0-9_.-]*(?:api[_-]?key|secret|token|password|credentials?)[A-Z0-9_.-]*["'']?\s*[:=]\s*(?:"[^"\r\n]{8,}"|''[^''\r\n]{8,}''|[A-Za-z0-9_./+=-]{8,})\s*[,;]?\s*$' }
 )
 
 $findings = [System.Collections.Generic.List[string]]::new()
@@ -40,7 +43,9 @@ foreach ($relativePath in $files) {
         continue
     }
 
-    if ($Mode -eq 'Staged') {
+    if ($ProbeSyntheticSecret -and $relativePath -eq '__synthetic_secret_probe__') {
+        $lines = @('sk-' + (('A' * 24) -join ''))
+    } elseif ($Mode -eq 'Staged') {
         $lines = @(& git -C $repoRoot show ":$relativePath" 2>$null)
         if ($LASTEXITCODE -ne 0) { throw "SECRET_SCAN_FAILED: cannot read staged path $relativePath" }
     } else {

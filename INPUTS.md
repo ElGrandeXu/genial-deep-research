@@ -40,3 +40,11 @@ Statut commun : `OBSOLETE — EXCLUDED FROM AUTHORITY, HISTORY AND PROGRESS EVID
 - **DÉCISION** — Les observations M1 restent des capacités API datées du 26 août 2026 ; aucun fournisseur, modèle ou choix d’architecture n’en est déduit.
 - **FAIT VALIDÉ — baseline M2** — Les deux passations obsolètes restent présentes, ignorées, non suivies et non lues.
 - **FAIT VALIDÉ — baseline M2** — Aucun chemin de magasin DPAPI n’est suivi dans GENIAL ; sa localisation reste `external_dpapi` d’après la preuve expurgée M1. M2 n’y accède pas.
+
+## Entrées M3
+
+- **FAIT VALIDÉ — 2026-08-26** — Baseline reçue : HEAD `4d9967a9734c4826d21d5369e83d6482ab705763`, titre `docs: define product and truth contracts`, worktree propre, aucun remote, G0 à G2 validés et G3 à G7 non terminés.
+- **FAIT VALIDÉ** — Intégrité des trois sources, scans WorkingTree/Staged/Tracked et vérificateur M2 verts avant mutation ; six fixtures toujours synthétiques.
+- **FAIT VALIDÉ** — Aucun chemin DPAPI suivi ; M3 se fonde uniquement sur la preuve expurgée M1 et n’accède pas au magasin externe.
+- **FAIT VALIDÉ** — Recherche technique limitée aux documentations officielles Node.js, Next.js, React, AI SDK, OpenAI, Google AI et Vercel, plus les dist-tags du registre npm, datés du 26 août 2026.
+- **DÉCISION** — Les versions et contraintes retenues sont enregistrées dans `docs/ARCHITECTURE.md`, `package.json` et `pnpm-lock.yaml`.

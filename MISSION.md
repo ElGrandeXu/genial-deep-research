@@ -54,3 +54,16 @@ Une contradiction est résolue en faveur de la source de rang supérieur. Les st
 
 - **DÉCISION** — Un commit atomique contient les contrats et leurs preuves reproductibles.
 - **DÉCISION** — Après validation, attendre l’audit externe de M2 avant tout travail M3.
+
+## Mission M3 — Architecture minimale et baseline applicative
+
+- **DÉCISION** — Choisir et documenter une architecture Next.js App Router, TypeScript strict et runtime Node, puis établir un socle local compilable, testable et compatible avec le contrat M2.
+- **DÉCISION** — Préparer OpenAI `gpt-5.6-luna` via Responses/Web Search comme voie initiale future et Gemini comme comparaison ou repli différé, sans aucun appel fournisseur en M3.
+- **DÉCISION** — Conserver le JSON Schema M2 canonique, dériver les types, valider avec Ajv et préserver le vérificateur déterministe.
+- **DÉCISION** — Aucune base, authentification, persistance métier, recherche, formulaire fonctionnel, accès DPAPI, remote ou déploiement.
+- **DÉCISION** — G3 n’est pas validé par une baseline locale.
+
+## Condition de sortie M3
+
+- **DÉCISION** — Architecture, dépendances, baseline, vérificateur cumulatif, build sans secrets, santé locale, audit et preuves sont réunis dans un commit atomique.
+- **DÉCISION** — Après validation, attendre l’audit externe de M3 avant tout travail M4.

@@ -101,3 +101,75 @@ Les décisions ci-dessous sont subordonnées au brief, à l’audit formel et au
 - **Justification** : empêcher un timeout de devenir une conclusion factuelle sur le Web.
 - **Conséquence** : le vérificateur rejette silence technique, erreur disparue et reprise non rattachée.
 - **Déclencheur de révision** : aucun ; invariant de vérité opérationnelle.
+
+## D-M3-001 — Stack applicative minimale
+
+- **Statut** : accepté pour la baseline M3.
+- **Décision** : Next.js `16.3.3` App Router, React `19.2.8`, TypeScript strict, composants serveur par défaut et CSS natif.
+- **Justification** : une frontière navigateur/serveur et un seul déploiement suffisent au chemin vertical prévu.
+- **Conséquence** : aucun frontend/backend séparé, bibliothèque UI ou framework CSS.
+- **Déclencheur de révision** : besoin démontré de traitements indépendants du cycle HTTP ou d’un client non Web.
+
+## D-M3-002 — Runtime et gestionnaire
+
+- **Statut** : accepté.
+- **Décision** : Node.js `24.x` LTS, référence `24.20.0`, et pnpm `11.24.0` via Corepack avec lockfile unique.
+- **Justification** : Node 24 est compatible avec Next.js et AI SDK et reste la version LTS proposée par Vercel au 26 août 2026.
+- **Conséquence** : Node Current `26.8.0` n’est pas ciblé ; les versions exactes des packages sont verrouillées.
+- **Déclencheur de révision** : changement du support Vercel ou fin de maintenance Node 24.
+
+## D-M3-003 — Dépendances IA directes
+
+- **Statut** : accepté.
+- **Décision** : AI SDK Core `7.0.79`, `@ai-sdk/openai` `4.0.47` et `@ai-sdk/google` `4.0.51`, sans AI Gateway.
+- **Justification** : streaming, structured outputs, sources et provider metadata sont documentés par les packages directs sans troisième clé.
+- **Conséquence** : aucune abstraction multi-provider générique ; les métadonnées devront être vérifiées avant G3.
+- **Déclencheur de révision** : perte de provenance ou incompatibilité réelle avec le modèle choisi.
+
+## D-M3-004 — Fournisseur primaire initial
+
+- **Statut** : accepté, réversible et non validé sur la qualité métier.
+- **Décision** : future première voie OpenAI `gpt-5.6-luna`, Responses API, Web Search et `store: false` ; Gemini reste comparaison ou repli différé.
+- **Justification** : M1 a observé côté OpenAI des URLs directes, un coût inférieur et une latence acceptable, avec Structured Outputs et Web Search.
+- **Conséquence** : aucune citation libre ; sources et métadonnées structurées doivent survivre à la normalisation. Aucun appel n’est implémenté en M3.
+- **Déclencheur de révision** : évaluation métier, coût, latence, disponibilité ou provenance défavorables.
+
+## D-M3-005 — Contrat canonique et types
+
+- **Statut** : accepté.
+- **Décision** : le JSON Schema M2 reste canonique ; Ajv réalise la validation runtime ; les types TypeScript sont générés et contrôlés contre ce fichier ; le vérificateur M2 garde les invariants sémantiques.
+- **Justification** : éviter une définition TypeScript ou Zod divergente.
+- **Conséquence** : Zod n’est présent que comme peer AI SDK et ne décrit pas le dossier.
+- **Déclencheur de révision** : changement explicite et versionné du contrat M2.
+
+## D-M3-006 — État lié à la requête
+
+- **Statut** : accepté pour la release initiale.
+- **Décision** : aucune base, authentification ou persistance métier ; une recherche à la fois ; état en mémoire limité à la requête.
+- **Justification** : minimisation, délai et absence de besoin démontré d’historique.
+- **Conséquence** : aucune reprise durable après rupture de connexion ou arrêt d’instance.
+- **Déclencheur de révision** : besoin prouvé de reprise, partage, historique ou durée excédant le cycle HTTP.
+
+## D-M3-007 — Streaming et bornes
+
+- **Statut** : accepté comme architecture future, non implémentée.
+- **Décision** : flux HTTP `text/event-stream` par POST/fetch, événements associés aux étapes M2 réelles, timeout initial `240 s`, huit appels fournisseur maximum et une reprise maximum par opération.
+- **Justification** : rendre l’attente observable sans pourcentage fictif ni queue prématurée.
+- **Conséquence** : résultat partiel seulement après validation ; aucune boucle de retry infinie.
+- **Déclencheur de révision** : mesures dépassant régulièrement les bornes ou besoin de reprise durable.
+
+## D-M3-008 — Cible Vercel
+
+- **Statut** : compatibilité théorique seulement.
+- **Décision** : Vercel comme cible initiale, runtime Node, future route de recherche plafonnée à `300 s` sous réserve du plan et de Fluid Compute.
+- **Justification** : déploiement Next.js direct et streaming Node documenté.
+- **Conséquence** : aucun projet, compte, remote ou déploiement n’est créé en M3.
+- **Déclencheur de révision** : plan réel incompatible, limite insuffisante ou interruption de flux mesurée.
+
+## D-M3-009 — Vérificateurs historiques et courants
+
+- **Statut** : accepté.
+- **Décision** : `verify-m0.ps1` vérifie l’arbre exact du commit M0 historique ; `verify-foundation.ps1` porte les invariants durables courants ; `verify-project.ps1` orchestre les contrôles cumulatifs.
+- **Justification** : l’ancienne allowlist comparait le projet courant à l’inventaire M0 et rejetait mécaniquement chaque artefact légitime ultérieur.
+- **Conséquence** : l’état historique à 18 fichiers reste prouvable sans interdire de nouveaux fichiers ni exiger l’absence de remote pour toujours. L’absence actuelle de remote reste une validation Git M3 distincte.
+- **Déclencheur de révision** : ajout d’un invariant durable ou d’un nouveau gate contractuel, jamais simple croissance d’inventaire.

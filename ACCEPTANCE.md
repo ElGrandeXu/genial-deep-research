@@ -19,7 +19,7 @@
 - [x] **G0 — Poste opérationnel.** **FAIT VALIDÉ** — Session lancée depuis le workspace canonique ; racine EGX Settings résolue par marqueur ; doctrine chargée prouvée par `codex debug prompt-input` ; PowerShell, Git et Codex disponibles. L'ancienne migration laptop est obsolète et n'a pas été exécutée.
 - [x] **G1 — Mission intronisée.** **FAIT VALIDÉ** — M0 et M1 sont validés, M1 a été audité extérieurement, les ressources API et clés étaient opérationnelles le 26 août 2026, et la contingence calendrier traite vendredi 28 août comme échéance opérationnelle la plus contraignante sans la présenter comme deadline contractuelle. Aucune réponse d’Antonin ne bloque la suite autorisée.
 - [x] **G2 — Contrat produit figé.** **FAIT VALIDÉ** — Périmètre, entrée, sortie, affirmation-preuve, sources, conflits, silence, péremption et erreurs sont figés ; schéma, six fixtures et vérificateur avec cinq mutations négatives sont verts.
-- [ ] **G3 — Boucle verticale en ligne.** **FAIT VALIDÉ — NON COMMENCÉ**.
+- [ ] **G3 — Boucle verticale en ligne.** **FAIT VALIDÉ — NON VALIDÉ** : baseline M3 locale prête, aucune recherche et aucun déploiement.
 - [ ] **G4 — Noyau digne de confiance.** **FAIT VALIDÉ — NON COMMENCÉ**.
 - [ ] **G5 — Qualité mesurée.** **FAIT VALIDÉ — NON COMMENCÉ**.
 - [ ] **G6 — Release candidate.** **FAIT VALIDÉ — NON COMMENCÉ**.
@@ -47,3 +47,21 @@ Une case vide ne peut être cochée que par une mission ultérieure explicitemen
 - [x] **FAIT VALIDÉ** — Vérificateur sans dépendance accepte les six fixtures et rejette cinq mutations négatives en mémoire.
 - [x] **FAIT VALIDÉ** — Vie privée figée : aucun compte, aucune persistance métier, données professionnelles publiques seulement, métriques minimales expurgées.
 - [x] **FAIT VALIDÉ** — Aucun appel API, accès DPAPI, choix de fournisseur/modèle/stack, squelette, interface, hébergement, déploiement, donnée réelle ou travail M3.
+
+## Critères observables M3
+
+- [x] **FAIT VALIDÉ** — Baseline exacte, sources, secrets, M2, fixtures synthétiques, magasin externe et absence de remote confirmés avant mutation.
+- [x] **FAIT VALIDÉ** — Versions stables et contraintes vérifiées depuis les documentations primaires et dist-tags npm du 26 août 2026.
+- [x] **FAIT VALIDÉ** — Architecture minimale documentée avec frontières, provenance, fail-closed, streaming, secrets, déploiement et alternatives.
+- [x] **FAIT VALIDÉ** — Next.js App Router, runtime Node, TypeScript strict, page de baseline et route de santé sans appel externe.
+- [x] **FAIT VALIDÉ** — pnpm et lockfile uniques ; installation figée reproductible sans clé.
+- [x] **FAIT VALIDÉ** — JSON Schema M2 canonique validé par Ajv ; types générés et dérive contrôlée ; invariants M2 inchangés.
+- [x] **FAIT VALIDÉ** — Six fixtures acceptées dans leurs états attendus et cinq mutations négatives rejetées.
+- [x] **FAIT VALIDÉ** — Vérificateurs séparés entre historique M0, invariants durables et état cumulatif courant.
+- [x] **FAIT VALIDÉ** — Tests négatifs reproductibles : source modifiée, secret injecté, fixture invalide et fait sans preuve rejetés.
+- [x] **FAIT VALIDÉ** — Lint, typecheck, Vitest et build de production verts sans clé.
+- [x] **FAIT VALIDÉ** — Route de santé production testée localement ; réponse limitée à `{"status":"ok"}`.
+- [x] **FAIT VALIDÉ** — Bundle client exempt de noms/formes de clés et endpoints fournisseur.
+- [x] **FAIT VALIDÉ** — Audit complet et runtime : aucune vulnérabilité connue.
+- [x] **FAIT VALIDÉ** — Aucun appel OpenAI/Gemini, accès DPAPI, recherche métier, donnée réelle, formulaire fonctionnel, remote ou déploiement.
+- [x] **DÉCISION** — G0 à G2 préservés ; G3 non validé ; G4 à G7 non terminés.

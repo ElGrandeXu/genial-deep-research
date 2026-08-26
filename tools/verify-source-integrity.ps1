@@ -1,11 +1,19 @@
+param(
+    [string]$ManifestPath
+)
+
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$manifestPath = Join-Path $repoRoot 'SOURCE_SHA256SUMS'
+if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
+    $ManifestPath = Join-Path $repoRoot 'SOURCE_SHA256SUMS'
+} elseif (-not [System.IO.Path]::IsPathRooted($ManifestPath)) {
+    $ManifestPath = Join-Path $repoRoot $ManifestPath
+}
 $failures = [System.Collections.Generic.List[string]]::new()
 $checked = 0
 
-foreach ($line in Get-Content -LiteralPath $manifestPath) {
+foreach ($line in Get-Content -LiteralPath $ManifestPath) {
     if ($line -notmatch '^([0-9a-f]{64}) \*(.+)$') {
         throw 'SOURCE_INTEGRITY_FAILED: malformed manifest entry'
     }

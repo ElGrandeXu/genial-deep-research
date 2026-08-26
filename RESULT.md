@@ -27,3 +27,13 @@
 - **FAIT VALIDÉ** — `tools/verify-m2-contract.ps1` accepte six fixtures et rejette cinq mutations négatives temporaires en mémoire.
 - **DÉCISION** — G1 et G2 sont validés ; G3 à G7 restent non terminés.
 - **DÉCISION** — Aucun fournisseur, modèle, stack, architecture, interface ou hébergement n’est choisi ; aucun appel API ou accès DPAPI n’a eu lieu.
+
+## Résultat M3 — 2026-08-26
+
+- **FAIT VALIDÉ** — Statut `M3_VALIDATED` sous réserve de l’audit externe demandé avant M4.
+- **FAIT VALIDÉ** — `docs/ARCHITECTURE.md` formalise Next.js App Router, runtime Node, AI SDK direct, OpenAI primaire initial, Gemini différé, contrat canonique, streaming et cible Vercel.
+- **FAIT VALIDÉ** — Baseline locale compilable : page explicitement technique, santé non sensible, TypeScript strict, lint, tests et build sans secrets.
+- **FAIT VALIDÉ** — Les six fixtures M2 passent Ajv et le vérificateur sémantique ; types dérivés sans seconde définition canonique.
+- **FAIT VALIDÉ** — Vérificateur cumulatif et tests négatifs protègent sources, secrets, fixtures et faits sans preuve.
+- **FAIT VALIDÉ** — Aucun appel fournisseur, accès DPAPI, recherche métier, donnée réelle, formulaire fonctionnel, remote ou déploiement.
+- **DÉCISION** — G0 à G2 restent validés ; G3 n’est pas validé ; G4 à G7 restent non terminés.
