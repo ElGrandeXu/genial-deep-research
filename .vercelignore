@@ -1,0 +1,48 @@
+# Gouvernance, autorites et preuves locales
+AGENTS.md
+MISSION.md
+INPUTS.md
+ACCEPTANCE.md
+RESULT.md
+EVIDENCE.md
+HANDOFF.md
+DECISIONS.md
+RISKS.md
+README.md
+SOURCE_SHA256SUMS
+epreuve-deep-research.md
+AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md
+PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md
+PASSATION_CHATGPT_GENIAL_2026-08-26.md
+PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md
+
+# Metadonnees, caches et donnees locales
+.git
+.gitattributes
+.gitignore
+.vercel
+.vercelignore
+.githooks
+.next
+node_modules
+coverage
+logs
+tmp
+temp
+*.log
+*.tsbuildinfo
+.env
+.env.*
+
+# Documentation exclue, sauf le schema importe par le code TypeScript
+docs/**
+!docs/contracts/
+docs/contracts/**
+!docs/contracts/research-dossier.schema.json
+
+# Outillage local exclu, sauf le lanceur requis par le script de build
+tools/**
+!tools/run-next.mjs
+tests
+eslint.config.mjs
+vitest.config.ts
