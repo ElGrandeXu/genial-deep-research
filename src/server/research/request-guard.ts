@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 const WINDOW_MS = 10 * 60 * 1_000;
-const MAX_ADMISSIONS_PER_WINDOW = 3;
+const MAX_ADMISSIONS_PER_WINDOW = 8;
 const MAX_CONCURRENT_REQUESTS = 2;
 
 export type ResearchAdmission =

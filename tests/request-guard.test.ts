@@ -25,14 +25,14 @@ function requestFor(address: string, body: unknown = { name: "Airbus" }): Reques
 }
 
 describe("research request guard", () => {
-  it("admits three requests per hashed address in ten minutes", () => {
+  it("admits eight requests per hashed address in ten minutes", () => {
     let currentTime = 1_000;
     const guard = createResearchRequestGuard({
       now: () => currentTime,
       hashSalt: new Uint8Array(32).fill(7),
     });
 
-    for (let admissionNumber = 0; admissionNumber < 3; admissionNumber += 1) {
+    for (let admissionNumber = 0; admissionNumber < 8; admissionNumber += 1) {
       const admission = guard.acquire(requestFor("203.0.113.7"));
       expect(admission.admitted).toBe(true);
       if (admission.admitted) admission.release();
