@@ -7,6 +7,7 @@ export default defineConfig([
   ...nextTypeScript,
   globalIgnores([
     ".next/**",
+    ".vercel/**",
     "coverage/**",
     "next-env.d.ts",
     "src/domain/research-dossier.generated.ts",
