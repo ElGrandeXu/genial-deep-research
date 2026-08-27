@@ -4,6 +4,7 @@ import {
   buildPrompt,
   createOpenAIResearchProvider,
   ProviderInvocationError,
+  recoverProviderDocument,
 } from "../src/server/ai/providers";
 import { validateResearchDossier } from "../src/domain/contract-validator";
 import { validateRuntimeInvariants } from "../src/domain/runtime-invariants";
@@ -306,6 +307,46 @@ describe("provider multi-fact contract", () => {
       else process.env.OPENAI_API_KEY = previousKey;
     }
   });
+
+  it("recovers valid JSON when nullable provider fields are omitted", () => {
+    expect(recoverProviderDocument(JSON.stringify({
+      identityStatus: "resolved",
+      entityType: "company",
+      candidates: [{
+        displayName: "Airbus SE",
+        entityType: "company",
+        sourceUrl: sourceA,
+        excerpt: identityCandidate.excerpt,
+      }],
+      claims: [{
+        category: "activity",
+        entityType: "company",
+        predicate: "activity",
+        scopeType: "company",
+        sourceUrl: sourceA,
+        excerpt: identityCandidate.excerpt,
+      }],
+    }))).toMatchObject({
+      identityStatus: "resolved",
+      entityType: "company",
+      candidates: [{ prefix: null, suffix: null }],
+      claims: [{
+        scopeLabel: null,
+        factDate: null,
+        contradictionKey: null,
+        prefix: null,
+        suffix: null,
+      }],
+      missingCategories: [],
+    });
+  });
+
+  it.each([undefined, "", "not json", JSON.stringify({ claims: [] })])(
+    "does not recover unsafe or identity-free output: %s",
+    (value) => {
+      expect(recoverProviderDocument(value)).toBeNull();
+    },
+  );
 });
 
 describe("research request", () => {

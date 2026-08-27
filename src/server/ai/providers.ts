@@ -4,7 +4,13 @@ import {
   createOpenAI,
   type OpenAIResponsesProviderOptions,
 } from "@ai-sdk/openai";
-import { generateText, LoadAPIKeyError, Output } from "ai";
+import {
+  generateText,
+  LoadAPIKeyError,
+  NoObjectGeneratedError,
+  Output,
+  type StepResult,
+} from "ai";
 import { z } from "zod";
 
 import {
@@ -176,6 +182,43 @@ const providerDocumentOutputSchema = z.object({
   ),
 });
 
+const providerDocumentFallbackSchema = z.object({
+  identityStatus: providerDocumentOutputSchema.shape.identityStatus,
+  entityType: entityTypeSchema.nullable().optional().default(null),
+  candidates: z.array(
+    z.object({
+      displayName: z.string(),
+      entityType: entityTypeSchema,
+      sourceUrl: z.string(),
+      excerpt: z.string(),
+      prefix: z.string().nullable().optional().default(null),
+      suffix: z.string().nullable().optional().default(null),
+    }),
+  ).optional().default([]),
+  claims: z.array(
+    z.object({
+      category: providerDocumentOutputSchema.shape.claims.element.shape.category,
+      entityType: entityTypeSchema,
+      predicate: z.string(),
+      scopeType: providerDocumentOutputSchema.shape.claims.element.shape.scopeType,
+      scopeLabel: z.string().nullable().optional().default(null),
+      factPeriodLabel: z.string().nullable().optional().default(null),
+      factDate: z.string().nullable().optional().default(null),
+      normalizedValue: z.string().nullable().optional().default(null),
+      unit: z.string().nullable().optional().default(null),
+      currency: z.string().nullable().optional().default(null),
+      contradictionKey: z.string().nullable().optional().default(null),
+      sourceUrl: z.string(),
+      excerpt: z.string(),
+      prefix: z.string().nullable().optional().default(null),
+      suffix: z.string().nullable().optional().default(null),
+    }),
+  ).optional().default([]),
+  missingCategories: providerDocumentOutputSchema.shape.missingCategories
+    .optional()
+    .default([]),
+});
+
 function requireOpenAIKey(): string {
   const value = process.env.OPENAI_API_KEY;
   if (value === undefined || value.trim().length === 0) {
@@ -328,6 +371,20 @@ function normalizeProviderDocument(
   };
 }
 
+export function recoverProviderDocument(text: string | undefined):
+  z.infer<typeof providerDocumentOutputSchema> | null {
+  if (text === undefined || text.trim().length === 0) return null;
+  try {
+    const value: unknown = JSON.parse(text);
+    const exact = providerDocumentOutputSchema.safeParse(value);
+    if (exact.success) return exact.data;
+    const fallback = providerDocumentFallbackSchema.safeParse(value);
+    return fallback.success ? fallback.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export function createOpenAIResearchProvider(): ResearchProvider {
   return {
     async research(input, signal): Promise<ProviderResearchResult> {
@@ -342,15 +399,25 @@ export function createOpenAIResearchProvider(): ResearchProvider {
             return fetch(request, init);
           },
         });
-        const result = await generateText({
+        const researchTools = {
+          web_search: provider.tools.webSearch({
+            externalWebAccess: true,
+            searchContextSize: "medium",
+          }),
+        };
+        const capturedSteps: StepResult<typeof researchTools>[] = [];
+        let generatedText: string;
+        let rawDocument: z.infer<typeof providerDocumentOutputSchema>;
+        let steps: readonly StepResult<typeof researchTools>[];
+        let usage: StepResult<typeof researchTools>["usage"];
+        let finishReason: StepResult<typeof researchTools>["finishReason"];
+        let responseHeaders: Readonly<Record<string, string>> | undefined;
+
+        try {
+          const result = await generateText({
           model: provider.responses(PRIMARY_RESEARCH_MODEL),
           prompt: buildPrompt(input),
-          tools: {
-            web_search: provider.tools.webSearch({
-              externalWebAccess: true,
-              searchContextSize: "medium",
-            }),
-          },
+          tools: researchTools,
           toolChoice: { type: "tool", toolName: "web_search" },
           output: Output.object({
             schema: providerDocumentOutputSchema,
@@ -361,6 +428,9 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           maxRetries: 0,
           timeout: PROVIDER_TIMEOUT_MS,
           abortSignal: signal,
+          onStepEnd: (step) => {
+            capturedSteps.push(step);
+          },
           providerOptions: {
             openai: {
               maxToolCalls: 4,
@@ -370,17 +440,39 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               textVerbosity: "medium",
             } satisfies OpenAIResponsesProviderOptions,
           },
-        });
+          });
+          generatedText = result.text;
+          rawDocument = result.output;
+          steps = result.steps;
+          usage = result.usage;
+          finishReason = result.finishReason;
+          responseHeaders = result.response.headers;
+        } catch (error) {
+          const noObject = NoObjectGeneratedError.isInstance(error) ? error : null;
+          const recovered = recoverProviderDocument(noObject?.text);
+          const recoveredStep = capturedSteps.at(-1);
+          if (noObject === null || recovered === null || recoveredStep === undefined) throw error;
+          generatedText = noObject.text ?? recoveredStep.text;
+          rawDocument = recovered;
+          steps = capturedSteps;
+          usage = noObject.usage ?? recoveredStep.usage;
+          finishReason = noObject.finishReason ?? recoveredStep.finishReason;
+          responseHeaders = noObject.response?.headers ?? recoveredStep.response.headers;
+        }
 
-        const document = normalizeProviderDocument(result.output);
-        const toolCalls: OpenAIWebSearchToolCall[] = result.toolCalls.flatMap(
+        const finalStep = steps.at(-1);
+        if (finalStep === undefined) throw new Error("Provider returned no completed step.");
+        const document = normalizeProviderDocument(rawDocument);
+        const toolCalls: OpenAIWebSearchToolCall[] = steps.flatMap((step) =>
+          step.toolCalls.flatMap(
           ({ toolName, toolCallId }) =>
             toolName === "web_search"
               ? [{ toolName: "web_search" as const, toolCallId }]
               : [],
+          ),
         );
         const toolResults: OpenAIWebSearchToolResult[] =
-          result.toolResults.flatMap((toolResult) =>
+          steps.flatMap((step) => step.toolResults.flatMap((toolResult) =>
             toolResult.toolName === "web_search" && toolResult.dynamic !== true
               ? [{
                   toolName: "web_search" as const,
@@ -388,9 +480,9 @@ export function createOpenAIResearchProvider(): ResearchProvider {
                   output: toolResult.output,
                 }]
               : [],
-          );
+          ));
         const duplicateToolResults: OpenAIWebSearchToolResult[] =
-          result.steps.flatMap((step) =>
+          steps.flatMap((step) =>
             step.staticToolResults.map(({ toolName, toolCallId, output }) => ({
               toolName,
               toolCallId,
@@ -398,18 +490,17 @@ export function createOpenAIResearchProvider(): ResearchProvider {
             })),
           );
         const normalizedMetadata = normalizeOpenAIProviderMetadata({
-          generatedText: result.text,
-          content: result.finalStep.content,
-          sources: result.sources.flatMap((source) =>
-            source.sourceType === "url" ? [source] : [],
-          ),
+          generatedText,
+          content: finalStep.content,
+          sources: steps.flatMap((step) => step.sources.flatMap((source) =>
+            source.sourceType === "url" ? [source] : [])),
           toolCalls,
           toolResults,
           duplicateToolResults,
         });
 
         return {
-          text: result.text,
+          text: generatedText,
           document: {
             identityStatus: document.identityStatus,
             entityType: document.entityType,
@@ -461,19 +552,19 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           providerHttpCalls,
           toolCalls: normalizedMetadata.webSearchActionCount,
           usage: {
-            inputTokens: exposedNumber(result.usage.inputTokens),
+            inputTokens: exposedNumber(usage.inputTokens),
             cachedInputTokens: exposedNumber(
-              result.usage.inputTokenDetails.cacheReadTokens,
+              usage.inputTokenDetails.cacheReadTokens,
             ),
-            outputTokens: exposedNumber(result.usage.outputTokens),
+            outputTokens: exposedNumber(usage.outputTokens),
             reasoningTokens: exposedNumber(
-              result.usage.outputTokenDetails.reasoningTokens,
+              usage.outputTokenDetails.reasoningTokens,
             ),
-            totalTokens: exposedNumber(result.usage.totalTokens),
+            totalTokens: exposedNumber(usage.totalTokens),
           },
           providerDurationMs: Math.round(performance.now() - startedAt),
-          finishReason: result.finishReason,
-          requestId: providerRequestId(result.response.headers),
+          finishReason,
+          requestId: providerRequestId(responseHeaders),
         };
       } catch (error) {
         const reason = signal.reason;
