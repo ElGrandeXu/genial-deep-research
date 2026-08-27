@@ -1,0 +1,311 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T22:37:00.113Z",
+  "deployment_url": "https://genial-deep-research-2vqm7di0u-el-grande-xue.vercel.app",
+  "input": {
+    "name": "Airbus SAS",
+    "entityType": "company",
+    "context": "Filiale française basée à Toulouse, distincte du groupe Airbus SE"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "5f9995a0-0e57-4dcc-8012-5ca01a6715f2",
+    "elapsedMs": 13667,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-cf0d3b94-6fba-42a7-b4bd-04fd1b20c5ea",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-aeb7e7f6-0a0e-4c07-9ede-3478e8e60184",
+        "submitted_at": "2026-08-27T22:36:47.569Z",
+        "name": "Airbus SAS",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Filiale française basée à Toulouse, distincte du groupe Airbus SE"
+        },
+        "total_character_count": 75
+      },
+      "identity": {
+        "status": "insufficient_context",
+        "selected_subject_id": null,
+        "candidates": [
+          {
+            "subject_id": "subject-dd10ce38-c33a-4152-a640-e16c309294cd",
+            "entity_type": "company",
+            "display_name": "Airbus SAS",
+            "discriminators": {},
+            "match_rationale": "Candidat distinct retrouvé dans une source directement vérifiée, sans sélection serveur."
+          }
+        ],
+        "resolution_reason": "Le contexte fourni n’est pas suffisamment démontré par les preuves vérifiées.",
+        "clarification_fields": [
+          "official_site",
+          "discriminating_hint"
+        ]
+      },
+      "sources": [
+        {
+          "source_id": "source-6801cc5d-689c-4756-b8af-de6e460e332f",
+          "provider_url": "https://www.aircraft.airbus.com/en/terms-of-use",
+          "resolved_url": "https://www.aircraft.airbus.com/en/terms-of-use",
+          "canonical_url": null,
+          "title": "Term of use | Airbus",
+          "publisher": "www.aircraft.airbus.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T22:37:01.040Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-dd10ce38-c33a-4152-a640-e16c309294cd",
+          "assumed_scope": {
+            "type": "company",
+            "label": "Airbus SAS"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence-91feefe9-ab9c-4154-9c0d-a92d70590a33",
+          "source_id": "source-6801cc5d-689c-4756-b8af-de6e460e332f",
+          "claim_id": "claim-af0a5e4e-2242-4edd-a889-3e1ead683638",
+          "excerpt": "The \"Aircraft.airbus.com\" site accessible at https://aircraft.airbus.com/en ( “Site”) is owned and operated by Airbus SAS, a French simplified stock corporation (société par actions simplifiée), with a share capital of Euros 3.226.781, registered with the Trade and Companies Registry of Toulouse (France) under No. 383 474 814 and having its registered office at 2, rond-point Emile Dewoitine, 31700 Blagnac, France",
+          "locator": "{\"exact\":\"The \\\"Aircraft.airbus.com\\\" site accessible at https://aircraft.airbus.com/en ( “Site”) is owned and operated by Airbus SAS, a French simplified stock corporation (société par actions simplifiée), with a share capital of Euros 3.226.781, registered with the Trade and Companies Registry of Toulouse (France) under No. 383 474 814 and having its registered office at 2, rond-point Emile Dewoitine, 31700 Blagnac, France\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" (“Airbus” or “w\",\"occurrenceIndex\":0,\"finalUrl\":\"https://www.aircraft.airbus.com/en/terms-of-use\",\"citationUrl\":\"https://www.aircraft.airbus.com/en/terms-of-use\",\"retrievedAt\":\"2026-08-27T22:37:01.040Z\",\"normalizedTextSha256\":\"a2b82d19d7b9d593815c399792855fb517f5e0381d0ccf6c72e7b419e4c158be\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":160909,\"redirectCount\":0}",
+          "entity_id": "subject-dd10ce38-c33a-4152-a640-e16c309294cd",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "Airbus SAS"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T22:37:01.040Z"
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "claim-af0a5e4e-2242-4edd-a889-3e1ead683638",
+          "subject_id": "subject-dd10ce38-c33a-4152-a640-e16c309294cd",
+          "statement": "The \"Aircraft.airbus.com\" site accessible at https://aircraft.airbus.com/en ( “Site”) is owned and operated by Airbus SAS, a French simplified stock corporation (société par actions simplifiée), with a share capital of Euros 3.226.781, registered with the Trade and Companies Registry of Toulouse (France) under No. 383 474 814 and having its registered office at 2, rond-point Emile Dewoitine, 31700 Blagnac, France",
+          "predicate": "identity.candidate",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "Airbus SAS"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-91feefe9-ab9c-4154-9c0d-a92d70590a33"
+          ],
+          "claim_state": "ambiguous",
+          "reconciliation_state": "indetermination",
+          "presentation_decision": "display_ambiguity",
+          "presentation_reason": "Ce candidat reste séparé tant qu’un indice discriminant n’est pas fourni."
+        }
+      ],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-471d0c69-0058-4aee-b39c-ab41b47aed38",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : activité, signaux récents, présence géographique.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-37eba245-5097-4619-bdce-67b920078fad",
+          "category": "source_inaccessible",
+          "description": "1 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-1cbd6b97-3809-4699-8463-4cd71dd9c025",
+          "category": "identity_ambiguity",
+          "description": "Le nom, le type et les indices démontrés ne permettent pas de sélectionner une identité unique.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "La recherche s’arrête avant tout dossier factuel afin de ne pas fusionner des entités.",
+          "retry_context": [
+            "Ajouter une ville, un secteur, un employeur ou un site officiel"
+          ]
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-8024ab86-4a81-425a-a454-8e3055957547",
+          "invocation_id": "invocation-e7444f47-cecc-40bb-b443-8c9f587a1aad",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:36:47.569Z",
+          "ended_at": "2026-08-27T22:37:00.346Z",
+          "duration_ms": 12777,
+          "error_code": null
+        },
+        {
+          "step_id": "step-96b67a2f-c244-4427-a3bd-21cd0aabbb00",
+          "invocation_id": "invocation-5d42227a-ff1b-42d2-bada-2a1b387ed84b",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:00.346Z",
+          "ended_at": "2026-08-27T22:37:01.228Z",
+          "duration_ms": 882,
+          "error_code": null
+        },
+        {
+          "step_id": "step-cf78aadc-acf4-4f54-9f07-479369dc4644",
+          "invocation_id": "invocation-e0b6bf27-1edd-435e-a3a0-4fd3b7ae0a67",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:01.228Z",
+          "ended_at": "2026-08-27T22:37:01.234Z",
+          "duration_ms": 6,
+          "error_code": null
+        },
+        {
+          "step_id": "step-9cab950a-eda1-47cc-ba14-e9fd89ab0aa8",
+          "invocation_id": "invocation-51ff92ab-353d-49aa-9c0b-d4b72cd0b34b",
+          "operation": "reconciliation",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:01.235Z",
+          "ended_at": "2026-08-27T22:37:01.236Z",
+          "duration_ms": 1,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [],
+        "key_fact_claim_ids": [],
+        "recent_signal_claim_ids": [],
+        "ambiguity_claim_ids": [
+          "claim-af0a5e4e-2242-4edd-a889-3e1ead683638"
+        ],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-471d0c69-0058-4aee-b39c-ab41b47aed38",
+          "unknown-37eba245-5097-4619-bdce-67b920078fad",
+          "unknown-1cbd6b97-3809-4699-8463-4cd71dd9c025"
+        ],
+        "source_ids": [
+          "source-6801cc5d-689c-4756-b8af-de6e460e332f"
+        ]
+      },
+      "receipt": {
+        "run_id": "5f9995a0-0e57-4dcc-8012-5ca01a6715f2",
+        "started_at": "2026-08-27T22:36:47.569Z",
+        "completed_at": "2026-08-27T22:37:01.236Z",
+        "total_duration_ms": 13667,
+        "latency_ms": 13667,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 22443,
+          "output_tokens": 1266,
+          "total_tokens": 23709
+        },
+        "cost": {
+          "amount_usd": 0.0249935,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identité et présence publique"
+          ],
+          "stop_reason": "La résolution d’identité est insuffisante ; aucun dossier confiant n’est produit."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "standard",
+      "global_status": "needs_clarification",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "Une date récente établit un événement daté, jamais à elle seule un état actuel.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "5f9995a0-0e57-4dcc-8012-5ca01a6715f2",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 2,
+      "webSearchQueryCount": 1,
+      "webSearchInspectionCount": 1,
+      "sourceFetchCount": 2,
+      "excerptVerificationCount": 6,
+      "inputTokens": 22443,
+      "cachedInputTokens": 5635,
+      "outputTokens": 1266,
+      "reasoningTokens": 275,
+      "totalTokens": 23709,
+      "sourceCount": 1,
+      "durations": {
+        "acceptedMs": 1,
+        "searchingMs": 12777,
+        "sourceVerifyingMs": 882,
+        "buildingMs": 6,
+        "validatingMs": 1,
+        "totalMs": 13667
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.0249935,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}

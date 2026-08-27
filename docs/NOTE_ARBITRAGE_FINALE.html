@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Note d’arbitrage finale — GENIAL Deep Research</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #13231d; background: #dfe8e3; font: 9.6pt/1.38 Arial, sans-serif; }
+    .page { width: 210mm; height: 297mm; padding: 14mm 16mm 13mm; position: relative; overflow: hidden; page-break-after: always; background: #fbfdfb; }
+    .page:last-child { page-break-after: auto; }
+    .bar { height: 4mm; margin: -14mm -16mm 9mm; background: #16a673; }
+    h1 { margin: 0 0 2mm; font-size: 24pt; line-height: 1.02; letter-spacing: -0.5pt; }
+    h2 { margin: 5mm 0 1.5mm; font-size: 13.5pt; line-height: 1.15; color: #087250; }
+    h3 { margin: 3.5mm 0 1mm; font-size: 10.5pt; color: #243b32; }
+    p { margin: 0 0 2.4mm; }
+    ul { margin: 1.5mm 0 2.5mm; padding-left: 5mm; }
+    li { margin: 0 0 1mm; }
+    a { color: #087250; text-decoration: underline; }
+    .kicker { margin-bottom: 5mm; color: #557067; font-size: 8.5pt; }
+    .lead { font-size: 12pt; line-height: 1.34; color: #1e3c31; }
+    .principle { margin: 4mm 0; padding: 4mm 5mm; border-left: 3mm solid #16a673; background: #eaf7f1; font-size: 15pt; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+    .card { padding: 3.5mm; border: 0.3mm solid #c7d8d0; border-radius: 2mm; background: #f4f8f6; }
+    table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 8.6pt; }
+    th, td { padding: 1.8mm 2mm; border-bottom: 0.25mm solid #cbd8d2; text-align: left; vertical-align: top; }
+    th { color: #36564a; background: #edf4f0; }
+    .num { text-align: right; white-space: nowrap; }
+    .status { display: inline-block; padding: 1.4mm 2.5mm; border-radius: 999px; background: #fee9e6; color: #9c2d24; font-weight: 700; }
+    .small { font-size: 8.3pt; color: #49645a; }
+    .footer { position: absolute; left: 16mm; right: 16mm; bottom: 7mm; display: flex; justify-content: space-between; color: #648077; font-size: 7.8pt; }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="bar"></div>
+    <h1>GENIAL Deep Research</h1>
+    <div class="kicker">Note d’arbitrage finale · 28 août 2026 · runtime 8e91ed0</div>
+    <p class="lead">Construire un dossier commercial défendable, pas une synthèse vraisemblable. La release accepte de perdre du rappel pour préserver identité, portée et preuve.</p>
+
+    <h2>Décision produit</h2>
+    <p>Une identité non démontrée demande du contexte. Un fait dont l’extrait n’est pas retrouvé disparaît. Une recherche pauvre produit un silence borné. Une panne technique ne devient jamais un dossier partiel.</p>
+    <p>Quatre sorties restent lisibles : complet dans le périmètre, partiel, clarification et données publiques insuffisantes. Chaque fait visible garde sa preuve adjacente, sa source ouvrable, sa période et sa fraîcheur.</p>
+    <p>Le résumé est <strong>extractif</strong> : il sélectionne des affirmations déjà validées. Aucune reformulation factuelle libre n’est ajoutée entre la preuve et l’écran.</p>
+
+    <div class="principle">Le fournisseur propose, le serveur décide.</div>
+
+    <h2>Architecture de vérité</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>1 · Proposition</h3>
+        <p>OpenAI <code>gpt-5.6-luna</code> propose candidats, faits, URL et extraits via Responses API, sortie structurée et Web Search. <code>store: false</code>.</p>
+      </div>
+      <div class="card">
+        <h3>2 · Vérification</h3>
+        <p>Le serveur récupère chaque URL après contrôles anti-SSRF, DNS, redirections, durée, taille et HTML. L’extrait doit être retrouvé littéralement.</p>
+      </div>
+      <div class="card">
+        <h3>3 · Décision</h3>
+        <p>Candidat unique, contexte prouvé, clé sujet, type, portée, qualité, temporalité et complétude sont recalculés côté serveur.</p>
+      </div>
+      <div class="card">
+        <h3>4 · Présentation</h3>
+        <p><code>Source → Evidence → Claim → Presentation</code>. Schéma JSON, invariants runtime et masque client ferment la chaîne.</p>
+      </div>
+    </div>
+
+    <h2>Pourquoi un monolithe</h2>
+    <p>Next.js, TypeScript strict, une route SSE et aucune base suffisent à la boucle. Le secret, les décisions et les protections restent serveur ; le navigateur porte formulaire, attente, annulation et lecture. Gemini n’est pas ajouté : aucun gain mesuré ne justifie une seconde clé, un second contrat et de nouveaux modes de panne.</p>
+
+    <div class="footer"><span><a href="https://genial-deep-research.vercel.app">Production</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research">Dépôt public</a></span><span>1 / 3</span></div>
+  </section>
+
+  <section class="page">
+    <div class="bar"></div>
+    <h1>Décider sans mélanger</h1>
+    <div class="kicker">Identité · contexte · portée · complétude</div>
+
+    <h2>Résolution</h2>
+    <p><code>resolved</code> implique exactement un candidat directement vérifié. Le statut fournisseur n’a aucune autorité finale. Le contexte n’est retenu que s’il correspond à un domaine officiel, un identifiant légal, un employeur, ou à deux signaux vérifiés parmi ville, pays, secteur et année.</p>
+    <p>Pour chaque fait, l’égalité de type ne suffit plus. La clé sujet, la portée — personne, société, groupe, filiale ou marque —, le libellé et la présence de l’entité sur la page doivent converger. Une métrique groupe ne peut donc pas être attribuée à une filiale par simple proximité.</p>
+
+    <h2>Complétude</h2>
+    <p>Un dossier complet exige 3–6 faits métier uniques, au moins deux catégories, deux pages et deux familles d’éditeurs, sans contradiction, violation de portée ni manque critique. GENIAL n’obtient ici que deux faits d’une même famille : le statut <code>partial</code> est la décision correcte.</p>
+    <p>Une année ou une date récente ne suffit jamais à produire <code>current</code>. Il faut une formulation actuelle explicite et une date exacte correspondant à l’observation.</p>
+
+    <h2>Bench live préenregistré</h2>
+    <table>
+      <thead><tr><th>Cas</th><th>Décision observable</th><th class="num">Coût</th></tr></thead>
+      <tbody>
+        <tr><td>GENIAL</td><td>1 identité, 2 faits, 2 pages, <code>partial</code>, aucun doublon.</td><td class="num">0,0141440 $</td></tr>
+        <tr><td>Thomas Martin</td><td>Aucun fait attribué ; silence sûr, mais aucun candidat exploitable.</td><td class="num">0,0455815 $</td></tr>
+        <tr><td>Airbus SAS</td><td>Entité légale prouvée ; aucune métrique Airbus SE ; clarification conservatrice.</td><td class="num">0,0249935 $</td></tr>
+        <tr><td>SILENCE</td><td>0 fait, 0 source ; absence documentaire distincte d’une panne.</td><td class="num">0,0111351 $</td></tr>
+        <tr><td>Holdout Google Ireland</td><td>Entité exacte isolée ; aucune donnée Google LLC/Alphabet ; aucun patch nominal.</td><td class="num">0,0246989 $</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Une exécution par cas, dans l’ordre gelé. Aucun rerun, aucune sélection du meilleur résultat. MARQUE, CONFLIT et PÉREMPTION ne sont pas revendiqués en live final. Airbus et le holdout exposent une limite réelle : la résolution est parfois plus prudente qu’utile.</p>
+
+    <h2>Attente et résultat</h2>
+    <p>Le SSE expose admission, résolution/recherche, vérification des pages, construction et contrôle final, sans pourcentage fictif. L’annulation rend le contrôle à l’utilisateur ; le focus rejoint le résultat ou l’erreur. Huit parcours Playwright couvrent les sorties, SSE fragmenté, annulation et incohérence masquée. Aucun overflow à 390 ou 1 440 px.</p>
+
+    <div class="footer"><span><a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md">Reçus et captures</a></span><span>2 / 3</span></div>
+  </section>
+
+  <section class="page">
+    <div class="bar"></div>
+    <h1>Coût, sécurité, limites</h1>
+    <div class="kicker">Décision de livraison et suite</div>
+
+    <h2>Mesure et décision finale</h2>
+    <p>Chaque fiche reste sous la limite unitaire de <code>0,10 $</code>. Le cumul exact vaut toutefois <strong>0,1205530 $</strong>, soit <strong>0,0005530 $</strong> au-dessus de l’enveloppe interne stricte de <code>0,12 $</code>. Le dépassement n’est devenu observable qu’au reçu du cinquième cas obligatoire ; aucun appel supplémentaire n’a été lancé.</p>
+    <p>Le réaudit atteint <strong>92/100</strong>. Le gate binaire G11 échoue néanmoins :</p>
+    <p><span class="status">BLOCKED — jamais SUCCESS</span></p>
+
+    <h2>Sécurité proportionnée</h2>
+    <ul>
+      <li>Clé OpenAI uniquement côté serveur ; bundle, Git, captures et reçus expurgés.</li>
+      <li>Aucune persistance de dossier ni journalisation du nom, du contexte, du prompt ou des extraits.</li>
+      <li>Origine identique, JSON strict, corps 1 024 octets, <code>no-store</code>, timeout et garde de coût.</li>
+      <li>WAF Vercel distribué : chemin <code>/api/research</code>, fenêtre fixe, 8 requêtes / 600 s / IP.</li>
+      <li>Garde locale complémentaire : 8 admissions / 10 min et 2 recherches simultanées par instance.</li>
+    </ul>
+    <p class="small">Le WAF protège les domaines Preview et Production du projet. Il ne remplace ni authentification, ni quota par compte ; une IP partagée peut être limitée.</p>
+
+    <h2>Limites assumées</h2>
+    <div class="grid">
+      <div class="card"><strong>Sources</strong><br>Web public accessible ; pages JavaScript, authentifiées, paywall ou non HTML souvent écartées. Aucune archive.</div>
+      <div class="card"><strong>Couverture</strong><br>Pas d’exhaustivité. Date de publication souvent absente. Sorties probabilistes non garanties identiques.</div>
+      <div class="card"><strong>Produit</strong><br>Pas de compte, historique, export, partage, file durable ni reprise après fermeture.</div>
+      <div class="card"><strong>Recherche</strong><br>Pas de second fournisseur ; CONFLIT, MARQUE et PÉREMPTION live non revendiqués.</div>
+    </div>
+
+    <h2>Avec un mois</h2>
+    <p>Priorité : benchmark aveugle annoté de 50–100 entités, mesurant précision d’identité, rappel, taux d’extraits retrouvés, portée, coût et latence. Ses erreurs guideraient une clarification interactive, une archive juridiquement cadrée, un export et une file durable.</p>
+    <p>Gemini ou une seconde voie OpenAI ne serait ajouté qu’après un gain mesuré. Aucun fournisseur secondaire ne remplacerait la récupération directe de l’extrait ni les invariants serveur.</p>
+
+    <h2>Liens</h2>
+    <p><a href="https://genial-deep-research.vercel.app">Application</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research">Code et historique</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/GATE_MATRIX_G0_G12.md">Gates G0–G12</a> · <a href="https://developers.openai.com/api/docs/pricing">Tarifs OpenAI</a> · <a href="https://vercel.com/docs/vercel-firewall/vercel-waf/rule-configuration">WAF Vercel</a></p>
+
+    <div class="footer"><span>GENIAL Deep Research · note finale vérifiée</span><span>3 / 3</span></div>
+  </section>
+</body>
+</html>

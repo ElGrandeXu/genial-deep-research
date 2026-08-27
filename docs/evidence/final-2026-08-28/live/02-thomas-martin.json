@@ -1,0 +1,207 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T22:36:32.495Z",
+  "deployment_url": "https://genial-deep-research-2vqm7di0u-el-grande-xue.vercel.app",
+  "input": {
+    "name": "Thomas Martin",
+    "entityType": "person",
+    "context": ""
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "da6256bd-cb2c-4694-87af-dcfe4f6cf348",
+    "elapsedMs": 12968,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-caa596f4-2a4d-4e55-97f4-c91464ecf150",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-63797936-d1e2-4f40-b08f-e335abf78ec7",
+        "submitted_at": "2026-08-27T22:36:20.690Z",
+        "name": "Thomas Martin",
+        "suggested_type": "person",
+        "context": {},
+        "total_character_count": 13
+      },
+      "identity": {
+        "status": "not_found_within_scope",
+        "selected_subject_id": null,
+        "candidates": [],
+        "resolution_reason": "Aucun candidat directement vérifiable n’a été trouvé dans le périmètre.",
+        "clarification_fields": []
+      },
+      "sources": [],
+      "evidence": [],
+      "claims": [],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-9f00297e-21c2-4c9b-9ab5-47d9d4b2d49d",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : identité, activité, rôle, présence géographique, chiffres clés, événements, signaux récents, autres informations.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-2c1d9c80-237c-4d59-8e7e-7e9faa58c1f8",
+          "category": "source_inaccessible",
+          "description": "3 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-73ac9dd6-ac19-4ab9-800f-5d7e3bdff5dd",
+          "invocation_id": "invocation-a321c7c3-1df1-4723-9a38-b49ef3d705c0",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:36:20.690Z",
+          "ended_at": "2026-08-27T22:36:33.053Z",
+          "duration_ms": 12363,
+          "error_code": null
+        },
+        {
+          "step_id": "step-804aba7f-1e72-433b-b03b-68c87e3a4511",
+          "invocation_id": "invocation-02194a90-3478-43ef-9eb4-b691eee5df2e",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:36:33.053Z",
+          "ended_at": "2026-08-27T22:36:33.657Z",
+          "duration_ms": 604,
+          "error_code": null
+        },
+        {
+          "step_id": "step-a25d7527-0700-42b9-8e05-4321d693cd5b",
+          "invocation_id": "invocation-a445ced5-c846-442a-8e82-cb6002fa8960",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:36:33.657Z",
+          "ended_at": "2026-08-27T22:36:33.657Z",
+          "duration_ms": 0,
+          "error_code": null
+        },
+        {
+          "step_id": "step-32414816-107d-4478-aa65-f271c9dfe976",
+          "invocation_id": "invocation-47c58329-ffa3-497f-af29-e754bc76f41f",
+          "operation": "reconciliation",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:36:33.657Z",
+          "ended_at": "2026-08-27T22:36:33.658Z",
+          "duration_ms": 1,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [],
+        "key_fact_claim_ids": [],
+        "recent_signal_claim_ids": [],
+        "ambiguity_claim_ids": [],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-9f00297e-21c2-4c9b-9ab5-47d9d4b2d49d",
+          "unknown-2c1d9c80-237c-4d59-8e7e-7e9faa58c1f8"
+        ],
+        "source_ids": []
+      },
+      "receipt": {
+        "run_id": "da6256bd-cb2c-4694-87af-dcfe4f6cf348",
+        "started_at": "2026-08-27T22:36:20.690Z",
+        "completed_at": "2026-08-27T22:36:33.658Z",
+        "total_duration_ms": 12968,
+        "latency_ms": 12968,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 28191,
+          "output_tokens": 798,
+          "total_tokens": 28989
+        },
+        "cost": {
+          "amount_usd": 0.0455815,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identité et présence publique"
+          ],
+          "stop_reason": "Les preuves publiques vérifiables sont insuffisantes."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "silence",
+      "global_status": "insufficient_evidence",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "Une date récente établit un événement daté, jamais à elle seule un état actuel.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "da6256bd-cb2c-4694-87af-dcfe4f6cf348",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 4,
+      "webSearchQueryCount": 2,
+      "webSearchInspectionCount": 2,
+      "sourceFetchCount": 3,
+      "excerptVerificationCount": 3,
+      "inputTokens": 28191,
+      "cachedInputTokens": 5635,
+      "outputTokens": 798,
+      "reasoningTokens": 415,
+      "totalTokens": 28989,
+      "sourceCount": 0,
+      "durations": {
+        "acceptedMs": 1,
+        "searchingMs": 12363,
+        "sourceVerifyingMs": 604,
+        "buildingMs": 0,
+        "validatingMs": 1,
+        "totalMs": 12968
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.0455815,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}

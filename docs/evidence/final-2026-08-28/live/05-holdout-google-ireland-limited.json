@@ -1,0 +1,311 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T22:37:34.506Z",
+  "deployment_url": "https://genial-deep-research-2vqm7di0u-el-grande-xue.vercel.app",
+  "input": {
+    "name": "Google Ireland Limited",
+    "entityType": "company",
+    "context": "Société irlandaise enregistrée à Dublin, distincte de Google LLC et Alphabet Inc. Source officielle : https://policies.google.com/terms"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "d82f9357-d4ee-47ed-8652-ac3e57358f2e",
+    "elapsedMs": 10692,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-82c62fc5-3524-4906-acf5-a433fd0efb48",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-787d8125-3f47-4a46-be09-a5b522a8e312",
+        "submitted_at": "2026-08-27T22:37:24.906Z",
+        "name": "Google Ireland Limited",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Société irlandaise enregistrée à Dublin, distincte de Google LLC et Alphabet Inc. Source officielle : https://policies.google.com/terms"
+        },
+        "total_character_count": 157
+      },
+      "identity": {
+        "status": "insufficient_context",
+        "selected_subject_id": null,
+        "candidates": [
+          {
+            "subject_id": "subject-677bb380-e37f-4287-a5fc-4c5d784f6e77",
+            "entity_type": "company",
+            "display_name": "Google Ireland Limited",
+            "discriminators": {},
+            "match_rationale": "Candidat distinct retrouvé dans une source directement vérifiée, sans sélection serveur."
+          }
+        ],
+        "resolution_reason": "Le contexte fourni n’est pas suffisamment démontré par les preuves vérifiées.",
+        "clarification_fields": [
+          "official_site",
+          "discriminating_hint"
+        ]
+      },
+      "sources": [
+        {
+          "source_id": "source-153e97bc-8311-447c-b0c4-dbd31850441c",
+          "provider_url": "https://workspace.google.com/terms/premier_terms_eea/",
+          "resolved_url": "https://workspace.google.com/terms/premier_terms_eea/",
+          "canonical_url": null,
+          "title": "Google Workspace Terms of Service – Google Workspace",
+          "publisher": "workspace.google.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T22:37:35.559Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-677bb380-e37f-4287-a5fc-4c5d784f6e77",
+          "assumed_scope": {
+            "type": "company",
+            "label": "Google Ireland Limited"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence-acf5768f-87c1-4882-afb4-f880a94c982c",
+          "source_id": "source-153e97bc-8311-447c-b0c4-dbd31850441c",
+          "claim_id": "claim-d3d25f1a-3a61-4a04-9f4c-11fcc82c5f5e",
+          "excerpt": "Google Ireland Limited, a company incorporated under the laws of Ireland with offices at Gordon House, Barrow Street, Dublin 4, Ireland",
+          "locator": "{\"exact\":\"Google Ireland Limited, a company incorporated under the laws of Ireland with offices at Gordon House, Barrow Street, Dublin 4, Ireland\",\"matchMode\":\"exact\",\"prefix\":\" “Google”): (a) \",\"suffix\":\"; or (b) if Cust\",\"occurrenceIndex\":0,\"finalUrl\":\"https://workspace.google.com/terms/premier_terms_eea/\",\"citationUrl\":\"https://workspace.google.com/terms/premier_terms_eea/\",\"retrievedAt\":\"2026-08-27T22:37:35.559Z\",\"normalizedTextSha256\":\"fd9f2472299dce8b2777d63fa0438b3389eaf62f1b9b7daa9f05d1ddbc0e66b7\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":424985,\"redirectCount\":0}",
+          "entity_id": "subject-677bb380-e37f-4287-a5fc-4c5d784f6e77",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "Google Ireland Limited"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T22:37:35.559Z"
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "claim-d3d25f1a-3a61-4a04-9f4c-11fcc82c5f5e",
+          "subject_id": "subject-677bb380-e37f-4287-a5fc-4c5d784f6e77",
+          "statement": "Google Ireland Limited, a company incorporated under the laws of Ireland with offices at Gordon House, Barrow Street, Dublin 4, Ireland",
+          "predicate": "identity.candidate",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "Google Ireland Limited"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-acf5768f-87c1-4882-afb4-f880a94c982c"
+          ],
+          "claim_state": "ambiguous",
+          "reconciliation_state": "indetermination",
+          "presentation_decision": "display_ambiguity",
+          "presentation_reason": "Ce candidat reste séparé tant qu’un indice discriminant n’est pas fourni."
+        }
+      ],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-f2b5cce6-0dbb-4323-9c1b-6772496bcff6",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : rôle, chiffres clés, événements, signaux récents, autres informations.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-a666de60-0e58-4786-9929-3e1d63316e14",
+          "category": "source_inaccessible",
+          "description": "2 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-42553c92-3c9b-430c-97d0-56c739b2ec66",
+          "category": "identity_ambiguity",
+          "description": "Le nom, le type et les indices démontrés ne permettent pas de sélectionner une identité unique.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "La recherche s’arrête avant tout dossier factuel afin de ne pas fusionner des entités.",
+          "retry_context": [
+            "Ajouter une ville, un secteur, un employeur ou un site officiel"
+          ]
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-49bafe22-2e58-438c-a59c-02ca461c9d86",
+          "invocation_id": "invocation-8e22f11a-a986-4c4e-87b7-b8bb3e5628af",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:24.906Z",
+          "ended_at": "2026-08-27T22:37:35.223Z",
+          "duration_ms": 10317,
+          "error_code": null
+        },
+        {
+          "step_id": "step-6c66a2e5-ca69-43d1-9aa5-2e825eff0cb9",
+          "invocation_id": "invocation-66f7cf87-e440-46b7-92e8-886d5817f6bf",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:35.224Z",
+          "ended_at": "2026-08-27T22:37:35.595Z",
+          "duration_ms": 371,
+          "error_code": null
+        },
+        {
+          "step_id": "step-ab69b460-38b8-4ec2-bfca-858402bd6fc7",
+          "invocation_id": "invocation-8e2399c1-8201-485a-a3ce-b0abc076456b",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:35.595Z",
+          "ended_at": "2026-08-27T22:37:35.597Z",
+          "duration_ms": 2,
+          "error_code": null
+        },
+        {
+          "step_id": "step-9c2f1dcb-2982-4500-b8b7-680e3ce43bf1",
+          "invocation_id": "invocation-a617e5fe-1762-4a39-85e5-6db238d6cfc6",
+          "operation": "reconciliation",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T22:37:35.598Z",
+          "ended_at": "2026-08-27T22:37:35.598Z",
+          "duration_ms": 0,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [],
+        "key_fact_claim_ids": [],
+        "recent_signal_claim_ids": [],
+        "ambiguity_claim_ids": [
+          "claim-d3d25f1a-3a61-4a04-9f4c-11fcc82c5f5e"
+        ],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-f2b5cce6-0dbb-4323-9c1b-6772496bcff6",
+          "unknown-a666de60-0e58-4786-9929-3e1d63316e14",
+          "unknown-42553c92-3c9b-430c-97d0-56c739b2ec66"
+        ],
+        "source_ids": [
+          "source-153e97bc-8311-447c-b0c4-dbd31850441c"
+        ]
+      },
+      "receipt": {
+        "run_id": "d82f9357-d4ee-47ed-8652-ac3e57358f2e",
+        "started_at": "2026-08-27T22:37:24.906Z",
+        "completed_at": "2026-08-27T22:37:35.598Z",
+        "total_duration_ms": 10692,
+        "latency_ms": 10692,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 22860,
+          "output_tokens": 951,
+          "total_tokens": 23811
+        },
+        "cost": {
+          "amount_usd": 0.0246989,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identité et présence publique"
+          ],
+          "stop_reason": "La résolution d’identité est insuffisante ; aucun dossier confiant n’est produit."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "standard",
+      "global_status": "needs_clarification",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "Une date récente établit un événement daté, jamais à elle seule un état actuel.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "d82f9357-d4ee-47ed-8652-ac3e57358f2e",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 2,
+      "webSearchQueryCount": 1,
+      "webSearchInspectionCount": 1,
+      "sourceFetchCount": 2,
+      "excerptVerificationCount": 5,
+      "inputTokens": 22860,
+      "cachedInputTokens": 5635,
+      "outputTokens": 951,
+      "reasoningTokens": 270,
+      "totalTokens": 23811,
+      "sourceCount": 1,
+      "durations": {
+        "acceptedMs": 1,
+        "searchingMs": 10317,
+        "sourceVerifyingMs": 371,
+        "buildingMs": 2,
+        "validatingMs": 0,
+        "totalMs": 10692
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.0246989,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}

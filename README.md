@@ -4,16 +4,20 @@ GENIAL Deep Research transforme un nom de personne ou d’entreprise en un dossi
 
 Production : <https://genial-deep-research.vercel.app>
 
+Dépôt public : <https://github.com/ElGrandeXu/genial-deep-research>
+
+Runtime Production : commit `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`, promu depuis la Preview `dpl_313tpsu8ngv5GveqmrhPh5YTCrzm`.
+
 ## Ce que montre le dossier
 
-- une résolution explicite de l’identité à partir du type et du contexte fournis ;
-- trois à six faits utiles quand au moins trois peuvent être prouvés ;
+- une résolution dérivée par le serveur : exactement un candidat directement vérifié et un contexte démontré par les preuves ;
+- trois à six faits métier uniques pour un dossier complet, avec au moins deux catégories, deux pages et deux familles d’éditeurs ;
 - un état limité lorsque seules une ou deux preuves valides subsistent ;
 - pour chaque fait : extrait exact, titre, éditeur ou domaine, URL ouvrable, consultation, période du fait et fraîcheur ;
 - les contradictions et inconnues sans arbitrage silencieux ;
 - un reçu d’exécution avec durée, recherches, inspections, pages consultées, jetons et coût estimé.
 
-Le résumé ne crée aucun nouveau fait : il pointe vers des affirmations déjà reliées à leurs preuves.
+Le statut proposé par le fournisseur ne suffit jamais à résoudre l’identité. Le résumé ne crée aucun nouveau fait : il sélectionne des affirmations déjà reliées à leurs preuves.
 
 ## Prérequis
 
@@ -25,6 +29,8 @@ Le résumé ne crée aucun nouveau fait : il pointe vers des affirmations déjà
 ## Installation et configuration
 
 ```powershell
+git clone https://github.com/ElGrandeXu/genial-deep-research.git
+Set-Location genial-deep-research
 corepack pnpm install --frozen-lockfile
 Copy-Item .env.example .env.local
 ```
@@ -60,7 +66,7 @@ corepack pnpm verify
 corepack pnpm audit --prod --audit-level high
 ```
 
-`pnpm verify` cumule l’intégrité des autorités et preuves historiques, les scans de secrets, les contrats, les mutations négatives, les invariants runtime, le lint, le typecheck strict, la suite Vitest, le build et le scan du bundle client.
+`pnpm verify` cumule l’intégrité des autorités et preuves historiques, les scans de secrets, les contrats, les mutations négatives, les invariants runtime, le lint, le typecheck strict, 478 tests Vitest, le build, le scan du bundle client, huit parcours Playwright, Lighthouse et l’audit des dépendances de production.
 
 ## Exécution de production locale
 
@@ -84,11 +90,14 @@ L’application est un monolithe Next.js App Router en TypeScript strict :
 
 1. le composant client valide l’entrée, consomme le flux SSE et gère attente, annulation, erreurs et résultat ;
 2. la route Node protège la frontière HTTP, applique limite de débit et concurrence, puis impose un délai total ;
-3. OpenAI `gpt-5.6-luna` exécute une génération structurée avec Web Search, `store: false` et un à quatre actes de recherche bornés ;
-4. chaque URL proposée passe par les contrôles d’URL publique et anti-SSRF, puis la page est récupérée directement ;
-5. l’extrait exact doit être retrouvé dans le contenu HTML ; sinon le fait est supprimé ;
-6. le dossier est validé par JSON Schema, invariants métier et garde de coût avant émission ;
-7. l’interface refuse de rendre un fait dont les liens `Claim → Evidence → Source` ne sont pas intègres.
+3. OpenAI `gpt-5.6-luna` propose candidats, faits, URL et extraits via une génération structurée avec Web Search, `store: false` et un à quatre actes bornés ;
+4. le serveur décide : candidat unique, contexte prouvé, sujet, portée, qualité, temporalité et complétude ;
+5. chaque URL proposée passe par les contrôles d’URL publique et anti-SSRF, puis la page est récupérée directement ;
+6. l’extrait exact doit être retrouvé dans le contenu HTML ; sinon le fait est supprimé ;
+7. le dossier est validé par JSON Schema, invariants métier et garde de coût avant émission ;
+8. l’interface refuse de rendre un fait dont les liens `Claim → Evidence → Source` ne sont pas intègres.
+
+Principe : **le fournisseur propose, le serveur décide**.
 
 Le chemin critique est sans base de données, sans compte et sans persistance de dossier. L’état de limitation de débit reste en mémoire du processus. Voir [l’architecture détaillée](docs/ARCHITECTURE.md).
 
@@ -99,17 +108,20 @@ Le chemin critique est sans base de données, sans compte et sans persistance de
 - aucune journalisation du nom, du contexte, du prompt, des extraits ou des dossiers ;
 - IP transformée en condensat avec sel éphémère pour la seule limitation de débit ;
 - origine identique, JSON strict, corps limité à 1 024 octets et en-têtes de sécurité ;
-- huit admissions par dix minutes et par empreinte IP, deux recherches simultanées par instance ;
+- WAF Vercel distribué sur `/api/research` : fenêtre fixe de huit requêtes par 600 secondes et par IP, puis blocage à l’edge ;
+- garde locale de huit admissions par dix minutes et deux recherches simultanées par instance ;
 - URL `https` publique uniquement, résolution DNS contrôlée, redirections revalidées, deux redirections et 512 Kio maximum ;
 - aucun dossier partiel émis après une erreur technique.
 
 Les entrées sont néanmoins transmises à OpenAI et peuvent conduire à consulter des pages Web publiques. Il ne faut pas saisir de donnée secrète ou privée.
 
-## Coût observé
+## Bench live final et coût
 
 Le reçu applique le barème public daté du 27 août 2026 : entrée `0,20 $/M`, entrée en cache `0,02 $/M`, sortie `1,20 $/M`, et `0,01 $` par action Web Search observée. Taxes, remises et paliers éventuels sont exclus.
 
-Sur les validations finales Preview et Production, une fiche coûte entre `0,01205174 $` et `0,03446444 $`. Le succès Production principal coûte `0,02500484 $` pour six faits et trois pages directement vérifiées. Le runtime rejette un résultat estimé au-dessus de `0,10 $`.
+Cinq entrées préenregistrées ont été exécutées une seule fois sur la Preview ensuite promue : GENIAL, Thomas Martin, Airbus SAS, SILENCE et le holdout Google Ireland Limited. Les fiches coûtent entre `0,0111351 $` et `0,0455815 $`, toutes sous la limite unitaire de `0,10 $`.
+
+Le cumul exact est `0,1205530 $`, soit `0,0005530 $` au-dessus de l’enveloppe interne stricte de `0,12 $`. Aucun appel supplémentaire — relance Thomas Henri Martin ou PÉREMPTION — n’a donc été lancé. Le gate final de budget reste explicitement en échec malgré un réaudit à `92/100`.
 
 ## Limites assumées
 
@@ -118,16 +130,20 @@ Sur les validations finales Preview et Production, une fiche coûte entre `0,012
 - absence d’archive : une source peut changer après sa consultation ;
 - fraîcheur inconnue si l’extrait ne contient pas une date factuelle explicite ;
 - résolution probabiliste en amont, mais promotion à l’écran seulement après preuves directes ;
-- limitation en mémoire non distribuée ;
+- résolution volontairement conservatrice : Airbus SAS et le holdout restent en clarification malgré une preuve d’identité exacte ;
+- limite WAF distribuée par IP, sans authentification ni quota par utilisateur ;
 - aucun export PDF, historique utilisateur ou travail asynchrone ;
-- support des contradictions couvert par le contrat et les tests, sans cas CONFLIT live retenu pour la démonstration finale.
+- PÉREMPTION, CONFLIT et MARQUE non revendiqués en live final.
 
 ## Livrables
 
-- [Note d’arbitrage de la release candidate](docs/NOTE_ARBITRAGE_RELEASE_CANDIDATE.md)
-- [Résultats des cas d’épreuve](docs/RESULTATS_CAS_EPREUVE_RELEASE_CANDIDATE.md)
+- [Note d’arbitrage finale — PDF](docs/NOTE_ARBITRAGE_FINALE.pdf)
+- [Source accessible de la note](docs/NOTE_ARBITRAGE_FINALE.md)
+- [Bench live final et reçus](docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md)
+- [Validation Production](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md)
+- [Contrôle WAF](docs/evidence/final-2026-08-28/WAF_VALIDATION.md)
+- [Matrice G0–G12](docs/evidence/final-2026-08-28/GATE_MATRIX_G0_G12.md)
+- [Réaduit final 20/20/20/20/20](docs/evidence/final-2026-08-28/REAUDIT_FINAL.md)
 - [Contrat de vérité produit](docs/PRODUCT_TRUTH_CONTRACT.md)
 - [Schéma canonique du dossier](docs/contracts/research-dossier.schema.json)
-- [Captures de la release](docs/captures/release/)
-- [Reçus expurgés de la release](docs/evidence/release/)
-- [Validation Preview et Production](docs/evidence/release/DEPLOYMENT_VALIDATION.md)
+- [Captures finales 390/1440](docs/captures/final-2026-08-28/)
