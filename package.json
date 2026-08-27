@@ -16,6 +16,8 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "node tools/contract-types.mjs --check && tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "lighthouse:check": "node tools/check-lighthouse.mjs",
     "contract:types": "node tools/contract-types.mjs --write",
     "contract:types:check": "node tools/contract-types.mjs --check",
     "verify": "pwsh -NoProfile -File tools/verify-project.ps1"
@@ -32,12 +34,14 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.3",
     "json-schema-to-typescript": "15.0.4",
+    "lighthouse": "13.4.1",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }

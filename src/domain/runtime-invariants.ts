@@ -1,4 +1,5 @@
 import { validateResearchDossier } from "./contract-validator";
+import { publisherDomainForUrl } from "./publisher-domain";
 import type { ResearchDossier } from "./research-dossier";
 
 type Claim = ResearchDossier["claims"][number];
@@ -18,6 +19,15 @@ const FACTUAL_STATES = new Set<Claim["claim_state"]>([
   "supported",
   "contested",
   "historical",
+]);
+const BUSINESS_CATEGORIES = new Set([
+  "activity",
+  "role",
+  "geography",
+  "metric",
+  "event",
+  "recent_signal",
+  "other",
 ]);
 
 function normalizeText(value: string): string {
@@ -42,6 +52,22 @@ function hasDatedFactPeriod(claim: Claim): boolean {
 
 function versionValueKey(version: Contradiction["versions"][number]): string {
   return `${typeof version.normalized_value}:${JSON.stringify(version.normalized_value)}`;
+}
+
+function claimCategory(claim: Claim): string {
+  return claim.predicate.split(".", 1)[0] ?? "";
+}
+
+function isBusinessClaim(claim: Claim): boolean {
+  return BUSINESS_CATEGORIES.has(claimCategory(claim));
+}
+
+function sourcePage(source: Source): string {
+  return source.canonical_url ?? source.resolved_url ?? source.provider_url;
+}
+
+function sourceDomain(source: Source): string | null {
+  return publisherDomainForUrl(sourcePage(source));
 }
 
 export function validateRuntimeDossier(
@@ -144,6 +170,9 @@ export function validateRuntimeDossier(
   requireUniqueReferences("presentation.summary_items", summaryReferenceKeys);
 
   if (value.identity.status === "resolved") {
+    if (value.identity.candidates.length !== 1) {
+      errors.push("resolved_identity_requires_exactly_one_candidate");
+    }
     if (
       value.identity.selected_subject_id === null ||
       !candidates.has(value.identity.selected_subject_id)
@@ -185,6 +214,8 @@ export function validateRuntimeDossier(
   const presentedSourceIds = new Set(value.presentation.source_ids);
   const visibleProofSources = new Set<string>();
   const visibleFactualClaims: Claim[] = [];
+  const visibleBusinessClaims: Claim[] = [];
+  const businessProofSources = new Set<string>();
 
   for (const claim of value.claims) {
     requireUniqueReferences(`claim.${claim.claim_id}.evidence_ids`, claim.evidence_ids);
@@ -214,6 +245,17 @@ export function validateRuntimeDossier(
     }
 
     visibleFactualClaims.push(claim);
+    const businessClaim = isBusinessClaim(claim);
+    if (businessClaim) visibleBusinessClaims.push(claim);
+    if (!businessClaim && !claim.predicate.startsWith("identity.")) {
+      errors.push(`displayed_claim_unknown_category:${claim.claim_id}`);
+    }
+    if (
+      claim.predicate.startsWith("metric.") &&
+      (!hasDatedFactPeriod(claim) || claim.scope.type === "undetermined" || claim.scope.label === null)
+    ) {
+      errors.push(`displayed_metric_requires_period_and_scope:${claim.claim_id}`);
+    }
     if (value.identity.status !== "resolved") {
       errors.push(`displayed_claim_requires_resolved_identity:${claim.claim_id}`);
     }
@@ -245,6 +287,17 @@ export function validateRuntimeDossier(
         normalizeText(item.excerpt) === normalizeText(claim.statement)
       ) {
         qualifyingSources.push(source);
+      }
+      if (
+        businessClaim &&
+        source !== undefined &&
+        source.accessibility_status === "accessible" &&
+        item.relation === "supports" &&
+        item.verification_method === "source_content" &&
+        item.entity_id === claim.subject_id &&
+        source.assumed_entity_id === claim.subject_id
+      ) {
+        businessProofSources.add(source.source_id);
       }
     }
 
@@ -393,6 +446,12 @@ export function validateRuntimeDossier(
     ) {
       errors.push(`summary_requires_displayed_fact:${item.kind}:${item.ref_id}`);
     }
+    if (claim !== undefined && !isBusinessClaim(claim)) {
+      errors.push(`summary_requires_business_fact:${item.kind}:${item.ref_id}`);
+    }
+  }
+  if (value.presentation.summary_items.length > 3) {
+    errors.push("summary_allows_at_most_three_items");
   }
   for (const contradictionId of value.presentation.contradiction_ids) {
     const contradiction = contradictions.get(contradictionId);
@@ -413,10 +472,46 @@ export function validateRuntimeDossier(
     }
   }
 
+  const receiptStart = new Date(value.receipt.started_at).getTime();
+  const receiptEnd = value.receipt.completed_at === null
+    ? Number.NaN
+    : new Date(value.receipt.completed_at).getTime();
+  let previousStepEnd = Number.NEGATIVE_INFINITY;
   for (const step of value.execution_steps) {
     if (step.retry_of !== null && !invocations.has(step.retry_of)) {
       errors.push(`execution_step_missing_retry_target:${step.step_id}:${step.retry_of}`);
     }
+    if (step.status === "completed") {
+      const start = step.started_at === null ? Number.NaN : new Date(step.started_at).getTime();
+      const end = step.ended_at === null ? Number.NaN : new Date(step.ended_at).getTime();
+      const measured = step.duration_ms;
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        measured === null ||
+        end < start ||
+        start < previousStepEnd ||
+        Math.abs(end - start - measured) > 2
+      ) {
+        errors.push(`execution_step_invalid_timing:${step.step_id}`);
+      }
+      if (
+        Number.isFinite(receiptStart) &&
+        Number.isFinite(receiptEnd) &&
+        (start < receiptStart || end > receiptEnd)
+      ) {
+        errors.push(`execution_step_outside_receipt:${step.step_id}`);
+      }
+      if (Number.isFinite(end)) previousStepEnd = end;
+    }
+  }
+
+  if (
+    Number.isFinite(receiptStart) &&
+    Number.isFinite(receiptEnd) &&
+    Math.abs(receiptEnd - receiptStart - value.receipt.total_duration_ms) > 2
+  ) {
+    errors.push("receipt_duration_timestamp_mismatch");
   }
 
   const supportedFacts = value.claims.filter(isFactualClaim);
@@ -427,8 +522,30 @@ export function validateRuntimeDossier(
     if (visibleFactualClaims.length < 3) {
       errors.push("complete_requires_three_visible_facts");
     }
+    if (visibleBusinessClaims.length < 3) {
+      errors.push("complete_requires_three_business_facts");
+    }
+    if (visibleBusinessClaims.length > 6) {
+      errors.push("complete_allows_at_most_six_business_facts");
+    }
+    if (new Set(visibleBusinessClaims.map(claimCategory)).size < 2) {
+      errors.push("complete_requires_two_business_categories");
+    }
     if (visibleProofSources.size < 2) {
       errors.push("complete_requires_two_visible_sources");
+    }
+    const businessSources = [...businessProofSources].flatMap((sourceId) => {
+      const source = sources.get(sourceId);
+      return source === undefined ? [] : [source];
+    });
+    if (new Set(businessSources.map(sourcePage)).size < 2) {
+      errors.push("complete_requires_two_business_source_pages");
+    }
+    if (new Set(businessSources.flatMap((source) => {
+      const domain = sourceDomain(source);
+      return domain === null ? [] : [domain];
+    })).size < 2) {
+      errors.push("complete_requires_two_publisher_domains");
     }
     if (value.contradictions.some((item) => item.visible)) {
       errors.push("complete_forbids_visible_contradiction");

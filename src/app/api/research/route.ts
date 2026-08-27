@@ -106,6 +106,24 @@ function admissionRejectedResponse(
   );
 }
 
+export function GET(): Response {
+  return Response.json(
+    {
+      error: {
+        code: "method_not_allowed",
+        message: "Utilisez POST pour lancer une recherche.",
+      },
+    },
+    {
+      status: 405,
+      headers: {
+        allow: "POST",
+        "cache-control": "no-store",
+      },
+    },
+  );
+}
+
 export function createResearchPostHandler(dependencies: ResearchRouteDependencies) {
   const requestGuard = dependencies.requestGuard ?? unrestrictedTestGuard;
   return async function researchPost(request: Request): Promise<Response> {

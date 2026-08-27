@@ -1,0 +1,65 @@
+Command: corepack pnpm exec vitest run tests/identity-resolution.test.ts tests/claim-quality.test.ts tests/temporal-policy.test.ts
+Date: 2026-08-27 23:31 CEST
+Exit: 1
+
+RUN v4.1.11 C:/Users/maxer/Desktop/GENIAL
+
+Test Files  3 failed (3)
+Tests       7 failed | 21 passed (28)
+
+Raw failures:
+- same wording with two provider predicates: expected 1 fact, received 2;
+- Thomas Martin with two candidates: expected ambiguous, received resolved;
+- partial person name with one provider candidate: expected insufficient_context, received resolved;
+- common-word brand without context: expected insufficient_context, received resolved;
+- discriminator present only elsewhere on a multi-entity page: expected no context signal, received city=Marseille;
+- exact date inferred from a year-only excerpt: expected unknown, received as_of=2025-05-12;
+- ISO date disagreeing with literal label: expected unknown, received as_of=2025-05-12.
+
+Decision: RED attendu. Le premier patch restait trop permissif sur le nom partiel, la marque, les indices de page et les dates exactes, et trop dépendant du libellé de prédicat fournisseur pour la déduplication.
+
+Follow-up RED — définition métrique bornée :
+Command: corepack pnpm exec vitest run tests/numeric-normalization.test.ts
+Exit: 1 — 1 failed | 8 passed
+Raw failure: expected indetermination, received contradiction for `reported-revenue` versus `adjusted-revenue`.
+Decision: deux valeurs ne peuvent devenir une contradiction visible si leur clé de définition diffère ou manque.
+
+Follow-up RED — domaine officiel non prouvé :
+Command: corepack pnpm exec vitest run tests/scope-policy.test.ts
+Exit: 1 — 1 failed | 6 passed
+Raw failure: expected `page_identity_anchor_missing`, received `accepted: true, anchor: official_domain`.
+Decision: la portée ne peut utiliser que le domaine officiel démontré par la preuve d’identité, jamais le champ fournisseur brut.
+
+Follow-up RED — portée d’identité fournisseur :
+Command: corepack pnpm exec vitest run tests/identity-resolution.test.ts
+Exit: 1 — 1 failed | 11 passed
+Raw failure: excerpt vérifié « Airbus SAS est la filiale… », portée fournisseur `group`; expected `subsidiary`, received `group`.
+Decision: personne/société/groupe/filiale/marque doit être dérivé de la preuve d’identité avant toute matrice de portée.
+
+Follow-up RED — bornes temporelles réelles :
+Command: corepack pnpm exec vitest run tests/research.test.ts
+Exit: 1 — 1 failed | 25 passed
+Raw failure: le début de `identity_resolution` était exactement égal au début du reçu malgré un décalage monotone mesuré de 10 ms.
+Decision: conserver les offsets de début/fin réellement observés au lieu de reconstruire des phases contiguës artificielles.
+
+Follow-up RED — étape hors reçu :
+Command: corepack pnpm exec vitest run tests/runtime-invariants.test.ts
+Date: 2026-08-27 23:43 CEST
+Exit: 1 — 1 failed | 15 passed
+Raw failure: `rejects an execution step outside the measured receipt interval` attendait `{ ok: false }`, reçu `{ ok: true }` pour une étape 10:00:05–10:00:06 dans un reçu 10:00:00–10:00:04.
+Decision: une étape terminée doit rester entièrement dans l’intervalle monotone réellement facturé par le reçu.
+
+Follow-up RED — erreur HTTP non stockable :
+Command: corepack pnpm exec vitest run tests/request-guard.test.ts
+Date: 2026-08-27 23:51 CEST
+Exit: 1 — 1 failed | 8 passed
+Raw failure: `GET is not a function`; le 405 implicite Next.js ne portait pas `Cache-Control: no-store` ni réponse JSON stable.
+Decision: exposer explicitement GET=405, `Allow: POST`, JSON borné et `no-store`, sans initialiser le fournisseur.
+
+Follow-up RED — actualité fondée sur une date fournisseur :
+Command: corepack pnpm exec vitest run tests/temporal-policy.test.ts
+Date: 2026-08-27 23:54 CEST
+Exit: 1 — 1 failed | 7 passed
+Raw failure: rôle « actuellement » sans date littérale dans l’extrait, `factDate=2026-08-27` fourni par le modèle ; expected `unknown`, received `current`.
+Decision: `current` exige une période exacte déjà dérivée de l’extrait vérifié et égale à la date d’observation.
+Follow-up positive path: 1 failed | 34 passed; « À ce jour, le 27 août 2026… » was classified `historical` because ASCII word boundaries did not recognize the accented leading token. Decision: use explicit phrase boundaries that work in French and English.

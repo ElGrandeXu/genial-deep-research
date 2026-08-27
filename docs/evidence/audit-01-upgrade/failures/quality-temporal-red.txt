@@ -1,0 +1,26 @@
+Command: corepack pnpm exec vitest run tests/claim-quality.test.ts tests/completeness.test.ts tests/temporal-policy.test.ts tests/numeric-normalization.test.ts
+Date: 2026-08-27
+Exit: 1
+
+RUN v4.1.11 C:/Users/maxer/Desktop/GENIAL
+
+FAIL tests/claim-quality.test.ts
+Error: Cannot find module '../src/server/research/claim-quality'
+
+FAIL tests/completeness.test.ts
+Error: Cannot find module '../src/server/research/completeness'
+
+FAIL tests/numeric-normalization.test.ts
+Error: Cannot find module '../src/server/research/numeric-normalization'
+
+FAIL tests/temporal-policy.test.ts
+Error: Cannot find module '../src/server/research/temporal-policy'
+
+Test Files 4 failed (4)
+Tests no tests
+Decision: RED attendu ; les invariants ont été écrits avant les modules de production.
+
+Follow-up RED — metric recalculation:
+Command: corepack pnpm exec vitest run tests/claim-quality.test.ts
+Exit: 1 — 1 failed | 8 passed
+Reason: `1 milliard EUR` was rejected because the provider’s expanded `1000000000` was not literal in the excerpt. The server must trust its bounded parser, not the provider expansion.

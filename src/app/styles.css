@@ -342,6 +342,29 @@ textarea:disabled {
   line-height: 1.5;
 }
 
+.field-error {
+  margin: 0.45rem 0 0;
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgb(183 59 45 / 14%);
+}
+
+.clarification-notice {
+  margin: 1rem 0 0;
+  border: 1px solid #a68535;
+  border-radius: 0.75rem;
+  background: #fff9e8;
+  color: #67562c;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .field-help {
   margin: 0.45rem 0 0;
 }
@@ -713,6 +736,60 @@ button.secondary:hover {
   line-height: 1.55;
 }
 
+.identity-proof {
+  grid-column: 1 / -1;
+  border-top: 1px solid #536056;
+  padding-top: 1.2rem;
+}
+
+.identity-proof > p {
+  max-width: 58rem;
+  margin: 0.65rem 0 0;
+  color: #f4f7f2;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.identity-proof .evidence-list {
+  margin-top: 1rem;
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.quick-read > ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick-read li {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--acid-soft);
+  padding: 1rem;
+}
+
+.quick-read li > p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.quick-read li > a {
+  display: inline-block;
+  margin-top: 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
 .section-intro {
   margin-bottom: 1.4rem;
 }
@@ -796,6 +873,21 @@ button.secondary:hover {
   background: var(--line);
 }
 
+.additional-evidence {
+  background: #eef1e9;
+}
+
+.additional-evidence > summary {
+  padding: 0.9rem 1.2rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.additional-evidence[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
 .evidence-card {
   background: #eef1e9;
   padding: clamp(1rem, 3vw, 1.5rem);
@@ -858,7 +950,7 @@ button.secondary:hover {
 
 .source-meta {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0;
   margin: 1rem 0 0;
   border-top: 1px solid #cbd0c8;
@@ -930,6 +1022,21 @@ button.secondary:hover {
   color: #6c572b;
   font-size: 0.75rem;
   line-height: 1.45;
+}
+
+.candidate-action {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  border-color: #6c572b;
+  background: #fff;
+  color: #5c4922;
+  font-size: 0.78rem;
+}
+
+.candidate-action:hover:not(:disabled) {
+  background: var(--acid-soft);
+  color: var(--ink);
 }
 
 .unassigned-claims {
@@ -1175,6 +1282,29 @@ button.secondary:hover {
   text-align: right;
 }
 
+.not-found {
+  display: grid;
+  align-content: center;
+  min-height: 100svh;
+  padding: clamp(1.5rem, 6vw, 6rem);
+}
+
+.not-found h1 {
+  max-width: 12ch;
+}
+
+.not-found > p:not(.eyebrow) {
+  max-width: 38rem;
+  margin: 1rem 0;
+  color: var(--muted);
+}
+
+.not-found > a {
+  width: fit-content;
+  color: var(--ink);
+  font-weight: 800;
+}
+
 @media (max-width: 920px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -1239,7 +1369,8 @@ button.secondary:hover {
 
   .candidate-grid,
   .version-grid,
-  .limits-grid {
+  .limits-grid,
+  .quick-read > ol {
     grid-template-columns: 1fr;
   }
 

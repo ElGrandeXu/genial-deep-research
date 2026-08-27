@@ -6,7 +6,11 @@ import {
 } from "parse5";
 
 import { ResearchPipelineError } from "./errors";
-import { validateCitationAndStructuredUrl, type DnsResolver } from "./source-security";
+import {
+  validateCitationAndStructuredUrl,
+  type DnsResolver,
+  type ValidatedSourceUrl,
+} from "./source-security";
 import {
   fetchSourceWithPinning,
   type FetchedSource,
@@ -549,48 +553,97 @@ export function createSourceVerifier(options: {
   readonly monotonicNow?: () => number;
   readonly timeoutMs?: number;
 }): SourceVerifier {
+  interface PreparedSource {
+    readonly fetched: FetchedSource;
+    readonly verifiedTitle: string;
+    readonly visibleText: string;
+    readonly retrievedAt: Date;
+  }
+  interface PageCacheEntry {
+    networkFetchCount: number;
+    fetchCountReported: boolean;
+    promise: Promise<PreparedSource>;
+  }
+
+  const pageCache = new Map<string, PageCacheEntry>();
+
+  function consumeNetworkFetchCount(entry: PageCacheEntry): number {
+    if (entry.fetchCountReported) return 0;
+    entry.fetchCountReported = true;
+    return entry.networkFetchCount;
+  }
+
+  function cachedPage(initialUrl: ValidatedSourceUrl, signal: AbortSignal): PageCacheEntry {
+    const key = initialUrl.safeHref;
+    const existing = pageCache.get(key);
+    if (existing !== undefined) return existing;
+    const entry: PageCacheEntry = {
+      networkFetchCount: 0,
+      fetchCountReported: false,
+      promise: Promise.resolve(undefined as never),
+    };
+    const countedTransport: SourceTransport = {
+      async request(pinned) {
+        entry.networkFetchCount += 1;
+        return options.transport.request(pinned);
+      },
+    };
+    entry.promise = (async () => {
+      const fetched = await fetchSourceWithPinning({
+        initialUrl,
+        resolver: options.resolver,
+        transport: countedTransport,
+        signal,
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      });
+      const verifiedTitle = fetched.mediaType === "text/plain"
+        ? documentTitleFailure(
+            "Une source text/plain ne fournit aucun titre de document vérifiable.",
+          )
+        : extractVerifiedDocumentTitle(fetched.body);
+      const visibleText = extractVisibleText(fetched.body, fetched.mediaType);
+      if (visibleText.length === 0) {
+        throw new ResearchPipelineError(
+          "source_empty",
+          "Le texte visible normalisé de la source est vide.",
+        );
+      }
+      return {
+        fetched,
+        verifiedTitle,
+        visibleText,
+        retrievedAt: (options.now ?? (() => new Date()))(),
+      };
+    })();
+    pageCache.set(key, entry);
+    return entry;
+  }
+
   return {
     async verify(request): Promise<VerifiedSourceProof> {
       const monotonicNow = options.monotonicNow ?? (() => performance.now());
       const started = monotonicNow();
       let sourceFetchCount = 0;
-      const countedTransport: SourceTransport = {
-        async request(pinned) {
-          sourceFetchCount += 1;
-          return options.transport.request(pinned);
-        },
-      };
       try {
         const initialUrl = validateCitationAndStructuredUrl(
           request.citation.url,
           request.candidate.structuredUrl,
         );
-        const fetched = await fetchSourceWithPinning({
-          initialUrl,
-          resolver: options.resolver,
-          transport: countedTransport,
-          signal: request.signal,
-          ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
-        });
-        const verifiedTitle = fetched.mediaType === "text/plain"
-          ? documentTitleFailure(
-              "Une source text/plain ne fournit aucun titre de document vérifiable.",
-            )
-          : extractVerifiedDocumentTitle(fetched.body);
-        const visibleText = extractVisibleText(fetched.body, fetched.mediaType);
-        if (visibleText.length === 0) {
-          throw new ResearchPipelineError(
-            "source_empty",
-            "Le texte visible normalisé de la source est vide.",
-          );
+        const cacheEntry = cachedPage(initialUrl, request.signal);
+        let prepared: PreparedSource;
+        try {
+          prepared = await cacheEntry.promise;
+        } finally {
+          sourceFetchCount = consumeNetworkFetchCount(cacheEntry);
         }
+        const { fetched, verifiedTitle, visibleText, retrievedAt } = prepared;
         const { body: _discardedBody, ...fetchedMetadata } = fetched;
         void _discardedBody;
         const located = locateVerifiedExcerpt({
           visibleText,
           candidate: request.candidate,
           fetched: fetchedMetadata,
-          retrievedAt: (options.now ?? (() => new Date()))(),
+          retrievedAt,
         });
         return {
           citation: request.citation,
@@ -598,6 +651,7 @@ export function createSourceVerifier(options: {
           finalUrl: fetched.finalUrl,
           title: verifiedTitle,
           verifiedExcerpt: located.excerpt,
+          documentText: visibleText,
           locator: located.locator,
           sourceFetchCount,
           sourceVerificationMs: Math.max(0, Math.round(monotonicNow() - started)),

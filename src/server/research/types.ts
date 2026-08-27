@@ -105,6 +105,28 @@ export interface ProviderClaimCandidate {
   readonly suffix: string | null;
 }
 
+export type CandidateKey = string;
+
+export const ENTITY_SCOPES = [
+  "person",
+  "company",
+  "group",
+  "subsidiary",
+  "brand",
+] as const;
+
+export type EntityScope = (typeof ENTITY_SCOPES)[number];
+
+export interface ProviderCandidateDiscriminators {
+  readonly city: string | null;
+  readonly country: string | null;
+  readonly industry: string | null;
+  readonly employer: string | null;
+  readonly officialSite: string | null;
+  readonly legalIdentifier: string | null;
+  readonly year: string | null;
+}
+
 export const FACT_CATEGORIES = [
   "identity",
   "activity",
@@ -119,10 +141,14 @@ export const FACT_CATEGORIES = [
 export type FactCategory = (typeof FACT_CATEGORIES)[number];
 
 export interface ProviderIdentityCandidate extends ProviderClaimCandidate {
+  readonly candidateKey: CandidateKey;
   readonly displayName: string;
+  readonly entityScope: EntityScope;
+  readonly discriminators: ProviderCandidateDiscriminators;
 }
 
 export interface ProviderFactCandidate extends ProviderClaimCandidate {
+  readonly subjectKey: CandidateKey;
   readonly category: FactCategory;
   readonly predicate: string;
   readonly scopeType:
@@ -176,6 +202,8 @@ export interface VerifiedSourceProof {
   readonly finalUrl: string;
   readonly title: string;
   readonly verifiedExcerpt: string;
+  /** Normalized server-rendered page text, retained only for this execution. */
+  readonly documentText: string;
   readonly locator: SourceLocator;
   readonly sourceFetchCount: number;
   readonly sourceVerificationMs: number;
@@ -233,6 +261,7 @@ export interface StageDurations {
   readonly acceptedMs: number;
   readonly searchingMs: number;
   readonly sourceVerifyingMs: number;
+  readonly buildingMs: number;
   readonly validatingMs: number;
   readonly totalMs: number;
 }
@@ -247,6 +276,7 @@ export interface PublicReceipt {
   readonly webSearchQueryCount: number;
   readonly webSearchInspectionCount: number;
   readonly sourceFetchCount: number;
+  readonly excerptVerificationCount: number;
   readonly inputTokens: number | null;
   readonly cachedInputTokens: number | null;
   readonly outputTokens: number | null;
@@ -360,8 +390,7 @@ export type ResearchProgressEvent =
   | {
       readonly state:
         | "accepted"
-        | "resolving_identity"
-        | "searching"
+        | "researching_and_resolving"
         | "source_verifying"
         | "building"
         | "validating";

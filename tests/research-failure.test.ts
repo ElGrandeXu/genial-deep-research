@@ -93,8 +93,19 @@ function providerResult(
       identityStatus: "resolved",
       entityType: "company",
       candidates: [{
+        candidateKey: "airbus-se",
         displayName: "Airbus SE",
         entityType: "company",
+        entityScope: "group",
+        discriminators: {
+          city: null,
+          country: null,
+          industry: null,
+          employer: null,
+          officialSite: "research.public.org",
+          legalIdentifier: null,
+          year: null,
+        },
         statement: claim,
         structuredUrl: sourceUrl,
         excerpt: claim,
@@ -102,6 +113,7 @@ function providerResult(
         suffix: null,
       }],
       claims: [{
+        subjectKey: "airbus-se",
         category: "identity",
         entityType: "company",
         statement: claim,
@@ -181,6 +193,7 @@ function successfulSourceVerifier(): SourceVerifier {
         finalUrl: sourceUrl,
         title: request.citation.title ?? "Synthetic title",
         verifiedExcerpt: claim,
+        documentText: claim,
         locator: {
           exact: claim,
           prefix: "",
@@ -220,7 +233,7 @@ async function executeWith(options: {
 }): Promise<ResearchProgressEvent[]> {
   const events: ResearchProgressEvent[] = [];
   await executeResearch({
-    input: { name: "Airbus SE", context: "Synthetic public context" },
+    input: { name: "Airbus SE", context: `Source choisie ${sourceUrl}` },
     provider: providerFor(options.result),
     sourceVerifier: options.sourceVerifier ?? successfulSourceVerifier(),
     signal: new AbortController().signal,

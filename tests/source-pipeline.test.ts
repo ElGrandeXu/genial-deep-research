@@ -238,8 +238,19 @@ function providerResult(overrides: Partial<ProviderResearchResult> = {}): Provid
       identityStatus: "resolved",
       entityType: "company",
       candidates: [{
+        candidateKey: "airbus-se",
         displayName: "Airbus SE",
         entityType: "company",
+        entityScope: "group",
+        discriminators: {
+          city: null,
+          country: null,
+          industry: null,
+          employer: null,
+          officialSite: "research.public.org",
+          legalIdentifier: null,
+          year: null,
+        },
         statement: claim,
         structuredUrl: sourceUrl,
         excerpt: claim,
@@ -247,6 +258,7 @@ function providerResult(overrides: Partial<ProviderResearchResult> = {}): Provid
         suffix: null,
       }],
       claims: [{
+        subjectKey: "airbus-se",
         category: "identity",
         entityType: "company",
         statement: claim,
@@ -900,7 +912,7 @@ async function runPipeline(options: {
   const events: ResearchProgressEvent[] = [];
   const source = realSyntheticVerifier();
   await executeResearch({
-    input: { name: "Airbus SE", context: "Synthetic public context" },
+    input: { name: "Airbus SE", context: `Source choisie ${sourceUrl}` },
     provider: {
       async research() {
         return options.result ?? providerResult();
@@ -1373,7 +1385,7 @@ describe("G3-R3 inspection action URL binding", () => {
       });
       expect(events.map(({ state }) => state)).toEqual([
         "accepted",
-        "resolving_identity",
+        "researching_and_resolving",
         "source_verifying",
         "building",
         "validating",
@@ -1514,7 +1526,7 @@ describe("G3-R3 inspection action URL binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "resolving_identity",
+      "researching_and_resolving",
       "source_verifying",
       "building",
       "validating",
@@ -1576,7 +1588,7 @@ describe("G3-R3 inspection action URL binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "resolving_identity",
+      "researching_and_resolving",
       "source_verifying",
       "building",
       "validating",
@@ -1801,7 +1813,7 @@ describe("M5-R3 verified document title binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "resolving_identity",
+      "researching_and_resolving",
       "source_verifying",
       "building",
       "validating",
@@ -1816,12 +1828,13 @@ describe("M5-R3 verified document title binding", () => {
     });
     expect(completed.dossier.evidence[0]?.excerpt).toBe(claim);
     expect(completed.receipt.sourceCount).toBe(1);
+    expect(completed.receipt.sourceFetchCount).toBe(1);
+    expect(completed.receipt.excerptVerificationCount).toBe(2);
     expect(completed.dossier.claims[0]?.presentation_reason).toContain(
       "extrait exact retrouvé",
     );
     expect(validateResearchDossier(completed.dossier)).toMatchObject({ ok: true });
-    expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
-    expect(source.transport.requests.length).toBeLessThanOrEqual(2);
+    expect(source.transport.requests).toHaveLength(1);
   });
 
   it.each([
@@ -1897,7 +1910,7 @@ describe("M5-R3 verified document title binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "resolving_identity",
+      "researching_and_resolving",
       "source_verifying",
       "building",
       "validating",

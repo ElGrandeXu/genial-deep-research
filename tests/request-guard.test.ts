@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createResearchPostHandler,
+  GET,
   maxDuration,
 } from "../src/app/api/research/route";
 import {
@@ -25,6 +26,17 @@ function requestFor(address: string, body: unknown = { name: "Airbus" }): Reques
 }
 
 describe("research request guard", () => {
+  it("returns a no-store 405 for GET without touching the provider", async () => {
+    const response = GET();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("POST");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "method_not_allowed" },
+    });
+  });
+
   it("admits eight requests per hashed address in ten minutes", () => {
     let currentTime = 1_000;
     const guard = createResearchRequestGuard({

@@ -87,6 +87,9 @@ if ($SkipBuild) {
 } else {
     Invoke-Pnpm -Arguments @('run', 'build')
     Invoke-RepositoryScript -Name 'verify-client-bundle.ps1'
+    Invoke-Pnpm -Arguments @('run', 'test:e2e')
+    Write-Output 'BROWSER_E2E_OK: Chromium production-build journeys passed'
+    Invoke-Pnpm -Arguments @('run', 'lighthouse:check')
 }
 
 if ($Offline) {

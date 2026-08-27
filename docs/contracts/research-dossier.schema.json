@@ -486,7 +486,8 @@
                 "$ref": "#/$defs/id"
               },
               "candidates": {
-                "minItems": 1
+                "minItems": 1,
+                "maxItems": 1
               }
             }
           },

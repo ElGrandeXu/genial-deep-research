@@ -1,0 +1,16 @@
+Command: corepack pnpm run test:e2e
+Date: 2026-08-27
+Exit: 1
+
+Playwright production server did not start.
+Observed command: node tools/run-next.mjs start "--" "-H" "127.0.0.1" "-p" "3100"
+Raw error: Invalid project directory provided, no such directory: C:\Users\maxer\Desktop\GENIAL\-H
+
+Decision: configuration failure; remove the extra pnpm argument separator and rerun unchanged browser scenarios.
+
+Second run: 6 passed, 2 failed.
+- 390 px inline error locator matched both `#name-error` and Next route announcer.
+- cancellation phase locator matched both the live heading and timeline item.
+Both failures were strict-locator ambiguity; screenshots and traces were retained under `test-results/` for the run.
+
+Third run: 7 passed, 1 failed. The exact partial stop reason was correctly present inside the closed execution-details disclosure; the assertion was updated to open that native disclosure before checking visibility.

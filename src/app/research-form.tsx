@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { publisherDomainForUrl } from "../domain/publisher-domain";
 import type { ResearchDossier } from "../domain/research-dossier";
 
 type EntityType = "auto" | "person" | "company";
 type UiStatus = "idle" | "running" | "completed" | "failed" | "cancelled";
 type ProgressState =
   | "accepted"
-  | "resolving_identity"
-  | "searching"
+  | "researching_and_resolving"
   | "source_verifying"
   | "building"
   | "validating"
@@ -18,6 +18,12 @@ type ProgressState =
 
 type DossierClaim = ResearchDossier["claims"][number];
 type DossierSource = ResearchDossier["sources"][number];
+
+interface ClarificationSelection {
+  readonly name: string;
+  readonly entityType: "person" | "company";
+  readonly sourceUrl: string;
+}
 
 interface ProgressEventBase {
   readonly state: ProgressState;
@@ -45,8 +51,7 @@ type ResearchEvent = ProgressEventBase | CompletedEvent | FailedEvent;
 
 const PROGRESS_STATES: readonly ProgressState[] = [
   "accepted",
-  "resolving_identity",
-  "searching",
+  "researching_and_resolving",
   "source_verifying",
   "building",
   "validating",
@@ -55,9 +60,8 @@ const PROGRESS_STATES: readonly ProgressState[] = [
 ];
 
 const STEP_LABELS: Readonly<Record<ProgressState, string>> = {
-  accepted: "Demande reçue",
-  resolving_identity: "Résolution de l’identité",
-  searching: "Recherche de pages publiques",
+  accepted: "Demande admise",
+  researching_and_resolving: "Recherche Web et résolution",
   source_verifying: "Lecture et vérification des sources",
   building: "Construction du dossier",
   validating: "Contrôle final des preuves",
@@ -85,7 +89,6 @@ const EVIDENCE_RELATION_LABELS: Readonly<
 };
 
 const CATEGORY_ORDER = [
-  "Identité",
   "Activité",
   "Rôles et responsabilités",
   "Présence géographique",
@@ -114,7 +117,7 @@ function isStringArray(value: unknown): value is string[] {
 function isFactPeriod(value: unknown): boolean {
   return (
     isRecord(value) &&
-    typeof value.status === "string" &&
+    ["stated", "derived", "unknown"].includes(String(value.status)) &&
     isNullableString(value.start) &&
     isNullableString(value.end) &&
     isNullableString(value.as_of) &&
@@ -136,6 +139,7 @@ function isDossier(value: unknown): value is ResearchDossier {
   const request = value.request;
   const identity = value.identity;
   const receipt = value.receipt;
+  const presentation = value.presentation;
   if (!isRecord(request) || typeof request.name !== "string") return false;
   if (
     !isRecord(identity) ||
@@ -153,6 +157,24 @@ function isDossier(value: unknown): value is ResearchDossier {
         isRecord(candidate.discriminators) &&
         Object.values(candidate.discriminators).every((item) => typeof item === "string"),
     )
+  ) {
+    return false;
+  }
+  if (
+    !isRecord(presentation) ||
+    !Array.isArray(presentation.summary_items) ||
+    !presentation.summary_items.every(
+      (item) =>
+        isRecord(item) &&
+        (item.kind === "claim" || item.kind === "inference") &&
+        typeof item.ref_id === "string",
+    ) ||
+    !isStringArray(presentation.key_fact_claim_ids) ||
+    !isStringArray(presentation.recent_signal_claim_ids) ||
+    !isStringArray(presentation.ambiguity_claim_ids) ||
+    !isStringArray(presentation.contradiction_ids) ||
+    !isStringArray(presentation.unknown_ids) ||
+    !isStringArray(presentation.source_ids)
   ) {
     return false;
   }
@@ -199,6 +221,9 @@ function isDossier(value: unknown): value is ResearchDossier {
         typeof evidence.excerpt === "string" &&
         typeof evidence.locator === "string" &&
         typeof evidence.relation === "string" &&
+        isRecord(evidence.scope) &&
+        typeof evidence.scope.type === "string" &&
+        isNullableString(evidence.scope.label) &&
         isFactPeriod(evidence.fact_period),
     )
   ) {
@@ -216,6 +241,9 @@ function isDossier(value: unknown): value is ResearchDossier {
         typeof claim.temporal_status === "string" &&
         typeof claim.presentation_decision === "string" &&
         isStringArray(claim.evidence_ids) &&
+        isRecord(claim.scope) &&
+        typeof claim.scope.type === "string" &&
+        isNullableString(claim.scope.label) &&
         isFactPeriod(claim.fact_period),
     )
   ) {
@@ -242,6 +270,25 @@ function isDossier(value: unknown): value is ResearchDossier {
             isNullableString(version.unit) &&
             isNullableString(version.currency),
         ),
+    )
+  ) {
+    return false;
+  }
+  if (
+    !Array.isArray(value.execution_steps) ||
+    !value.execution_steps.every(
+      (step) =>
+        isRecord(step) &&
+        typeof step.step_id === "string" &&
+        typeof step.invocation_id === "string" &&
+        typeof step.operation === "string" &&
+        typeof step.status === "string" &&
+        typeof step.attempt === "number" &&
+        isNullableString(step.retry_of) &&
+        isNullableString(step.started_at) &&
+        isNullableString(step.ended_at) &&
+        (step.duration_ms === null || typeof step.duration_ms === "number") &&
+        isNullableString(step.error_code),
     )
   ) {
     return false;
@@ -314,7 +361,7 @@ function parseProgressEvent(value: unknown): ResearchEvent {
   return value as unknown as ProgressEventBase;
 }
 
-function decodeSseBlock(block: string): ResearchEvent | undefined {
+export function decodeSseBlock(block: string): ResearchEvent | undefined {
   const dataLines: string[] = [];
   let eventName: string | undefined;
 
@@ -377,7 +424,7 @@ function sourceUrl(source: DossierSource): string | undefined {
   const candidate = source.resolved_url ?? source.canonical_url ?? source.provider_url;
   try {
     const url = new URL(candidate);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.href : undefined;
+    return url.protocol === "https:" ? url.href : undefined;
   } catch {
     return undefined;
   }
@@ -389,6 +436,11 @@ function sourceDomain(source: DossierSource): string {
   return new URL(url).hostname.replace(/^www\./u, "");
 }
 
+function sourcePublisherDomain(source: DossierSource): string {
+  const url = sourceUrl(source);
+  return url === undefined ? "domaine inconnu" : publisherDomainForUrl(url) ?? "domaine inconnu";
+}
+
 function formatPeriod(period: DossierClaim["fact_period"]): string {
   if (period.label !== null) return period.label;
   if (period.as_of !== null) return `au ${formatDate(period.as_of)}`;
@@ -398,6 +450,27 @@ function formatPeriod(period: DossierClaim["fact_period"]): string {
   if (period.start !== null) return `depuis le ${formatDate(period.start)}`;
   if (period.end !== null) return `jusqu’au ${formatDate(period.end)}`;
   return "période inconnue";
+}
+
+const SCOPE_TYPE_LABELS: Readonly<Record<DossierClaim["scope"]["type"], string>> = {
+  person: "personne",
+  company: "société",
+  group: "groupe",
+  subsidiary: "filiale",
+  brand: "marque",
+  country: "pays",
+  establishment: "établissement",
+  undetermined: "indéterminée",
+};
+
+function formatScope(scope: DossierClaim["scope"]): string {
+  const type = SCOPE_TYPE_LABELS[scope.type];
+  return scope.label === null ? type : `${scope.label} — ${type}`;
+}
+
+function requiresVisibleScope(claim: DossierClaim): boolean {
+  const prefix = claim.predicate.split(".", 1)[0];
+  return prefix === "metric" || prefix === "role" || prefix === "event" || prefix === "recent_signal";
 }
 
 function formatLocator(value: string): string {
@@ -417,37 +490,46 @@ function formatLocator(value: string): string {
 }
 
 function freshnessLabel(claim: DossierClaim): string {
-  if (claim.temporal_status === "historical") return "Information historique";
-  if (claim.temporal_status === "current") return "Fraîcheur connue";
-  return "Fraîcheur inconnue";
+  if (claim.temporal_status === "historical") {
+    return "Fait daté · validité actuelle non établie";
+  }
+  if (claim.temporal_status === "current") {
+    return "État explicitement observé à la date indiquée";
+  }
+  return "Validité actuelle non établie";
 }
 
-function categoryForClaim(claim: DossierClaim): (typeof CATEGORY_ORDER)[number] {
-  const predicate = claim.predicate.toLocaleLowerCase("fr-FR");
-  if (/ident|legal|founded|creation|name|status/u.test(predicate)) return "Identité";
-  if (/activ|industry|sector|business|product|service|mission/u.test(predicate)) return "Activité";
-  if (/role|position|leader|executive|director|founder|employ/u.test(predicate)) {
-    return "Rôles et responsabilités";
-  }
-  if (/geograph|location|address|city|country|headquarter|presence/u.test(predicate)) {
-    return "Présence géographique";
-  }
-  if (/revenue|turnover|employee|workforce|funding|valuation|metric|amount|number/u.test(predicate)) {
-    return "Chiffres clés";
-  }
-  if (/event|recent|launch|announce|acquisition|signal|news|date/u.test(predicate)) {
-    return "Événements et signaux récents";
-  }
-  return "Autres faits";
+const CATEGORY_BY_PREFIX: Readonly<Record<string, (typeof CATEGORY_ORDER)[number]>> = {
+  activity: "Activité",
+  role: "Rôles et responsabilités",
+  geography: "Présence géographique",
+  metric: "Chiffres clés",
+  event: "Événements et signaux récents",
+  recent_signal: "Événements et signaux récents",
+  other: "Autres faits",
+};
+
+export function categoryForClaim(claim: DossierClaim): (typeof CATEGORY_ORDER)[number] {
+  const prefix = claim.predicate.split(".", 1)[0]?.toLocaleLowerCase("fr-FR") ?? "";
+  return CATEGORY_BY_PREFIX[prefix] ?? "Autres faits";
 }
 
-function dossierDisplayIssue(dossier: ResearchDossier): string | undefined {
+function normalizedProofText(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/gu, " ").trim();
+}
+
+export function shouldDisplayEvidenceExcerpt(statement: string, excerpt: string): boolean {
+  return normalizedProofText(statement) !== normalizedProofText(excerpt);
+}
+
+export function dossierDisplayIssue(dossier: ResearchDossier): string | undefined {
   const evidenceById = new Map(dossier.evidence.map((item) => [item.evidence_id, item]));
   const sourceById = new Map(dossier.sources.map((item) => [item.source_id, item]));
   const claimById = new Map(dossier.claims.map((item) => [item.claim_id, item]));
   const displayFacts = dossier.claims.filter(
     (claim) => claim.presentation_decision === "display_fact",
   );
+  const businessFacts = displayFacts.filter((claim) => !claim.predicate.startsWith("identity."));
 
   if (dossier.identity.status !== "resolved" && displayFacts.length > 0) {
     return "Des faits ont été attribués alors que l’identité n’est pas résolue.";
@@ -457,6 +539,38 @@ function dossierDisplayIssue(dossier: ResearchDossier): string | undefined {
   }
   if (dossier.global_status === "complete_within_scope" && displayFacts.length === 0) {
     return "Le dossier est déclaré complet sans fait vérifiable.";
+  }
+  if (
+    dossier.identity.status === "resolved" &&
+    (dossier.identity.candidates.length !== 1 ||
+      dossier.identity.selected_subject_id !== dossier.identity.candidates[0]?.subject_id)
+  ) {
+    return "L’identité résolue ne désigne pas exactement un candidat vérifié.";
+  }
+  if (
+    dossier.global_status === "complete_within_scope" &&
+    (businessFacts.length < 3 || businessFacts.length > 6)
+  ) {
+    return "Le dossier complet ne contient pas entre trois et six faits métier.";
+  }
+  if (
+    dossier.global_status === "complete_within_scope" &&
+    new Set(businessFacts.map((claim) => claim.predicate.split(".", 1)[0])).size < 2
+  ) {
+    return "Le dossier complet ne couvre pas deux catégories métier.";
+  }
+  if (dossier.presentation.summary_items.length > 3) {
+    return "La lecture rapide dépasse trois références.";
+  }
+  for (const item of dossier.presentation.summary_items) {
+    const claim = item.kind === "claim" ? claimById.get(item.ref_id) : undefined;
+    if (
+      claim === undefined ||
+      claim.presentation_decision !== "display_fact" ||
+      claim.predicate.startsWith("identity.")
+    ) {
+      return "La lecture rapide pointe vers un fait métier non vérifiable.";
+    }
   }
 
   const evidenceIds = new Set<string>();
@@ -471,23 +585,39 @@ function dossierDisplayIssue(dossier: ResearchDossier): string | undefined {
       return "Une affirmation affichable ne possède aucune preuve liée.";
     }
     let hasSupportingEvidence = false;
+    let hasExactSupportingEvidence = false;
     for (const evidenceId of claim.evidence_ids) {
       const evidence = evidenceById.get(evidenceId);
       if (
         evidence === undefined ||
         evidence.claim_id !== claim.claim_id ||
         evidence.entity_id !== claim.subject_id ||
-        evidence.verification_method !== "source_content" ||
-        evidence.excerpt.normalize("NFKC").replace(/\s+/gu, " ").trim() !==
-          claim.statement.normalize("NFKC").replace(/\s+/gu, " ").trim()
+        evidence.verification_method !== "source_content"
       ) {
-        return "Une affirmation n’est pas identique à sa preuve source vérifiée.";
+        return "Une affirmation pointe vers une preuve source incohérente.";
       }
-      if (evidence.relation === "supports") hasSupportingEvidence = true;
+      if (evidence.relation === "supports") {
+        hasSupportingEvidence = true;
+        if (!shouldDisplayEvidenceExcerpt(claim.statement, evidence.excerpt)) {
+          hasExactSupportingEvidence = true;
+        }
+      }
       evidenceIds.add(evidenceId);
     }
     if (claim.presentation_decision === "display_fact" && !hasSupportingEvidence) {
       return "Une affirmation affichable ne possède aucune preuve qui l’étaye.";
+    }
+    if (claim.presentation_decision === "display_fact" && !hasExactSupportingEvidence) {
+      return "Une affirmation n’est identique à aucun extrait source vérifié.";
+    }
+    if (
+      claim.presentation_decision === "display_fact" &&
+      claim.predicate.startsWith("metric.") &&
+      (claim.fact_period.status === "unknown" ||
+        claim.scope.type === "undetermined" ||
+        claim.scope.label === null)
+    ) {
+      return "Une métrique affichée ne possède pas de période et de portée exploitables.";
     }
   }
 
@@ -526,48 +656,94 @@ function dossierDisplayIssue(dossier: ResearchDossier): string | undefined {
       return "Une preuve ne mène pas vers une page source ouvrable.";
     }
   }
+  if (dossier.global_status === "complete_within_scope") {
+    const businessSourceIds = new Set(
+      businessFacts.flatMap(({ evidence_ids }) => evidence_ids).flatMap((evidenceId) => {
+        const item = evidenceById.get(evidenceId);
+        return item === undefined ? [] : [item.source_id];
+      }),
+    );
+    const businessSources = [...businessSourceIds].flatMap((sourceId) => {
+      const source = sourceById.get(sourceId);
+      return source === undefined ? [] : [source];
+    });
+    if (new Set(businessSources.map(sourceUrl)).size < 2) {
+      return "Le dossier complet ne possède pas deux pages métier ouvrables.";
+    }
+    if (new Set(businessSources.map(sourcePublisherDomain)).size < 2) {
+      return "Le dossier complet ne possède pas deux éditeurs distincts.";
+    }
+    if (dossier.contradictions.some(({ visible }) => visible)) {
+      return "Un dossier complet ne peut pas masquer une contradiction visible.";
+    }
+  }
   return undefined;
 }
 
 function EvidenceList({
   dossier,
   evidenceIds,
-}: Readonly<{ dossier: ResearchDossier; evidenceIds: readonly string[] }>) {
+  statement,
+}: Readonly<{
+  dossier: ResearchDossier;
+  evidenceIds: readonly string[];
+  statement: string;
+}>) {
   const evidenceById = new Map(dossier.evidence.map((item) => [item.evidence_id, item]));
   const sourceById = new Map(dossier.sources.map((item) => [item.source_id, item]));
+  const records = evidenceIds.flatMap((evidenceId) => {
+    const evidence = evidenceById.get(evidenceId);
+    if (evidence === undefined) return [];
+    const source = sourceById.get(evidence.source_id);
+    if (source === undefined) return [];
+    const href = sourceUrl(source);
+    return href === undefined ? [] : [{ evidence, source, href }];
+  });
+
+  function card(
+    record: (typeof records)[number],
+    index: number,
+  ) {
+    const { evidence, source, href } = record;
+    return (
+      <aside className="evidence-card" key={evidence.evidence_id}>
+        <div className="evidence-heading">
+          <span>Preuve {index + 1}</span>
+          <span>{EVIDENCE_RELATION_LABELS[evidence.relation]}</span>
+        </div>
+        {shouldDisplayEvidenceExcerpt(statement, evidence.excerpt) ? (
+          <blockquote className="evidence-excerpt">{evidence.excerpt}</blockquote>
+        ) : null}
+        <a className="source-link" href={href} target="_blank" rel="noopener noreferrer">
+          <span className="source-title">{source.title}</span>
+          <span className="source-publisher">
+            {sourceAttribution(source)} <span aria-hidden="true">↗</span>
+          </span>
+          <span className="sr-only">Ouvrir la source dans un nouvel onglet</span>
+        </a>
+        <dl className="source-meta">
+          <div><dt>Publication</dt><dd>{formatDate(source.published_at)}</dd></div>
+          <div><dt>Consultation</dt><dd>{formatDate(source.accessed_at)}</dd></div>
+          <div><dt>Période du fait</dt><dd>{formatPeriod(evidence.fact_period)}</dd></div>
+          <div><dt>Portée</dt><dd>{formatScope(evidence.scope)}</dd></div>
+          <div><dt>Repère</dt><dd>{formatLocator(evidence.locator)}</dd></div>
+        </dl>
+      </aside>
+    );
+  }
+
+  const primary = records[0];
+  const additional = records.slice(1);
 
   return (
     <div className="evidence-list">
-      {evidenceIds.map((evidenceId, index) => {
-        const evidence = evidenceById.get(evidenceId);
-        if (evidence === undefined) return null;
-        const source = sourceById.get(evidence.source_id);
-        if (source === undefined) return null;
-        const href = sourceUrl(source);
-        if (href === undefined) return null;
-        return (
-          <aside className="evidence-card" key={evidence.evidence_id}>
-            <div className="evidence-heading">
-              <span>Preuve {index + 1}</span>
-              <span>{EVIDENCE_RELATION_LABELS[evidence.relation]}</span>
-            </div>
-            <blockquote className="evidence-excerpt">{evidence.excerpt}</blockquote>
-            <a className="source-link" href={href} target="_blank" rel="noopener noreferrer">
-              <span className="source-title">{source.title}</span>
-              <span className="source-publisher">
-                {sourceAttribution(source)} <span aria-hidden="true">↗</span>
-              </span>
-              <span className="sr-only">Ouvrir la source dans un nouvel onglet</span>
-            </a>
-            <dl className="source-meta">
-              <div><dt>Publication</dt><dd>{formatDate(source.published_at)}</dd></div>
-              <div><dt>Consultation</dt><dd>{formatDate(source.accessed_at)}</dd></div>
-              <div><dt>Période du fait</dt><dd>{formatPeriod(evidence.fact_period)}</dd></div>
-              <div><dt>Repère</dt><dd>{formatLocator(evidence.locator)}</dd></div>
-            </dl>
-          </aside>
-        );
-      })}
+      {primary === undefined ? null : card(primary, 0)}
+      {additional.length > 0 ? (
+        <details className="additional-evidence">
+          <summary>{additional.length} preuve{additional.length > 1 ? "s" : ""} complémentaire{additional.length > 1 ? "s" : ""}</summary>
+          {additional.map((record, index) => card(record, index + 1))}
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -584,9 +760,10 @@ function ClaimCard({
         <div className="claim-context" aria-label="Temporalité de l’affirmation">
           <span>{formatPeriod(claim.fact_period)}</span>
           <span>{freshnessLabel(claim)}</span>
+          {requiresVisibleScope(claim) ? <span>Portée : {formatScope(claim.scope)}</span> : null}
         </div>
       </div>
-      <EvidenceList dossier={dossier} evidenceIds={claim.evidence_ids} />
+      <EvidenceList dossier={dossier} evidenceIds={claim.evidence_ids} statement={claim.statement} />
     </article>
   );
 }
@@ -594,6 +771,12 @@ function ClaimCard({
 function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
   const selected = dossier.identity.candidates.find(
     (candidate) => candidate.subject_id === dossier.identity.selected_subject_id,
+  );
+  const identityProof = dossier.claims.find(
+    (claim) =>
+      claim.subject_id === dossier.identity.selected_subject_id &&
+      claim.predicate.startsWith("identity.") &&
+      claim.presentation_decision === "display_fact",
   );
 
   return (
@@ -603,14 +786,71 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
         <h3 id="identity-title">{selected?.display_name ?? dossier.request.name}</h3>
       </div>
       <p className="identity-copy">
-        Entité distinguée pour ce dossier. Les faits attribués et leurs preuves sont
-        présentés ensemble ci-dessous.
+        {dossier.identity.resolution_reason}
       </p>
+      {identityProof === undefined ? null : (
+        <div className="identity-proof">
+          <strong>Preuve d’identité vérifiée</strong>
+          <p>{identityProof.statement}</p>
+          <EvidenceList
+            dossier={dossier}
+            evidenceIds={identityProof.evidence_ids}
+            statement={identityProof.statement}
+          />
+        </div>
+      )}
     </section>
   );
 }
 
-function AmbiguityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
+function QuickRead({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
+  const claimById = new Map(dossier.claims.map((claim) => [claim.claim_id, claim]));
+  const evidenceById = new Map(dossier.evidence.map((item) => [item.evidence_id, item]));
+  const sourceById = new Map(dossier.sources.map((source) => [source.source_id, source]));
+  const items = dossier.presentation.summary_items.flatMap((item) => {
+    if (item.kind !== "claim") return [];
+    const claim = claimById.get(item.ref_id);
+    if (claim === undefined || claim.predicate.startsWith("identity.")) return [];
+    const primaryEvidence = claim.evidence_ids.flatMap((evidenceId) => {
+      const evidence = evidenceById.get(evidenceId);
+      return evidence === undefined ? [] : [evidence];
+    })[0];
+    const source = primaryEvidence === undefined ? undefined : sourceById.get(primaryEvidence.source_id);
+    const href = source === undefined ? undefined : sourceUrl(source);
+    return [{ claim, source, href }];
+  });
+  if (items.length === 0) return null;
+
+  return (
+    <section className="result-section quick-read" aria-labelledby="quick-read-title">
+      <div className="section-intro">
+        <p className="section-kicker">Résumé extractif</p>
+        <h3 id="quick-read-title">Lecture rapide — extraits vérifiés</h3>
+      </div>
+      <ol>
+        {items.map(({ claim, source, href }) => (
+          <li key={claim.claim_id}>
+            <p>{claim.statement}</p>
+            {source !== undefined && href !== undefined ? (
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {sourceAttribution(source)} <span aria-hidden="true">↗</span>
+                <span className="sr-only">Ouvrir la source dans un nouvel onglet</span>
+              </a>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function AmbiguityPanel({
+  dossier,
+  onClarify,
+}: Readonly<{
+  dossier: ResearchDossier;
+  onClarify: (selection: ClarificationSelection) => void;
+}>) {
   const ambiguousClaims = dossier.claims.filter(
     (claim) =>
       claim.presentation_decision === "display_ambiguity" &&
@@ -640,6 +880,16 @@ function AmbiguityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
           );
           for (const claim of candidateClaims) assignedClaimIds.add(claim.claim_id);
           const discriminators = Object.entries(candidate.discriminators);
+          const anchorEvidence = candidateClaims.flatMap(({ evidence_ids }) => evidence_ids).flatMap(
+            (evidenceId) => {
+              const item = dossier.evidence.find(({ evidence_id }) => evidence_id === evidenceId);
+              return item === undefined ? [] : [item];
+            },
+          )[0];
+          const anchorSource = anchorEvidence === undefined
+            ? undefined
+            : dossier.sources.find(({ source_id }) => source_id === anchorEvidence.source_id);
+          const anchorUrl = anchorSource === undefined ? undefined : sourceUrl(anchorSource);
 
           return (
             <article className="candidate-card" key={candidate.subject_id}>
@@ -667,6 +917,19 @@ function AmbiguityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
                   Aucune affirmation prouvée n’est attribuable à ce candidat.
                 </p>
               )}
+              {anchorUrl === undefined ? null : (
+                <button
+                  type="button"
+                  className="candidate-action"
+                  onClick={() => onClarify({
+                    name: candidate.display_name,
+                    entityType: candidate.entity_type,
+                    sourceUrl: anchorUrl,
+                  })}
+                >
+                  Préremplir avec ce candidat
+                </button>
+              )}
             </article>
           );
         })}
@@ -692,6 +955,7 @@ function AmbiguityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
               <li key={field}>{CLARIFICATION_LABELS[field] ?? field}</li>
             ))}
           </ul>
+          <p>Le candidat choisi et sa page source seront revérifiés lors d’une nouvelle soumission. Le clic ne lance aucun appel.</p>
         </div>
       ) : null}
     </section>
@@ -728,7 +992,11 @@ function Contradictions({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
                     {version.currency === null ? "" : ` ${version.currency}`}
                   </p>
                   <p className="version-statement">{claim.statement}</p>
-                  <EvidenceList dossier={dossier} evidenceIds={version.evidence_ids} />
+                  <EvidenceList
+                    dossier={dossier}
+                    evidenceIds={version.evidence_ids}
+                    statement={claim.statement}
+                  />
                 </section>
               );
             })}
@@ -834,11 +1102,19 @@ function FailureReceiptDetails({ failure }: Readonly<{ failure: FailedEvent }>) 
   );
 }
 
-function DossierResult({ completed }: Readonly<{ completed: CompletedEvent }>) {
+function DossierResult({
+  completed,
+  onClarify,
+}: Readonly<{
+  completed: CompletedEvent;
+  onClarify: (selection: ClarificationSelection) => void;
+}>) {
   const { dossier } = completed;
   const issue = dossierDisplayIssue(dossier);
   const displayFacts = dossier.claims.filter(
-    (claim) => claim.presentation_decision === "display_fact",
+    (claim) =>
+      claim.presentation_decision === "display_fact" &&
+      !claim.predicate.startsWith("identity."),
   );
   const groupedFacts = new Map<string, DossierClaim[]>();
   for (const category of CATEGORY_ORDER) groupedFacts.set(category, []);
@@ -920,7 +1196,7 @@ function DossierResult({ completed }: Readonly<{ completed: CompletedEvent }>) {
             </section>
           ) : null}
 
-          {isAmbiguous ? <AmbiguityPanel dossier={dossier} /> : null}
+          {isAmbiguous ? <AmbiguityPanel dossier={dossier} onClarify={onClarify} /> : null}
 
           {isSilence && !isAmbiguous ? (
             <section className="terminal-message terminal-quiet">
@@ -936,12 +1212,14 @@ function DossierResult({ completed }: Readonly<{ completed: CompletedEvent }>) {
             <IdentityPanel dossier={dossier} />
           ) : null}
 
+          {!isAmbiguous && !isTechnical ? <QuickRead dossier={dossier} /> : null}
+
           {!isAmbiguous && !isTechnical && displayFacts.length > 0 ? (
             <section className="facts-section" aria-labelledby="facts-title">
               <div className="section-intro facts-intro">
                 <p className="section-kicker">Dossier factuel</p>
                 <h3 id="facts-title">
-                  {displayFacts.length} {displayFacts.length > 1 ? "faits étayés" : "fait étayé"}
+                  {displayFacts.length} {displayFacts.length > 1 ? "faits métier étayés" : "fait métier étayé"}
                 </h3>
               </div>
               {[...groupedFacts.entries()].map(([category, claims], categoryIndex) =>
@@ -978,11 +1256,15 @@ export function ResearchForm() {
   const [completed, setCompleted] = useState<CompletedEvent>();
   const [failure, setFailure] = useState<FailedEvent>();
   const [requestError, setRequestError] = useState<string>();
+  const [nameError, setNameError] = useState<string>();
+  const [clarificationNotice, setClarificationNotice] = useState<string>();
   const [elapsedMs, setElapsedMs] = useState(0);
   const controllerRef = useRef<AbortController | undefined>(undefined);
   const startedAtRef = useRef(0);
   const resultRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -1026,7 +1308,11 @@ export function ResearchForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedName = name.trim();
-    if (normalizedName.length < 2) return;
+    if (normalizedName.length < 2) {
+      setNameError("Saisissez au moins deux caractères autres que des espaces.");
+      nameInputRef.current?.focus();
+      return;
+    }
 
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -1036,6 +1322,8 @@ export function ResearchForm() {
     setCompleted(undefined);
     setFailure(undefined);
     setRequestError(undefined);
+    setNameError(undefined);
+    setClarificationNotice(undefined);
     setStatus("running");
 
     try {
@@ -1139,6 +1427,20 @@ export function ResearchForm() {
     controllerRef.current?.abort();
   }
 
+  function prepareClarification(selection: ClarificationSelection) {
+    setName(selection.name);
+    setEntityType(selection.entityType);
+    setContext(`Source d’identité choisie à revérifier : ${selection.sourceUrl}`);
+    setNameError(undefined);
+    setClarificationNotice(
+      `Formulaire prérempli pour ${selection.name}. Vérifiez le contexte puis relancez manuellement la recherche.`,
+    );
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      nameInputRef.current?.focus();
+    });
+  }
+
   const terminalMessage =
     status === "cancelled"
       ? "Recherche annulée. Aucun dossier n’a été produit."
@@ -1147,7 +1449,13 @@ export function ResearchForm() {
   return (
     <section className="workspace" aria-labelledby="research-title">
       <div className="search-column">
-        <form onSubmit={submit} className="search-form" aria-busy={status === "running"}>
+        <form
+          ref={formRef}
+          onSubmit={submit}
+          className="search-form"
+          aria-busy={status === "running"}
+          noValidate
+        >
           <div className="section-heading">
             <p className="section-kicker">Nouvelle recherche</p>
             <h2 id="research-title">Qui voulez-vous examiner&nbsp;?</h2>
@@ -1169,17 +1477,26 @@ export function ResearchForm() {
 
           <label className="field-label" htmlFor="entity-name">Nom</label>
           <input
+            ref={nameInputRef}
             id="entity-name"
             name="name"
             required
             minLength={2}
             maxLength={120}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (event.target.value.trim().length >= 2) setNameError(undefined);
+            }}
             placeholder="Ex. Thomas Pesquet ou Airbus"
             autoComplete="off"
+            aria-invalid={nameError === undefined ? undefined : true}
+            aria-describedby={nameError === undefined ? undefined : "name-error"}
             disabled={status === "running"}
           />
+          {nameError === undefined ? null : (
+            <p id="name-error" className="field-error" role="alert">{nameError}</p>
+          )}
 
           <label className="field-label" htmlFor="entity-context">
             Contexte <span>facultatif, recommandé</span>
@@ -1199,6 +1516,9 @@ export function ResearchForm() {
           <p id="privacy-note" className="privacy-note">
             Utilisez seulement des informations publiques. N’ajoutez aucune donnée privée ou sensible.
           </p>
+          {clarificationNotice === undefined ? null : (
+            <p className="clarification-notice" role="status">{clarificationNotice}</p>
+          )}
 
           <div className="actions">
             <button type="submit" disabled={status === "running"}>
@@ -1264,7 +1584,7 @@ export function ResearchForm() {
 
       {completed !== undefined ? (
         <div className="result-focus" ref={resultRef} tabIndex={-1}>
-          <DossierResult completed={completed} />
+          <DossierResult completed={completed} onClarify={prepareClarification} />
         </div>
       ) : null}
     </section>
