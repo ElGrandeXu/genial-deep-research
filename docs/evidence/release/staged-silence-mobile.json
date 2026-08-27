@@ -1,0 +1,181 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T18:38:08.424Z",
+  "deployment_url": "https://genial-deep-research-hkfqmqess-el-grande-xue.vercel.app",
+  "input": {
+    "name": "Société Azur Pamplemousse 9137",
+    "entityType": "company",
+    "context": "Nom fourni sans pays, ville ni site officiel"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "442d0191-e4b4-4287-9faf-9459932bb8aa",
+    "elapsedMs": 5249,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-ac48d54d-2f05-4b7c-818b-46985204cdf2",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-787fe69e-1a9c-458d-9637-29f9170ccee9",
+        "submitted_at": "2026-08-27T18:38:03.654Z",
+        "name": "Société Azur Pamplemousse 9137",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Nom fourni sans pays, ville ni site officiel"
+        },
+        "total_character_count": 74
+      },
+      "identity": {
+        "status": "not_found_within_scope",
+        "selected_subject_id": null,
+        "candidates": [],
+        "resolution_reason": "Aucune identité suffisamment prouvée n’est retenue dans ce périmètre.",
+        "clarification_fields": []
+      },
+      "sources": [],
+      "evidence": [],
+      "claims": [],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-0a20f527-8501-45a3-8b8d-b64b028e34fd",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : identity, activity, role, geography, metric, event, recent_signal, other.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-443331aa-fca8-4c01-aab9-ea1f0987858c",
+          "invocation_id": "invocation-9c3c9c2f-9557-4331-aa49-7f307ebe0b21",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:03.654Z",
+          "ended_at": "2026-08-27T18:38:08.894Z",
+          "duration_ms": 5240,
+          "error_code": null
+        },
+        {
+          "step_id": "step-6ca6650d-a71a-4c4d-9ace-fc7e2d95c98d",
+          "invocation_id": "invocation-8e6fa4dc-6538-44ae-a7e3-f9e9cd41d180",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:03.654Z",
+          "ended_at": "2026-08-27T18:38:08.894Z",
+          "duration_ms": 0,
+          "error_code": null
+        },
+        {
+          "step_id": "step-deda041a-8a30-4952-bc27-84fb7afef065",
+          "invocation_id": "invocation-2ad2cce5-b96a-42d1-a313-ce0e634c1852",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:03.654Z",
+          "ended_at": "2026-08-27T18:38:08.894Z",
+          "duration_ms": 1,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [],
+        "key_fact_claim_ids": [],
+        "recent_signal_claim_ids": [],
+        "ambiguity_claim_ids": [],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-0a20f527-8501-45a3-8b8d-b64b028e34fd"
+        ],
+        "source_ids": []
+      },
+      "receipt": {
+        "run_id": "442d0191-e4b4-4287-9faf-9459932bb8aa",
+        "started_at": "2026-08-27T18:38:03.654Z",
+        "completed_at": "2026-08-27T18:38:08.902Z",
+        "total_duration_ms": 5249,
+        "latency_ms": 5249,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 13700,
+          "output_tokens": 158,
+          "total_tokens": 13858
+        },
+        "cost": {
+          "amount_usd": 0.01208396,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identité et présence publique"
+          ],
+          "stop_reason": "Les preuves publiques vérifiables sont insuffisantes."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "silence",
+      "global_status": "insufficient_evidence",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "La fraîcheur reste inconnue lorsqu’aucune date explicite n’apparaît dans l’extrait.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "442d0191-e4b4-4287-9faf-9459932bb8aa",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 1,
+      "webSearchQueryCount": 1,
+      "webSearchInspectionCount": 0,
+      "sourceFetchCount": 0,
+      "inputTokens": 13700,
+      "cachedInputTokens": 4698,
+      "outputTokens": 158,
+      "reasoningTokens": 105,
+      "totalTokens": 13858,
+      "sourceCount": 0,
+      "durations": {
+        "acceptedMs": 6,
+        "searchingMs": 5240,
+        "sourceVerifyingMs": 0,
+        "validatingMs": 7,
+        "totalMs": 5249
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.01208396,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}

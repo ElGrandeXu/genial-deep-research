@@ -1,173 +1,106 @@
-# Architecture minimale — M3
+# Architecture de la release candidate
 
-Date de vérification : **2026-08-26**
+État décrit : candidat GENIAL du 27 août 2026.
 
-Statut : **baseline technique locale ; aucune recherche métier ; G3 non validé**
+## Principes
 
-## 1. Résumé
+L’architecture est volontairement une boucle verticale unique. Elle optimise la démonstration d’un dossier public fiable, pas une plateforme de veille générale. Ses invariants sont : aucune affirmation visible sans preuve directe ; aucune fusion silencieuse d’identités ; aucune confusion entre silence documentaire et panne technique ; aucune clé côté navigateur ; coût et durée bornés.
 
-L’application est un monolithe Next.js App Router en TypeScript strict. Les pages et layouts restent des composants serveur par défaut. Le navigateur ne recevra que l’interface et un flux d’événements ; les secrets, fournisseurs, validation et orchestration restent dans le runtime Node.js.
-
-La voie initiale future sera OpenAI `gpt-5.6-luna` via AI SDK Core, le package direct `@ai-sdk/openai`, Responses API et Web Search. Gemini reste un adaptateur de comparaison ou de repli non branché au chemin critique. M3 installe et type ces frontières sans appeler de fournisseur et sans créer de route de recherche.
-
-Le JSON Schema [`research-dossier.schema.json`](contracts/research-dossier.schema.json) reste l’unique contrat canonique. Ajv assure la validation structurelle à l’exécution ; `tools/verify-m2-contract.ps1` conserve les invariants référentiels et sémantiques.
-
-## 2. Exigences motrices
-
-- traçabilité `Source → Evidence → Claim → présentation` jusqu’à l’écran ;
-- aucun fait final sans preuve finale vérifiable ;
-- états explicites pour ambiguïté, conflit, silence, péremption et panne technique ;
-- attente longue décrite uniquement par des opérations réelles M2 ;
-- aucune persistance métier, aucun compte et une recherche à la fois ;
-- clés fournisseur uniquement côté serveur, absentes du build et du client ;
-- timeout, budget d’appels et reprises bornés ;
-- résultat partiel autorisé, mais seulement avec éléments déjà validés ;
-- déploiement futur compatible Vercel sans le créer en M3.
-
-## 3. Composants et responsabilités
-
-| Composant | Présent en M3 | Responsabilité |
-|---|---:|---|
-| `src/app` | oui | Page de baseline, layout serveur et route de santé sans dépendance externe. |
-| `src/domain` | oui | Validation Ajv du schéma M2 et types générés depuis ce schéma. Aucune règle métier dupliquée. |
-| `src/server/ai` | oui | Fabriques serveur paresseuses, modèle primaire et limites d’exécution. Aucune génération. |
-| Route de recherche Node | non | Future frontière HTTP, validation d’entrée, orchestration et flux d’événements. |
-| Orchestrateur de recherche | non | Futures étapes M2, budgets, timeout, collecte et composition. |
-| Adaptateurs OpenAI/Gemini | partiel | Packages directs et fabriques sans appel ; normalisation future non implémentée. |
-| Stockage métier | non | Aucun stockage, historique, cache nominatif ou reprise durable. |
-
-## 4. Frontière navigateur / serveur
-
-Le navigateur ne connaît ni `OPENAI_API_KEY`, ni `GEMINI_API_KEY`, ni les objets SDK fournisseur. Aucun identifiant fournisseur n’utilise `NEXT_PUBLIC_*`. Les composants client seront introduits uniquement pour le formulaire futur, la lecture du flux et les interactions locales.
-
-Les variables non `NEXT_PUBLIC_*` restent disponibles dans l’environnement Node serveur. Les variables publiques Next.js sont incorporées au bundle lors du build et figées à ce moment ; elles sont donc interdites pour les fournisseurs. La validation d’une clé est paresseuse : elle se produit dans la fabrique serveur au moment d’utiliser le fournisseur, pas à l’import ni au build.
-
-## 5. Flux futur d’une recherche
+## Vue d’ensemble
 
 ```mermaid
 flowchart LR
-    B[Navigateur] -->|POST + flux SSE réel| R[Route recherche\nNode.js]
-    R --> O[Orchestrateur borné\nétapes M2]
-    O -->|primaire| OA[OpenAI Responses\nWeb Search]
-    O -. comparaison future .-> GA[Gemini grounding]
-    OA --> N[Normalisation provenance]
-    GA --> N
-    N --> V[Ajv + invariants M2]
-    V -->|événements et résultat validé| B
+    U[Formulaire] -->|POST JSON same-origin| R[Route Next.js Node]
+    R -->|SSE d’étapes réelles| U
+    R --> G[Garde débit, concurrence, délai]
+    G --> O[Orchestrateur]
+    O --> A[OpenAI Responses + Web Search]
+    A --> M[Normalisation des sorties et métadonnées]
+    M --> F[Récupération directe des pages]
+    F --> V[Extrait exact + anti-SSRF]
+    V --> D[Contrat JSON + invariants métier]
+    D -->|résultat terminal| U
 ```
 
-Séquence future : valider l’entrée ; créer un contexte en mémoire lié à la requête ; émettre une étape réelle ; appeler le fournisseur dans le budget ; conserver sources, usage et métadonnées ; normaliser sans inventer ; valider ; émettre un résultat complet, partiel ou une erreur typée ; libérer l’état à la fermeture de la requête.
+## Frontière navigateur
 
-## 6. Conservation de la provenance
+`src/app/research-form.tsx` porte uniquement l’expérience interactive : type, nom, contexte, validation accessible, lecture robuste d’un flux SSE fragmenté, chronomètre, annulation et rendu. Le navigateur ne connaît ni SDK fournisseur ni secret. À la réception, il revérifie la cohérence minimale du dossier avant affichage : un fait doit pointer vers une preuve, la preuve vers une source ouvrable, et l’extrait visible doit être identique au texte de l’affirmation.
 
-OpenAI devra exposer les sources retournées par Web Search et les métadonnées de réponse. La requête devra utiliser `store: false` et la Responses API. Les citations affichées seront construites depuis les objets structurés, jamais générées librement dans la prose.
+Les états d’attente correspondent à des événements serveur : demande reçue, résolution d’identité, recherche, lecture des sources, construction, contrôle final. Il n’existe ni pourcentage simulé ni progression temporelle décorative. L’annulation ferme la requête par `AbortController`.
 
-Gemini expose `sources` et `providerMetadata.google.groundingMetadata` dans le package AI SDK stable observé. Les champs Google `groundingChunks` et `groundingSupports` relient segments et sources, mais une URL `vertexaisearch.cloud.google.com` non résolue ne satisfait pas le contrat final M2.
+## Frontière HTTP
 
-Le schéma M2 ne possède pas de champ générique pour une copie brute de toute métadonnée fournisseur. La future implémentation doit donc conserver ces métadonnées dans la mémoire de requête pendant la normalisation, écrire les champs contractuels `provider_url`, `resolved_url`, `canonical_url`, preuve et reçu, puis échouer fermé si une information nécessaire ne peut pas être représentée. Ajouter un champ au dossier exigerait une révision explicite du contrat, pas une propriété parallèle.
+`src/app/api/research/route.ts` utilise le runtime Node, un plafond Vercel de 180 secondes et un abandon applicatif à 150 secondes. Le corps JSON est limité à 1 024 octets. `Origin` et `Sec-Fetch-Site` empêchent l’usage cross-site ; les réponses sont `no-store`. Les erreurs synchrones deviennent des statuts HTTP typés ; une exécution admise diffuse ensuite des événements SSE et un seul terminal `completed` ou `failed`.
 
-## 7. Validation du contrat
+`src/server/research/request-guard.ts` accepte au plus huit requêtes par dix minutes et par empreinte IP, ainsi que deux exécutions simultanées par instance. L’IP brute n’est pas conservée : un SHA-256 avec sel éphémère sert de clé mémoire. Cette protection réduit l’abus du prototype ; elle n’est pas une limitation distribuée.
 
-- canonique : `docs/contracts/research-dossier.schema.json`, Draft 7 ;
-- structure runtime : Ajv `8.20.0` avec `ajv-formats` pour `uri` et `date-time` ;
-- types : génération déterministe par `json-schema-to-typescript`, puis comparaison exacte par `contract:types:check` ;
-- sémantique : `tools/verify-m2-contract.ps1`, six fixtures synthétiques et cinq mutations négatives ;
-- frontière future : valider les sorties fournisseur normalisées avant tout événement de résultat ou rendu.
+## Fournisseur et recherche
 
-Le type généré est un artefact dérivé. Il ne devient jamais une deuxième définition du contrat.
+Le seul chemin fournisseur est OpenAI `gpt-5.6-luna`, via AI SDK Core, le provider OpenAI Responses et l’outil Web Search. La génération utilise :
 
-`tsconfig.json` conserve `strict`, `noUncheckedIndexedAccess` et `exactOptionalPropertyTypes`. `skipLibCheck` ne masque que les déclarations tierces AI SDK incompatibles avec `exactOptionalPropertyTypes`, pas le code projet. Ajv garde son mode strict sauf `strictTypes`, désactivé parce que certains sous-schémas conditionnels M2 utilisent `properties` sans répéter `type: object` ; le schéma canonique n’est pas modifié et sa validation reste effective.
+- `store: false` ;
+- raisonnement bas ;
+- sortie structurée ;
+- un appel HTTP fournisseur ;
+- entre une et quatre actions Web Search distinctes ;
+- délai fournisseur de 90 secondes ;
+- cible de trois à six faits et deux pages distinctes lorsque la matière existe.
 
-## 8. Erreurs et fail-closed
+Le schéma de transport reste compatible avec Structured Outputs : les URL y sont des chaînes bornées, puis passent dans la validation locale stricte. Une sortie partielle n’est récupérée que si son JSON peut être normalisé sans inventer d’identité, de source, d’extrait ou de valeur. Toutes les autres anomalies échouent fermées.
 
-- entrée invalide : rejet avant fournisseur ;
-- clé absente : erreur de configuration serveur au premier usage, jamais au build ;
-- timeout, quota, authentification ou réponse invalide : `technical_failure`, jamais silence ;
-- provenance incomplète, URL finale non vérifiable ou métadonnée perdue : fait rejeté ;
-- dossier structurellement invalide ou invariant M2 violé : aucun dossier final ;
-- résultat partiel : uniquement les éléments déjà validés, avec limites et raison d’arrêt ;
-- reprise : au plus une reprise par opération et lien `retry_of` obligatoire ; aucun retry infini.
+Les métadonnées des recherches, inspections et citations sont comptabilisées. Une URL structurée peut aider à retrouver une page, mais ne devient jamais une preuve par sa seule présence.
 
-Politique initiale réversible : timeout applicatif `240 000 ms`, huit appels fournisseur maximum, une reprise maximum par opération. Le plafond futur de fonction visé est `300 s`, laissant une marge de fermeture. Ces valeurs devront être mesurées en boucle verticale avant G3.
+## Vérification directe des sources
 
-## 9. Usage, coût et latence
+`src/server/research/source-security.ts`, `source-transport.ts` et `source-content.ts` forment une frontière indépendante du texte du modèle.
 
-Le futur reçu M2 sera construit à partir de mesures brutes : horodatages monotones, durée totale et par étape, nombre d’appels, tentatives, tokens fournisseur, recherches facturables lorsque disponibles, modèle retourné et coût calculé depuis un barème versionné et daté. Un coût non calculable reste inconnu ; il n’est pas inventé.
+1. Parse d’une URL absolue `https`.
+2. Refus des identifiants intégrés, ports non standards, hôtes locaux, réseaux privés, adresses réservées et encodages ambigus.
+3. Résolution DNS avant connexion et fixation de l’adresse validée afin de réduire le DNS rebinding.
+4. Revalidation à chaque redirection, deux redirections au maximum.
+5. Délai global de 20 secondes, corps de 512 Kio maximum, HTML uniquement.
+6. Extraction du texte visible et recherche contiguë de l’extrait exact, borné à 500 caractères.
+7. Conservation du titre réellement lu, de l’URL finale, de la date de consultation, d’un localisateur et du condensat du texte normalisé.
 
-Aucun prompt, dossier complet, extrait de preuve ou donnée nominative ne doit être journalisé. En M3, aucun outil de télémétrie distante n’est installé ; les commandes Next.js désactivent leur télémétrie.
+La citation fournisseur seule est insuffisante. Une page inaccessible, un extrait absent ou une URL non sûre fait disparaître l’affirmation ; le nombre de preuves rejetées devient une inconnue visible.
 
-## 10. Secrets
+## Résolution d’identité
 
-Seuls `OPENAI_API_KEY` et `GEMINI_API_KEY` sont attendus. `.env.example` conserve leurs noms avec valeurs vides. Le magasin DPAPI M1 reste extérieur, non suivi et non lu par l’application. La configuration serveur importe les SDK directs et lit une clé seulement lorsque la fabrique correspondante est appelée.
+Le nom seul n’autorise pas une identité résolue. Le type demandé, le contexte libre et au moins une preuve directe doivent converger. Un type contradictoire ou plusieurs candidats crédibles déclenche `ambiguous` ou `insufficient_context`. Dans ce mode, les candidats restent séparés et les affirmations servent uniquement à expliquer l’ambiguïté ; aucun dossier factuel confiant n’est rendu.
 
-Le build sans secrets est un invariant. Le contrôle du bundle client rejette les noms de clés, formes de clés et endpoints fournisseur. Les scans WorkingTree, Staged et Tracked restent actifs.
+Le silence produit `not_found_within_scope`, zéro fait et zéro source. La panne réseau, l’erreur fournisseur ou une sortie invalide produit `technical_failure`, jamais un faux dossier vide.
 
-## 11. Streaming
+## Composition du dossier
 
-Le transport initial prévu est une réponse HTTP `text/event-stream` à une requête POST, consommée avec `fetch` et `ReadableStream`. Chaque événement porte une étape M2 réelle (`interpretation`, `candidate_search`, `identity_resolution`, `collection`, `extraction`, `reconciliation`, `verification`, `composition`), un statut et une mesure ; aucun pourcentage n’est émis.
+Le contrat canonique est `docs/contracts/research-dossier.schema.json`, validé par Ajv. Les types TypeScript sont générés et contrôlés contre ce schéma. `src/domain/runtime-invariants.ts` ajoute les règles qui traversent plusieurs objets : références existantes, correspondance entité/preuve/source, absence de fait sans preuve, visibilité des contradictions et cohérence des statuts.
 
-AI SDK Core `streamText` sait produire un flux serveur, mais son flux textuel ne sera pas directement promu en faits. Le serveur traduit les événements fournisseur en événements applicatifs et n’émet un résultat métier qu’après validation. Le flux se termine au timeout, à l’abandon client, au succès ou à l’erreur ; il n’est jamais infini.
+Un succès `complete_within_scope` exige au moins trois faits affichables, deux pages source distinctes et aucune contradiction ouverte. Un résultat prouvé mais plus pauvre devient `partial`. Les catégories manquantes et preuves rejetées sont affichées comme inconnues.
 
-## 12. Déploiement cible et limites
+Les contradictions regroupent des valeurs incompatibles pour un même prédicat, une même période et un même périmètre. Toutes les versions et leurs preuves restent visibles ; aucune valeur n’est sélectionnée. La fraîcheur vaut `current` pour une date explicite dans la fenêtre de 548 jours, `historical` au-delà, et `unknown` si la date du fait n’est pas prouvée.
 
-Vercel est la cible initiale théorique, sans projet ni connexion en M3. Le runtime Node.js est le défaut Next.js et Vercel, supporte le streaming et l’ensemble des API Node. Le runtime Edge est écarté par défaut : surface API plus étroite et aucun gain démontré pour une orchestration longue dépendante de SDK serveur.
+## Coût, erreurs et observabilité
 
-Au 26 août 2026, Vercel documente Node `24.x` comme LTS par défaut ; `package.json` fixe donc le major `24.x`. Avec Fluid Compute activé, les durées documentées sont `300 s` par défaut et maximum en Hobby, `300 s` par défaut et `800 s` maximum en Pro/Enterprise. Sans Fluid Compute : Hobby `10 s` par défaut / `60 s` maximum, Pro `15 s` / `300 s`, Enterprise `15 s` / `900 s`. Le plan réel et Fluid Compute sont inconnus : ils devront être confirmés avant déploiement.
+Le reçu public expose appels, actions Web, pages récupérées, jetons, durées et coût estimé. Un dossier estimé au-dessus de `0,10 $` est rejeté. Le barème est daté et ses limites accompagnent la valeur.
 
-Pour Next.js App Router, `export const maxDuration = <secondes>` sur la route est la méthode directe documentée. La route de santé utilise `5 s`. La future route de recherche visera `300 s`, sous réserve du plan. Si les mesures dépassent régulièrement `240 s`, la requête streamée n’est plus adaptée : réviser vers queue, état durable et polling plutôt que masquer les interruptions.
+Les reçus d’échec ne contiennent ni entrée, ni prompt, ni extrait. Ils conservent seulement catégorie, étape, code public, présence d’un identifiant fournisseur, métriques non sensibles et condensat éventuel. Il n’existe ni base, ni télémétrie distante, ni journal métier persistant.
 
-## 13. Dépendances retenues
+## Déploiement
 
-Dist-tags `latest` du registre npm interrogés le 26 août 2026 ; seules des versions stables exactes figurent au lockfile.
+Le projet cible Vercel avec Node 24. `OPENAI_API_KEY` est une variable sensible serveur. Les en-têtes globaux appliquent notamment CSP, interdiction d’embarquement, `nosniff`, politique de permissions et politique de référent. Le même artefact validé en staging est promu vers <https://genial-deep-research.vercel.app>.
 
-| Élément | Version retenue | Motif |
-|---|---:|---|
-| Node.js | `24.x` ; référence `24.20.0` | LTS actuelle et version déployable Vercel ; Node Current observé `26.8.0` non encore proposé par Vercel. |
-| pnpm | `11.24.0` | gestionnaire stable, versionné par Corepack et lockfile unique. |
-| Next.js | `16.3.3` | App Router, routes Node, composants serveur et build de production. |
-| React / React DOM | `19.2.8` | versions stables cohérentes avec Next.js. |
-| AI SDK Core | `7.0.79` | streaming, sorties structurées, sources et API fournisseur uniforme limitée. |
-| `@ai-sdk/openai` | `4.0.47` | package direct ; Responses par défaut, Web Search, `store: false`, sources et métadonnées. |
-| `@ai-sdk/google` | `4.0.51` | package direct ; grounding, sources et provider metadata ; chemin non critique. |
-| Ajv / formats | `8.20.0` / `3.0.1` | validation JSON Schema Draft 7 et formats utilisés par M2. |
-| Zod | `4.4.3` | peer runtime exigé par AI SDK ; interdit comme second contrat M2. |
-| TypeScript | `6.0.3` | version stable la plus récente compatible avec la chaîne ESLint Next actuelle (`<6.1`). |
-| ESLint / config Next | `9.39.5` / `16.3.3` | version la plus récente acceptée par les plugins transitifs Next ; ESLint 10 reste incompatible avec leurs peer ranges. |
-| Vitest | `4.1.11` | tests Node rapides, sans navigateur ni service externe. |
-| json-schema-to-typescript | `15.0.4` | types dérivés et contrôle de dérive sans recopier le contrat. |
+## Choix écartés
 
-Le script d’installation autorise uniquement le postinstall transitif `unrs-resolver`, requis par la résolution ESLint. Aucun autre script de dépendance n’est approuvé implicitement.
+- Gemini : aucun gain live démontré justifiant une seconde voie et une nouvelle clé.
+- Base ou historique : contraire à la minimisation des données pour l’épreuve.
+- Queue : latences observées compatibles avec une requête longue streamée.
+- Résumé généré séparément : risque d’introduire des faits sans preuve.
+- Capture HTML comme preuve durable : l’URL, l’extrait, la date et le condensat sont conservés ; la page complète ne l’est pas pour limiter données et droits.
 
-## 14. Alternatives rejetées pour la baseline
+## Références primaires
 
-| Choix | Alternative | Motif borné |
-|---|---|---|
-| Next.js monolithe | frontend et backend séparés | Deux déploiements et un contrat réseau supplémentaires sans besoin d’échelle prouvé. À réviser si les traitements sortent durablement des limites HTTP. |
-| AI SDK + packages directs | REST direct | AI SDK fournit streaming, sources, structured outputs et adaptateurs stables. Son risque de perte de métadonnées impose une vérification avant G3 ; REST reste le repli si ce risque se matérialise. |
-| OpenAI primaire | Gemini primaire | M1 a observé URLs directes, coût inférieur et latence acceptable côté OpenAI. Ce n’est pas une preuve de qualité métier et le choix reste réversible. |
-| requête longue streamée | queue + polling | Une recherche à la fois, aucune persistance et durée visée sous 240 s rendent le flux plus simple. Une queue devient nécessaire pour reprise durable, dépassement régulier ou résilience aux déconnexions. |
-| mémoire de requête | base de données | Minimise données personnelles, surface de sécurité et complexité. Sacrifie historique et reprise après rupture ; toute persistance future exige un arbitrage explicite. |
-
-AI Gateway, abstraction multi-provider générique, ORM, Redis, queue, bibliothèque UI, framework CSS, SDK d’hébergement et télémétrie distante sont exclus faute de besoin M3.
-
-## 15. Points de révision
-
-- vérifier par un appel M4 autorisé que `@ai-sdk/openai` conserve toutes les sources et métadonnées nécessaires avec `gpt-5.6-luna` ;
-- mesurer qualité, coût, latence et nombre d’appels sur requêtes inconnues avant toute validation produit ;
-- confirmer plan Vercel, Fluid Compute, région, durée et comportement de déconnexion avant déploiement ;
-- remplacer AI SDK par REST direct si la provenance est tronquée ou transformée sans accès brut suffisant ;
-- réviser timeout et budget uniquement à partir de mesures ;
-- introduire queue/persistance seulement si une durée ou reprise durable le justifie ;
-- réévaluer TypeScript 7 et ESLint 10 lorsque la chaîne Next les accepte sans peer conflict ;
-- auditer chaque mise à jour de lockfile et bloquer toute vulnérabilité runtime haute ou critique.
-
-## Sources primaires consultées
-
-- Node.js : [releases](https://nodejs.org/en/about/previous-releases), [index des distributions](https://nodejs.org/dist/index.json) ;
-- Next.js : [installation](https://nextjs.org/docs/app/getting-started/installation), [App Router](https://nextjs.org/docs/app), [Server et Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components), [route segment config](https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config), [variables d’environnement](https://nextjs.org/docs/pages/guides/environment-variables), [migration 16](https://nextjs.org/docs/app/guides/upgrading/version-16) ;
-- React : [versions](https://react.dev/versions) ;
-- AI SDK : [OpenAI provider](https://ai-sdk.dev/providers/ai-sdk-providers/openai), [Google provider](https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai), [structured data](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data), [`jsonSchema`](https://ai-sdk.dev/docs/reference/ai-sdk-core/json-schema), [`streamText`](https://ai-sdk.dev/docs/reference/ai-sdk-core/stream-text) ;
-- OpenAI Docs : [`gpt-5.6-luna`](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create) ;
-- Google AI : [API versions](https://ai.google.dev/gemini-api/docs/api-versions), [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search), [GenerateContent response metadata](https://ai.google.dev/api/generate-content) ;
-- Vercel : [durées](https://vercel.com/docs/functions/configuring-functions/duration), [runtimes](https://vercel.com/docs/functions/runtimes), [versions Node](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions), [Fluid Compute](https://vercel.com/docs/fluid-compute) ;
-- npm : dist-tags et métadonnées obtenus depuis [`registry.npmjs.org`](https://registry.npmjs.org/).
+- [OpenAI — modèle gpt-5.6-luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
+- [OpenAI — Web Search](https://developers.openai.com/api/docs/guides/tools-web-search)
+- [OpenAI — Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+- [OpenAI — tarifs API](https://developers.openai.com/api/docs/pricing)
+- [Vercel — durée des fonctions](https://vercel.com/docs/functions/configuring-functions/duration)
+- [Next.js — en-têtes](https://nextjs.org/docs/app/api-reference/config/next-config-js/headers)

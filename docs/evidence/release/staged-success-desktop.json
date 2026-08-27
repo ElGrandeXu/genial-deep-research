@@ -1,0 +1,515 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T18:38:39.101Z",
+  "deployment_url": "https://genial-deep-research-hkfqmqess-el-grande-xue.vercel.app",
+  "input": {
+    "name": "OpenAI",
+    "entityType": "company",
+    "context": "Entreprise IA, San Francisco, site officiel openai.com"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "630bca2b-4620-44d9-b39a-89100ab8ca45",
+    "elapsedMs": 12483,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-1867a625-123f-4967-b232-da9d0319a4f6",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-d319e00b-410c-47c8-941f-5cbcf61a51af",
+        "submitted_at": "2026-08-27T18:38:27.380Z",
+        "name": "OpenAI",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Entreprise IA, San Francisco, site officiel openai.com"
+        },
+        "total_character_count": 60
+      },
+      "identity": {
+        "status": "resolved",
+        "selected_subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+        "candidates": [
+          {
+            "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+            "entity_type": "company",
+            "display_name": "OpenAI",
+            "discriminators": {},
+            "match_rationale": "Le type, le contexte soumis et les extraits vérifiés convergent vers cette entité."
+          }
+        ],
+        "resolution_reason": "L’identité est retenue seulement après concordance du type, du contexte et d’au moins un extrait direct.",
+        "clarification_fields": []
+      },
+      "sources": [
+        {
+          "source_id": "source-0ee4b3ca-c025-4ba5-a07d-69f077b0e002",
+          "provider_url": "https://openai.com/about/",
+          "resolved_url": "https://openai.com/about/",
+          "canonical_url": null,
+          "title": "About | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:38:39.627Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI"
+          }
+        },
+        {
+          "source_id": "source-0ad8160e-a7ea-4b65-86d3-dc9ac36c8b0e",
+          "provider_url": "https://openai.com/index/scaling-ai-for-everyone/",
+          "resolved_url": "https://openai.com/index/scaling-ai-for-everyone/",
+          "canonical_url": null,
+          "title": "Scaling AI for everyone | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:38:39.498Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence-eae520d4-f44b-458c-bb8c-1195b888f67f",
+          "source_id": "source-0ee4b3ca-c025-4ba5-a07d-69f077b0e002",
+          "claim_id": "claim-0c9330d3-6a2b-4fdf-9085-3a5b84be25e9",
+          "excerpt": "OpenAI is an AI research and deployment company.",
+          "locator": "{\"exact\":\"OpenAI is an AI research and deployment company.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" Our mission is \",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T18:38:39.627Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373418,\"redirectCount\":0}",
+          "entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:38:39.627Z"
+        },
+        {
+          "evidence_id": "evidence-47a33dc2-0edf-4beb-9e77-74424d26ca2a",
+          "source_id": "source-0ee4b3ca-c025-4ba5-a07d-69f077b0e002",
+          "claim_id": "claim-81057f9b-1d88-452d-ac3c-289bc0fb1f70",
+          "excerpt": "Our mission is to ensure that artificial general intelligence benefits all of humanity.",
+          "locator": "{\"exact\":\"Our mission is to ensure that artificial general intelligence benefits all of humanity.\",\"matchMode\":\"exact\",\"prefix\":\"oyment company. \",\"suffix\":\"\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T18:38:39.373Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373374,\"redirectCount\":0}",
+          "entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:38:39.373Z"
+        },
+        {
+          "evidence_id": "evidence-e725fa5d-5a81-42d0-b321-f5a6edc21d8b",
+          "source_id": "source-0ee4b3ca-c025-4ba5-a07d-69f077b0e002",
+          "claim_id": "claim-21040c4a-787c-4309-8be1-6169876cf60f",
+          "excerpt": "OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.",
+          "locator": "{\"exact\":\"OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" The OpenAI miss\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T18:38:39.781Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373423,\"redirectCount\":0}",
+          "entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "group",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:38:39.781Z"
+        },
+        {
+          "evidence_id": "evidence-a9b64f88-368e-40f8-ac66-70b745d55bfd",
+          "source_id": "source-0ad8160e-a7ea-4b65-86d3-dc9ac36c8b0e",
+          "claim_id": "claim-029e3299-c0ca-46cd-8b7e-18f2000498b5",
+          "excerpt": "Today we’re announcing $110B in new investment at a $730B pre-money valuation.",
+          "locator": "{\"exact\":\"Today we’re announcing $110B in new investment at a $730B pre-money valuation.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" This includes $\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/index/scaling-ai-for-everyone/\",\"citationUrl\":\"https://openai.com/index/scaling-ai-for-everyone/\",\"retrievedAt\":\"2026-08-27T18:38:39.498Z\",\"normalizedTextSha256\":\"30ec32cb8a0ce45baa8500207c557bda44737e08d897d1cbc81caaa1d42658fc\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":381875,\"redirectCount\":0}",
+          "entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:38:39.498Z"
+        },
+        {
+          "evidence_id": "evidence-3544d601-ca37-4894-8fbd-4371e423af7d",
+          "source_id": "source-0ad8160e-a7ea-4b65-86d3-dc9ac36c8b0e",
+          "claim_id": "claim-ff648f29-1e44-4c6f-99db-90a735e2d050",
+          "excerpt": "OpenAI and Amazon today announced a multi-year strategic partnership to accelerate AI innovation for enterprises, startups, and end consumers around the world.",
+          "locator": "{\"exact\":\"OpenAI and Amazon today announced a multi-year strategic partnership to accelerate AI innovation for enterprises, startups, and end consumers around the world.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" Read the full p\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/index/scaling-ai-for-everyone/\",\"citationUrl\":\"https://openai.com/index/scaling-ai-for-everyone/\",\"retrievedAt\":\"2026-08-27T18:38:39.849Z\",\"normalizedTextSha256\":\"30ec32cb8a0ce45baa8500207c557bda44737e08d897d1cbc81caaa1d42658fc\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":381875,\"redirectCount\":0}",
+          "entity_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:38:39.849Z"
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "claim-0c9330d3-6a2b-4fdf-9085-3a5b84be25e9",
+          "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "statement": "OpenAI is an AI research and deployment company.",
+          "predicate": "identity.identity",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-eae520d4-f44b-458c-bb8c-1195b888f67f"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-81057f9b-1d88-452d-ac3c-289bc0fb1f70",
+          "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "statement": "Our mission is to ensure that artificial general intelligence benefits all of humanity.",
+          "predicate": "activity.a pour mission de faire bénéficier toute l’humanité de l’intelligence artificiel",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-47a33dc2-0edf-4beb-9e77-74424d26ca2a"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-21040c4a-787c-4309-8be1-6169876cf60f",
+          "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "statement": "OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.",
+          "predicate": "role.comprend la fondation OpenAI et OpenAI Group, une public benefit corporation gou",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "group",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-e725fa5d-5a81-42d0-b321-f5a6edc21d8b"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-029e3299-c0ca-46cd-8b7e-18f2000498b5",
+          "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "statement": "Today we’re announcing $110B in new investment at a $730B pre-money valuation.",
+          "predicate": "metric.a annoncé 110 milliards de dollars de nouveaux investissements à une valorisatio",
+          "structured_value": {
+            "value": "110;730",
+            "value_type": "text"
+          },
+          "unit": "milliards de dollars",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-a9b64f88-368e-40f8-ac66-70b745d55bfd"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-ff648f29-1e44-4c6f-99db-90a735e2d050",
+          "subject_id": "subject-ba7e6f32-74b9-430d-b139-1897cbd7f7e5",
+          "statement": "OpenAI and Amazon today announced a multi-year strategic partnership to accelerate AI innovation for enterprises, startups, and end consumers around the world.",
+          "predicate": "event.a annoncé un partenariat stratégique pluriannuel avec Amazon",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-3544d601-ca37-4894-8fbd-4371e423af7d"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        }
+      ],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-4aaf90d0-60f9-4a76-8755-18d87cac5fbd",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : geography.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-11697f59-95d5-4d21-ad59-96ff898fd027",
+          "category": "source_inaccessible",
+          "description": "1 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-225a8a5e-abed-47c0-a7f9-6e1b4a190116",
+          "invocation_id": "invocation-e9b7d437-c6a2-4637-b52e-d70e32f75949",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:27.380Z",
+          "ended_at": "2026-08-27T18:38:39.850Z",
+          "duration_ms": 11442,
+          "error_code": null
+        },
+        {
+          "step_id": "step-f23daee9-cb44-4e75-956c-74ccba7a7188",
+          "invocation_id": "invocation-56f9d80f-0316-4ed2-a48e-6ea406651076",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:27.380Z",
+          "ended_at": "2026-08-27T18:38:39.850Z",
+          "duration_ms": 1028,
+          "error_code": null
+        },
+        {
+          "step_id": "step-79c2fb3c-1d68-4aac-bc02-e2a168ed20e0",
+          "invocation_id": "invocation-2d9415d2-3187-4b83-9569-06659724fbb0",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:38:27.380Z",
+          "ended_at": "2026-08-27T18:38:39.850Z",
+          "duration_ms": 0,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [
+          {
+            "kind": "claim",
+            "ref_id": "claim-0c9330d3-6a2b-4fdf-9085-3a5b84be25e9"
+          },
+          {
+            "kind": "claim",
+            "ref_id": "claim-81057f9b-1d88-452d-ac3c-289bc0fb1f70"
+          },
+          {
+            "kind": "claim",
+            "ref_id": "claim-21040c4a-787c-4309-8be1-6169876cf60f"
+          }
+        ],
+        "key_fact_claim_ids": [
+          "claim-0c9330d3-6a2b-4fdf-9085-3a5b84be25e9",
+          "claim-81057f9b-1d88-452d-ac3c-289bc0fb1f70",
+          "claim-21040c4a-787c-4309-8be1-6169876cf60f",
+          "claim-029e3299-c0ca-46cd-8b7e-18f2000498b5"
+        ],
+        "recent_signal_claim_ids": [
+          "claim-ff648f29-1e44-4c6f-99db-90a735e2d050"
+        ],
+        "ambiguity_claim_ids": [],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-4aaf90d0-60f9-4a76-8755-18d87cac5fbd",
+          "unknown-11697f59-95d5-4d21-ad59-96ff898fd027"
+        ],
+        "source_ids": [
+          "source-0ee4b3ca-c025-4ba5-a07d-69f077b0e002",
+          "source-0ad8160e-a7ea-4b65-86d3-dc9ac36c8b0e"
+        ]
+      },
+      "receipt": {
+        "run_id": "630bca2b-4620-44d9-b39a-89100ab8ca45",
+        "started_at": "2026-08-27T18:38:27.380Z",
+        "completed_at": "2026-08-27T18:38:39.863Z",
+        "total_duration_ms": 12483,
+        "latency_ms": 12483,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 21289,
+          "output_tokens": 1169,
+          "total_tokens": 22458
+        },
+        "cost": {
+          "amount_usd": 0.02470444,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identity, activity, role, metric, event"
+          ],
+          "stop_reason": "Au moins trois faits et deux pages vérifiées ont été obtenus."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "standard",
+      "global_status": "complete_within_scope",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "La fraîcheur reste inconnue lorsqu’aucune date explicite n’apparaît dans l’extrait.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "630bca2b-4620-44d9-b39a-89100ab8ca45",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 2,
+      "webSearchQueryCount": 1,
+      "webSearchInspectionCount": 1,
+      "sourceFetchCount": 7,
+      "inputTokens": 21289,
+      "cachedInputTokens": 5312,
+      "outputTokens": 1169,
+      "reasoningTokens": 332,
+      "totalTokens": 22458,
+      "sourceCount": 2,
+      "durations": {
+        "acceptedMs": 1,
+        "searchingMs": 11442,
+        "sourceVerifyingMs": 1028,
+        "validatingMs": 11,
+        "totalMs": 12483
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.02470444,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}
