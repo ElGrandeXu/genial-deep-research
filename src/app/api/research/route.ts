@@ -1,6 +1,5 @@
 import {
   createOpenAIResearchProvider,
-  PROVIDER_TIMEOUT_MS,
 } from "../../../server/ai/providers";
 import {
   parseResearchRequest,
@@ -13,6 +12,11 @@ import {
 } from "../../../server/research/failure-receipt";
 import { createSourceVerifier } from "../../../server/research/source-content";
 import { createProductionSourceTransportDependencies } from "../../../server/research/source-transport";
+import {
+  createResearchRequestGuard,
+  type ResearchAdmission,
+  type ResearchRequestGuard,
+} from "../../../server/research/request-guard";
 import type {
   ResearchProgressEvent,
   ResearchProvider,
@@ -21,15 +25,22 @@ import type {
 } from "../../../server/research/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 180;
+const ROUTE_TIMEOUT_MS = 150_000;
 
 interface ResearchRouteDependencies {
   readonly providerFactory: () => ResearchProvider;
   readonly sourceVerifierFactory: () => SourceVerifier;
   readonly logger: SafeLogger;
+  readonly requestGuard?: ResearchRequestGuard;
 }
 
 const encoder = new TextEncoder();
+const unrestrictedTestGuard: ResearchRequestGuard = {
+  acquire() {
+    return { admitted: true, release() {} };
+  },
+};
 
 export function serializeResearchEvent(
   event: ResearchProgressEvent,
@@ -76,7 +87,27 @@ function errorResponse(error: ResearchRequestError): Response {
   );
 }
 
+function admissionRejectedResponse(
+  admission: Extract<ResearchAdmission, { readonly admitted: false }>,
+): Response {
+  const message =
+    admission.code === "rate_limited"
+      ? "Trop de recherches ont été demandées. Réessayez plus tard."
+      : "Deux recherches sont déjà en cours. Réessayez dans un instant.";
+  return Response.json(
+    { error: { code: admission.code, message } },
+    {
+      status: 429,
+      headers: {
+        "cache-control": "no-store",
+        "retry-after": String(admission.retryAfterSeconds),
+      },
+    },
+  );
+}
+
 export function createResearchPostHandler(dependencies: ResearchRouteDependencies) {
+  const requestGuard = dependencies.requestGuard ?? unrestrictedTestGuard;
   return async function researchPost(request: Request): Promise<Response> {
     const requestStartedAt = performance.now();
     let input;
@@ -92,57 +123,78 @@ export function createResearchPostHandler(dependencies: ResearchRouteDependencie
 
     const acceptedMs = Math.max(0, Math.round(performance.now() - requestStartedAt));
     const localAbort = new AbortController();
-    const timeout = AbortSignal.timeout(PROVIDER_TIMEOUT_MS);
+    const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
     const signal = AbortSignal.any([request.signal, localAbort.signal, timeout]);
+    const admission = requestGuard.acquire(request);
+    if (!admission.admitted) return admissionRejectedResponse(admission);
+    let admissionReleased = false;
+    const releaseAdmission = () => {
+      if (admissionReleased) return;
+      admissionReleased = true;
+      admission.release();
+    };
+    signal.addEventListener("abort", releaseAdmission, { once: true });
+    if (signal.aborted) releaseAdmission();
 
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        let terminalSent = false;
-        let provider: ResearchProvider;
-        let sourceVerifier: SourceVerifier;
-        try {
-          provider = dependencies.providerFactory();
-        } catch (error) {
-          provider = { async research() { throw error; } };
-        }
-        try {
-          sourceVerifier = dependencies.sourceVerifierFactory();
-        } catch (error) {
-          sourceVerifier = { async verify() { throw error; } };
-        }
-        void executeResearch({
-          input,
-          provider,
-          sourceVerifier,
-          signal,
-          acceptedMs,
-          emit(event) {
-            if (terminalSent) return;
-            const serialized = serializeResearchEvent(event);
-            if (
-              serialized.event.state === "completed" ||
-              serialized.event.state === "failed"
-            ) {
-              terminalSent = true;
-            }
-            controller.enqueue(serialized.bytes);
-            if (serialized.event !== event) localAbort.abort();
-          },
-          logger: dependencies.logger,
-        })
-          .catch(() => undefined)
-          .finally(() => {
-            try {
-              controller.close();
-            } catch {
-              // Client abandonment has already closed the stream.
-            }
-          });
-      },
-      cancel() {
-        localAbort.abort();
-      },
-    });
+    let stream: ReadableStream<Uint8Array>;
+    try {
+      stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          let terminalSent = false;
+          let provider: ResearchProvider;
+          let sourceVerifier: SourceVerifier;
+          try {
+            provider = dependencies.providerFactory();
+          } catch (error) {
+            provider = { async research() { throw error; } };
+          }
+          try {
+            sourceVerifier = dependencies.sourceVerifierFactory();
+          } catch (error) {
+            sourceVerifier = { async verify() { throw error; } };
+          }
+          void executeResearch({
+            input,
+            provider,
+            sourceVerifier,
+            signal,
+            acceptedMs,
+            emit(event) {
+              if (terminalSent) return;
+              const serialized = serializeResearchEvent(event);
+              if (
+                serialized.event.state === "completed" ||
+                serialized.event.state === "failed"
+              ) {
+                terminalSent = true;
+              }
+              controller.enqueue(serialized.bytes);
+              if (serialized.event !== event) localAbort.abort();
+            },
+            logger: dependencies.logger,
+          })
+            .catch(() => undefined)
+            .finally(() => {
+              signal.removeEventListener("abort", releaseAdmission);
+              releaseAdmission();
+              try {
+                controller.close();
+              } catch {
+                // Client abandonment has already closed the stream.
+              }
+            });
+        },
+        cancel() {
+          localAbort.abort();
+          signal.removeEventListener("abort", releaseAdmission);
+          releaseAdmission();
+        },
+      });
+    } catch (error) {
+      signal.removeEventListener("abort", releaseAdmission);
+      releaseAdmission();
+      throw error;
+    }
 
     return new Response(stream, {
       status: 200,
@@ -157,6 +209,7 @@ export function createResearchPostHandler(dependencies: ResearchRouteDependencie
 }
 
 export const POST = createResearchPostHandler({
+  requestGuard: createResearchRequestGuard(),
   providerFactory: createOpenAIResearchProvider,
   sourceVerifierFactory() {
     return createSourceVerifier(createProductionSourceTransportDependencies());

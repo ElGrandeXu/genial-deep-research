@@ -40,6 +40,16 @@ $knownNonSecretAssignments = @{
     'docs/evidence/m5-attempt-009-live-result.json' = @(
         '  "secret_store": "external_dpapi",'
     )
+    'src/server/research/service.ts' = @(
+        '  const inputTokens = options.result.usage.inputTokens;',
+        '  const outputTokens = options.result.usage.outputTokens;',
+        '  const totalTokens = options.result.usage.totalTokens;',
+        '        inputTokens: receipt.inputTokens,',
+        '        cachedInputTokens: receipt.cachedInputTokens,',
+        '        outputTokens: receipt.outputTokens,',
+        '        reasoningTokens: receipt.reasoningTokens,',
+        '        totalTokens: receipt.totalTokens,'
+    )
 }
 foreach ($relativePath in $files) {
     if ([string]::IsNullOrWhiteSpace($relativePath)) { continue }

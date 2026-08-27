@@ -89,6 +89,38 @@ function providerResult(
 ): ProviderResearchResult {
   return {
     text,
+    document: {
+      identityStatus: "resolved",
+      entityType: "company",
+      candidates: [{
+        displayName: "Airbus SE",
+        entityType: "company",
+        statement: claim,
+        structuredUrl: sourceUrl,
+        excerpt: claim,
+        prefix: null,
+        suffix: null,
+      }],
+      claims: [{
+        category: "identity",
+        entityType: "company",
+        statement: claim,
+        predicate: "identity",
+        scopeType: "company",
+        scopeLabel: "Airbus SE",
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        structuredUrl: sourceUrl,
+        excerpt: claim,
+        prefix: null,
+        suffix: null,
+      }],
+      missingCategories: [],
+    },
     citations: [
       {
         provider: "openai",
@@ -224,46 +256,40 @@ describe("safe failure classification with installed AI SDK errors", () => {
     ["content_type_syntax_invalid", null],
     ["media_type_unsupported", "application_pdf"],
   ] as const)(
-    "keeps safe Content-Type diagnostic %s through receipt, log and public JSON",
-    async (reasonCode, sourceMediaTypeClass) => {
+    "keeps safe Content-Type diagnostic %s in a failure receipt",
+    (reasonCode, sourceMediaTypeClass) => {
       const diagnostics = {
         reasonCode,
         sourceMediaTypeClass,
       } as ContentTypeRejectionDiagnostics;
-      const logs: Readonly<Record<string, unknown>>[] = [];
-      const events = await executeWith({
-        result: providerResult(),
-        sourceVerifier: {
-          async verify() {
-            throw new ResearchPipelineError(
-              "source_content_type_rejected",
-              "secret=SHOULD_NOT_LEAK Authorization sk-test-marker\r\n" +
-                "long-private-header".repeat(512),
-              { sourceFetchCount: 1, sourceVerificationMs: 7 },
-              diagnostics,
-            );
-          },
-        },
-        logger: (record) => logs.push(record),
-      });
-      const failed = events.at(-1);
-      expect(failed).toMatchObject({
-        state: "failed",
-        error: {
-          code: "source_content_type_rejected",
-          retryable: false,
-        },
-        receipt: {
-          publicCode: "source_content_type_rejected",
+      const receipt = buildFailureReceipt(
+        new ResearchPipelineError(
+          "source_content_type_rejected",
+          "secret=SHOULD_NOT_LEAK Authorization sk-test-marker\r\n" +
+            "long-private-header".repeat(512),
+          { sourceFetchCount: 1, sourceVerificationMs: 7 },
+          diagnostics,
+        ),
+        {
+          attemptId: "attempt-content-type",
           failedStage: "source_verification",
-          category: "source_metadata_missing",
-          reasonCode,
-          sourceMediaTypeClass,
-          retryable: false,
+          validationCode: "source_content_type_rejected",
+          result: providerResult(),
           sourceFetchCount: 1,
+          sourceVerificationMs: 7,
+          observedAt: new Date("2026-08-27T00:00:00.000Z"),
         },
+      );
+      expect(receipt).toMatchObject({
+        publicCode: "source_content_type_rejected",
+        failedStage: "source_verification",
+        category: "source_metadata_missing",
+        reasonCode,
+        sourceMediaTypeClass,
+        retryable: false,
+        sourceFetchCount: 1,
       });
-      const serialized = JSON.stringify({ events, logs });
+      const serialized = JSON.stringify(receipt);
       for (const forbidden of [
         "SHOULD_NOT_LEAK",
         "Authorization",
@@ -272,13 +298,36 @@ describe("safe failure classification with installed AI SDK errors", () => {
       ]) {
         expect(serialized).not.toContain(forbidden);
       }
-      if (failed?.state === "failed") {
-        const publicJson = JSON.stringify(failed);
-        expect(publicJson).not.toContain("secret=");
-        expect(failed.error.message).not.toContain("Authorization");
-      }
     },
   );
+
+  it("treats rejected individual source proofs as dossier gaps, not leaked failures", async () => {
+    const marker = "PRIVATE_SOURCE_REJECTION_MARKER";
+    const events = await executeWith({
+        result: providerResult(),
+        sourceVerifier: {
+          async verify() {
+            throw new ResearchPipelineError(
+              "source_content_type_rejected",
+              marker,
+              { sourceFetchCount: 1, sourceVerificationMs: 7 },
+            );
+          },
+        },
+      });
+    expect(events.at(-1)).toMatchObject({
+      state: "completed",
+      dossier: {
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: [],
+        unknowns: [
+          expect.objectContaining({ category: "source_inaccessible" }),
+        ],
+      },
+    });
+    expect(JSON.stringify(events)).not.toContain(marker);
+  });
 
   it("drops non-allowlisted Content-Type diagnostics at runtime", () => {
     const receipt = buildFailureReceipt(
@@ -540,14 +589,7 @@ describe("terminal failure guarantees", () => {
     });
     const serialized = JSON.stringify({ events, logs });
     expect(serialized).not.toContain(marker);
-    expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      receipt: {
-        reasonCode: "invalid_provider_shape",
-        outputPresent: true,
-        outputLineCount: 2,
-      },
-    });
+    expect(events.at(-1)).toMatchObject({ state: "completed" });
   });
 
   it("classifies a truth-contract rejection after provider completion", async () => {
@@ -565,7 +607,7 @@ describe("terminal failure guarantees", () => {
     });
   });
 
-  it("fails closed when the retrieved source has no matching excerpt", async () => {
+  it("discards every unverifiable excerpt and returns honest insufficiency", async () => {
     const events: ResearchProgressEvent[] = [];
     await executeResearch({
       input: { name: "Airbus SE" },
@@ -584,8 +626,16 @@ describe("terminal failure guarantees", () => {
       logger: { info: () => undefined },
     });
     expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      receipt: { category: "source_metadata_missing" },
+      state: "completed",
+      dossier: {
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: [],
+        evidence: [],
+        sources: [],
+        unknowns: [expect.objectContaining({ category: "source_inaccessible" })],
+      },
+      receipt: { sourceFetchCount: 2 },
     });
   });
 
@@ -649,7 +699,7 @@ describe("terminal failure guarantees", () => {
     expect(emitted.filter(({ state }) => state === "failed" || state === "completed")).toHaveLength(0);
   });
 
-  it("rejects a URL present only in generated text", async () => {
+  it("does not expose a URL present only in generated text", async () => {
     const events = await executeWith({
       result: providerResult({
         text,
@@ -662,8 +712,14 @@ describe("terminal failure guarantees", () => {
       }),
     });
     expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      receipt: { category: "source_metadata_missing" },
+      state: "completed",
+      dossier: {
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: [],
+        evidence: [],
+        sources: [],
+      },
     });
   });
 });

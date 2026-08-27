@@ -4,7 +4,8 @@ import {
   createOpenAI,
   type OpenAIResponsesProviderOptions,
 } from "@ai-sdk/openai";
-import { generateText, LoadAPIKeyError } from "ai";
+import { generateText, LoadAPIKeyError, Output } from "ai";
+import { z } from "zod";
 
 import {
   normalizeOpenAIProviderMetadata,
@@ -18,7 +19,83 @@ import type {
 } from "../research/types";
 
 export const PRIMARY_RESEARCH_MODEL = "gpt-5.6-luna" as const;
-export const PROVIDER_TIMEOUT_MS = 120_000;
+export const PROVIDER_TIMEOUT_MS = 90_000;
+
+const entityTypeSchema = z.enum(["person", "company"]);
+const sourceProofSchema = z.object({
+  sourceUrl: z.string().url(),
+  excerpt: z.string().min(1).max(500),
+  prefix: z.string().max(16).nullable(),
+  suffix: z.string().max(16).nullable(),
+});
+const providerDocumentSchema = z.object({
+  identityStatus: z.enum([
+    "resolved",
+    "ambiguous",
+    "insufficient_context",
+    "not_found",
+  ]),
+  entityType: entityTypeSchema.nullable(),
+  candidates: z.array(
+    z.object({
+      displayName: z.string().min(1).max(160),
+      entityType: entityTypeSchema,
+      sourceUrl: sourceProofSchema.shape.sourceUrl,
+      excerpt: sourceProofSchema.shape.excerpt,
+      prefix: sourceProofSchema.shape.prefix,
+      suffix: sourceProofSchema.shape.suffix,
+    }),
+  ).max(3),
+  claims: z.array(
+    z.object({
+      category: z.enum([
+        "identity",
+        "activity",
+        "role",
+        "geography",
+        "metric",
+        "event",
+        "recent_signal",
+        "other",
+      ]),
+      entityType: entityTypeSchema,
+      predicate: z.string().min(1).max(80),
+      scopeType: z.enum([
+        "person",
+        "company",
+        "group",
+        "subsidiary",
+        "brand",
+        "country",
+        "establishment",
+        "undetermined",
+      ]),
+      scopeLabel: z.string().min(1).max(160).nullable(),
+      factPeriodLabel: z.string().min(1).max(80).nullable(),
+      factDate: z.string().min(4).max(40).nullable(),
+      normalizedValue: z.string().min(1).max(160).nullable(),
+      unit: z.string().min(1).max(40).nullable(),
+      currency: z.string().min(1).max(20).nullable(),
+      contradictionKey: z.string().min(1).max(100).nullable(),
+      sourceUrl: sourceProofSchema.shape.sourceUrl,
+      excerpt: sourceProofSchema.shape.excerpt,
+      prefix: sourceProofSchema.shape.prefix,
+      suffix: sourceProofSchema.shape.suffix,
+    }),
+  ).max(6),
+  missingCategories: z.array(
+    z.enum([
+      "identity",
+      "activity",
+      "role",
+      "geography",
+      "metric",
+      "event",
+      "recent_signal",
+      "other",
+    ]),
+  ).max(8),
+});
 
 function requireOpenAIKey(): string {
   const value = process.env.OPENAI_API_KEY;
@@ -61,39 +138,30 @@ export function buildPrompt(input: ResearchInput): string {
     : "Contexte de désambiguïsation : non fourni";
 
   return [
-    "Recherche une seule information d’identité, stable, publique et directement vérifiable sur cette entité.",
-    "Privilégie une page officielle de l’organisation ou une source institutionnelle.",
-    "Choisis uniquement la nature ou la forme de l’entité ; n’ajoute ni activité, ni siège, ni date, ni description secondaire.",
-    "N’énonce qu’un fait atomique : aucune seconde propriété, aucune liste, aucune causalité et aucune inférence.",
+    "Tu construis un dossier factuel compact en français sur une personne ou une entreprise.",
+    "Chaque fait doit être prouvé par un extrait exact, contigu et visible d’une page HTML publique que Web Search a réellement consultée.",
+    "N’invente jamais une URL, un extrait, une date, une identité, une valeur ou une relation.",
+    "Privilégie les sites officiels, registres publics et publications reconnues ; diversifie les pages sources lorsque les preuves le permettent.",
+    "Cherche 3 à 6 faits utiles répartis sur plusieurs catégories et au moins deux pages distinctes lorsque c’est possible : identité, activité, rôle, géographie, métrique, événement ou signal récent.",
+    "Un extrait doit se suffire à lui-même pour prouver le fait affiché. N’utilise pas un simple snippet de résultats si la page ne le contient pas.",
+    "SOURCE_URL doit être l’URL HTTPS exacte de la page contenant EXCERPT, jamais un PDF, fichier, API, image, vidéo, page de connexion ou résultat de recherche.",
+    "EXCERPT contient 1 à 500 caractères exacts. PREFIX et SUFFIX contiennent le contexte exact adjacent (16 caractères maximum) ou null.",
+    "Pour éviter toute affirmation non démontrée, le produit affichera chaque fait avec le texte exact de EXCERPT.",
+    "Ne fusionne jamais des homonymes. Si plusieurs personnes ou entreprises plausibles subsistent, identityStatus=ambiguous, fournis jusqu’à trois candidats distincts et aucune claim.",
+    "Si un indice décisif manque, identityStatus=insufficient_context, fournis les candidats prouvés disponibles et aucune claim.",
+    "Si l’entité ou des preuves publiques suffisantes sont introuvables, identityStatus=not_found et aucune claim.",
+    "identityStatus=resolved uniquement si les preuves et le contexte désignent une entité sans ambiguïté raisonnable.",
+    "Quand l’identité est resolved, candidates contient exactement cette entité avec une preuve d’identité ; quand elle est not_found, candidates est vide.",
+    "Pour chaque candidat, displayName doit être démontré par son EXCERPT et sa SOURCE_URL.",
+    "factPeriodLabel ne peut être renseigné que si ce libellé apparaît littéralement dans EXCERPT. factDate doit être une date ISO ou une année explicitement prouvée ; sinon null.",
+    "normalizedValue sert uniquement à comparer des versions contradictoires d’un même fait. Utilise la même contradictionKey pour deux valeurs réellement comparables ; sinon null.",
+    "missingCategories liste uniquement les catégories utiles recherchées mais non prouvées.",
+    "N’ajoute aucune synthèse, opinion, inférence, causalité ni information absente des extraits.",
+    "Tu peux effectuer jusqu’à quatre actions Web Search au total. Arrête dès que le dossier est démontrable ou que l’insuffisance est établie.",
     `Entité : ${input.name}`,
+    `Type demandé : ${input.entityType ?? "auto"}`,
     contextLine,
-    "Pour STATUS: evidence, produis exactement sept lignes, sans Markdown, fence, préambule, liste, commentaire ni ligne vide interne.",
-    "Chaque valeur doit tenir sur une seule ligne et ne doit avoir aucun espace terminal.",
-    "CLAIM doit être une proposition simple de 10 à 200 caractères, sans point-virgule, deux-points, saut de ligne ni connecteur interdit : et, ainsi que, mais, tandis que, alors que, dont, qui.",
-    "La citation URL fournie par Web Search doit couvrir intégralement la valeur de CLAIM.",
-    "SOURCE_URL doit répéter exactement l’URL de cette citation.",
-    "SOURCE_URL doit être une URL HTTPS publique directe vers une page web normale servie comme text/html ou application/xhtml+xml.",
-    "Cette page doit être accessible sans exiger connexion, authentification, cookie, formulaire, pièce jointe, téléchargement ni document viewer, et doit posséder un titre de document.",
-    "N’utilise aucun PDF, même sans extension .pdf, et refuse toute URL dont le pathname se termine par .pdf sans distinction de casse.",
-    "N’utilise aucun fichier, pièce jointe, téléchargement, document viewer, JSON, endpoint API, image, contenu audio ou vidéo, ni page nécessitant une authentification.",
-    "EXCERPT doit être un extrait source exact, contigu, visible, sur une seule ligne et long de 1 à 500 caractères, jamais une paraphrase.",
-    "EXCERPT doit être retrouvé dans le texte visible réel de la page ; un extrait provenant uniquement d’un snippet de résultats de recherche est insuffisant.",
-    "PREFIX et SUFFIX doivent contenir au maximum 16 caractères exacts ou la valeur NONE.",
-    "Effectue exactement une seule requête de recherche Web Search.",
-    "Sélectionne un résultat HTML parmi les résultats de cette unique recherche.",
-    "Une seule inspection du résultat sélectionné, open_page ou find_in_page, est autorisée si nécessaire.",
-    "Si aucune source HTML admissible n’est trouvée dans les résultats de l’unique recherche, réponds avec exactement une ligne : STATUS: silence",
-    "N’effectue aucune seconde recherche.",
-    "Ne transforme jamais une URL PDF en URL supposée et n’invente jamais SOURCE_URL, EXCERPT, PREFIX ni SUFFIX.",
-    "Si toutes ces contraintes ne peuvent pas être satisfaites, réponds avec exactement une ligne : STATUS: silence",
-    "Sinon, réponds uniquement avec cette enveloppe exacte de sept lignes :",
-    "STATUS: evidence",
-    "ENTITY_TYPE: person|company",
-    "CLAIM: proposition simple de 10 à 200 caractères",
-    "SOURCE_URL: URL exacte de la citation",
-    "EXCERPT: extrait exact contigu de 1 à 500 caractères",
-    "PREFIX: 16 caractères maximum ou NONE",
-    "SUFFIX: 16 caractères maximum ou NONE",
+    "Respecte strictement le schéma de sortie fourni.",
   ].join("\n");
 }
 
@@ -142,21 +210,26 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           tools: {
             web_search: provider.tools.webSearch({
               externalWebAccess: true,
-              searchContextSize: "low",
+              searchContextSize: "medium",
             }),
           },
           toolChoice: { type: "tool", toolName: "web_search" },
-          maxOutputTokens: 700,
+          output: Output.object({
+            schema: providerDocumentSchema,
+            name: "verified_public_dossier",
+            description: "Résolution d’identité et faits publics avec extraits exacts.",
+          }),
+          maxOutputTokens: 2_600,
           maxRetries: 0,
           timeout: PROVIDER_TIMEOUT_MS,
           abortSignal: signal,
           providerOptions: {
             openai: {
-              maxToolCalls: 2,
+              maxToolCalls: 4,
               parallelToolCalls: false,
               reasoningEffort: "low",
               store: false,
-              textVerbosity: "low",
+              textVerbosity: "medium",
             } satisfies OpenAIResponsesProviderOptions,
           },
         });
@@ -198,6 +271,38 @@ export function createOpenAIResearchProvider(): ResearchProvider {
 
         return {
           text: result.text,
+          document: {
+            identityStatus: result.output.identityStatus,
+            entityType: result.output.entityType,
+            candidates: result.output.candidates.map((candidate) => ({
+              displayName: candidate.displayName,
+              entityType: candidate.entityType,
+              statement: candidate.excerpt,
+              structuredUrl: candidate.sourceUrl,
+              excerpt: candidate.excerpt,
+              prefix: candidate.prefix,
+              suffix: candidate.suffix,
+            })),
+            claims: result.output.claims.map((claim) => ({
+              category: claim.category,
+              entityType: claim.entityType,
+              statement: claim.excerpt,
+              predicate: claim.predicate,
+              scopeType: claim.scopeType,
+              scopeLabel: claim.scopeLabel,
+              factPeriodLabel: claim.factPeriodLabel,
+              factDate: claim.factDate,
+              normalizedValue: claim.normalizedValue,
+              unit: claim.unit,
+              currency: claim.currency,
+              contradictionKey: claim.contradictionKey,
+              structuredUrl: claim.sourceUrl,
+              excerpt: claim.excerpt,
+              prefix: claim.prefix,
+              suffix: claim.suffix,
+            })),
+            missingCategories: result.output.missingCategories,
+          },
           citations: normalizedMetadata.citations,
           sources: normalizedMetadata.sources,
           webSearchCalls: normalizedMetadata.webSearchCalls,

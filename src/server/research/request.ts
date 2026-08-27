@@ -104,7 +104,11 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
 
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record);
-  if (keys.some((key) => key !== "name" && key !== "context")) {
+  if (
+    keys.some(
+      (key) => key !== "name" && key !== "context" && key !== "entityType",
+    )
+  ) {
     throw new ResearchRequestError(
       400,
       "unknown_field",
@@ -113,6 +117,19 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
   }
   if (typeof record.name !== "string") {
     throw new ResearchRequestError(400, "name_required", "Le nom est requis.");
+  }
+
+  const entityType = record.entityType ?? "auto";
+  if (
+    entityType !== "auto" &&
+    entityType !== "person" &&
+    entityType !== "company"
+  ) {
+    throw new ResearchRequestError(
+      400,
+      "invalid_entity_type",
+      "Le type doit être auto, person ou company.",
+    );
   }
 
   const name = normalizeText(record.name);
@@ -142,5 +159,7 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
     );
   }
 
-  return context === undefined || context.length === 0 ? { name } : { name, context };
+  return context === undefined || context.length === 0
+    ? { name, entityType }
+    : { name, context, entityType };
 }

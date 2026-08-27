@@ -558,6 +558,14 @@ function bindUrlCitation(
   },
   candidate: ProviderClaimCandidate,
 ): ProviderCitation {
+  const claimStart = candidate.claimStart;
+  const claimEnd = candidate.claimEnd;
+  if (claimStart === undefined || claimEnd === undefined) {
+    throw new ResearchPipelineError(
+      "provider_citation_unbound",
+      "Les offsets de l’affirmation sont absents.",
+    );
+  }
   for (const citation of result.citations) {
     if (
       citation.generatedTextStart < 0 ||
@@ -572,8 +580,8 @@ function bindUrlCitation(
   }
   const covering = result.citations.filter(
     (citation) =>
-      citation.generatedTextStart <= candidate.claimStart &&
-      citation.generatedTextEnd >= candidate.claimEnd,
+      citation.generatedTextStart <= claimStart &&
+      citation.generatedTextEnd >= claimEnd,
   );
   if (covering.length !== 1) {
     throw new ResearchPipelineError(
@@ -632,8 +640,73 @@ export function bindProviderSource(
       "La forme des métadonnées fournisseur n’est pas prise en charge.",
     );
   }
-  if (result.citations.length > 0) {
+  if (
+    candidate.claimStart !== undefined &&
+    candidate.claimEnd !== undefined &&
+    result.citations.length > 0
+  ) {
     return bindUrlCitation(result, candidate);
+  }
+
+  if (candidate.claimStart === undefined || candidate.claimEnd === undefined) {
+    let structuredUrl: ReturnType<typeof validateSourceUrl>;
+    try {
+      structuredUrl = validateSourceUrl(candidate.structuredUrl, "citation");
+    } catch {
+      throw new ResearchPipelineError(
+        "source_url_rejected",
+        "L’URL structurée proposée est invalide.",
+      );
+    }
+    const matches = (url: string): boolean => {
+      try {
+        return validateSourceUrl(url, "citation").safeHref === structuredUrl.safeHref;
+      } catch {
+        return false;
+      }
+    };
+
+    const citation = result.citations.find(({ url }) => matches(url));
+    if (citation !== undefined) return citation;
+
+    const directSource = result.sources.find(({ url }) => matches(url));
+    if (directSource !== undefined) {
+      return {
+        provider: "openai",
+        bindingType: "provider_source",
+        url: directSource.url,
+        sourceId: directSource.sourceId,
+      };
+    }
+
+    for (const call of result.webSearchCalls ?? []) {
+      const source = call.sources?.find(({ url }) => matches(url));
+      if (source !== undefined) {
+        return {
+          provider: "openai",
+          bindingType: "web_search_source",
+          url: source.url,
+          toolCallId: call.toolCallId,
+        };
+      }
+    }
+
+    for (const inspection of result.webSearchInspections ?? []) {
+      if (inspection.urlStatus === "present" && matches(inspection.url)) {
+        return {
+          provider: "openai",
+          bindingType: "inspection_action_url",
+          url: inspection.url,
+          toolCallId: inspection.toolCallId,
+          actionType: inspection.actionType,
+        };
+      }
+    }
+
+    throw new ResearchPipelineError(
+      "source_metadata_missing",
+      "L’URL structurée ne correspond à aucune source réellement consultée.",
+    );
   }
 
   const webSearchCalls = result.webSearchCalls ?? [];

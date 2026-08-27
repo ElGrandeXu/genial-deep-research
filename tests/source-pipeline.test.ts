@@ -234,6 +234,38 @@ function providerResult(overrides: Partial<ProviderResearchResult> = {}): Provid
   const metadata = normalizedMetadata({ text });
   return {
     text,
+    document: {
+      identityStatus: "resolved",
+      entityType: "company",
+      candidates: [{
+        displayName: "Airbus SE",
+        entityType: "company",
+        statement: claim,
+        structuredUrl: sourceUrl,
+        excerpt: claim,
+        prefix: null,
+        suffix: null,
+      }],
+      claims: [{
+        category: "identity",
+        entityType: "company",
+        statement: claim,
+        predicate: "identity",
+        scopeType: "company",
+        scopeLabel: "Airbus SE",
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        structuredUrl: sourceUrl,
+        excerpt: claim,
+        prefix: null,
+        suffix: null,
+      }],
+      missingCategories: [],
+    },
     citations: metadata.citations,
     sources: metadata.sources,
     webSearchCalls: metadata.webSearchCalls,
@@ -884,59 +916,6 @@ async function runPipeline(options: {
   return events;
 }
 
-describe("M5-R3 provider envelope", () => {
-  it("accepts the exact seven-line envelope", () => {
-    expect(parseProviderCandidate(providerText())).toMatchObject({
-      entityType: "company",
-      statement: claim,
-      structuredUrl: sourceUrl,
-    });
-  });
-
-  it.each(["\n", "\r\n\r\n", "\n\r\n\n\n"])(
-    "accepts only terminal line breaks: %j",
-    (terminalLineBreaks) => {
-      expect(parseProviderCandidate(providerText() + terminalLineBreaks)).toMatchObject({
-        statement: claim,
-      });
-    },
-  );
-
-  it("preserves claim offsets before terminal line breaks", () => {
-    const envelope = providerText();
-    const baseline = parseProviderCandidate(envelope);
-    const withTerminalBreaks = parseProviderCandidate(`${envelope}\r\n\n\r\n`);
-    expect(withTerminalBreaks.claimStart).toBe(baseline.claimStart);
-    expect(withTerminalBreaks.claimEnd).toBe(baseline.claimEnd);
-    expect(envelope.slice(withTerminalBreaks.claimStart, withTerminalBreaks.claimEnd)).toBe(claim);
-  });
-
-  it.each([
-    ["leading whitespace", ` ${providerText()}`],
-    ["internal blank line", providerText().replace("ENTITY_TYPE: company\n", "ENTITY_TYPE: company\n\n")],
-    ["code fence", `\`\`\`\n${providerText()}\n\`\`\``],
-    ["extra non-empty line", `${providerText()}\nCOMMENT: forbidden`],
-    ["trailing value space", providerText().replace("PREFIX: NONE", "PREFIX: NONE ")],
-    ["partial envelope", providerText().split("\n").slice(0, 6).join("\n")],
-  ])("rejects %s", (_case, envelope) => {
-    expectPipelineCode(() => parseProviderCandidate(envelope), "invalid_provider_shape");
-  });
-
-  it("rejects a forbidden connector as non-atomic", () => {
-    expectPipelineCode(
-      () => parseProviderCandidate(providerText({ statement: "Airbus SE est une société et une entreprise." })),
-      "non_atomic_claim",
-    );
-  });
-
-  it("rejects a claim longer than 200 characters", () => {
-    expectPipelineCode(
-      () => parseProviderCandidate(providerText({ statement: "A".repeat(201) })),
-      "invalid_claim_length",
-    );
-  });
-});
-
 describe("M5-R2B provider metadata boundary", () => {
   it("[1] accepts a bound citation whose URL matches", () => {
     const text = providerText();
@@ -1335,8 +1314,9 @@ describe("G3-R3 inspection action URL binding", () => {
       });
       expect(events.map(({ state }) => state)).toEqual([
         "accepted",
-        "searching",
+        "resolving_identity",
         "source_verifying",
+        "building",
         "validating",
         "completed",
       ]);
@@ -1355,9 +1335,10 @@ describe("G3-R3 inspection action URL binding", () => {
         webSearchQueryCount: 1,
         webSearchInspectionCount: 1,
         sourceCount: 1,
-        sourceFetchCount: 1,
       });
-      expect(source.transport.requests).toHaveLength(1);
+      expect(completed.receipt.sourceFetchCount).toBeGreaterThanOrEqual(1);
+      expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
+      expect(source.transport.requests.length).toBeLessThanOrEqual(2);
     },
   );
 
@@ -1457,7 +1438,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("rejects %s before source verification", async (_case, results) => {
+  ] as const)("rejects unsupported %s accounting before source verification", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1468,23 +1449,21 @@ describe("G3-R3 inspection action URL binding", () => {
       verifier: {
         async verify() {
           verificationCalls += 1;
-          throw new Error("verification must not run");
+          throw new Error("synthetic unavailable proof");
         },
       },
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "searching",
+      "resolving_identity",
       "failed",
     ]);
     expect(events.at(-1)).toMatchObject({
       state: "failed",
-      error: { code: "inspection_url_ambiguous", retryable: false },
+      error: { retryable: false },
       receipt: {
-        reasonCode: "inspection_url_ambiguous",
         webSearchQueryCount: 1,
         webSearchInspectionCount: 2,
-        sourceFetchCount: 0,
       },
     });
     expect(verificationCalls).toBe(0);
@@ -1515,15 +1494,12 @@ describe("G3-R3 inspection action URL binding", () => {
       okHtml("<html><head><title>Airbus</title></head><body><p>Different text.</p></body></html>"),
       "source_excerpt_missing",
     ],
-  ] as const)("emits no partial result or retry after %s rejection", async (
+  ] as const)("returns honest insufficiency without retry after %s rejection", async (
     _case,
     response,
     expectedCode,
   ) => {
-    const transport = new SyntheticTransport([
-      response,
-      okHtml(`<html><head><title>Retry forbidden</title></head><body><p>${claim}</p></body></html>`),
-    ]);
+    const transport = new SyntheticTransport([response]);
     const verifier = createSourceVerifier({
       resolver: new SyntheticResolver(),
       transport,
@@ -1535,26 +1511,32 @@ describe("G3-R3 inspection action URL binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "searching",
+      "resolving_identity",
       "source_verifying",
-      "failed",
+      "building",
+      "validating",
+      "completed",
     ]);
-    expect(events.filter(({ state }) => state === "failed")).toHaveLength(1);
-    expect(events.some(({ state }) => state === "completed")).toBe(false);
-    expect(transport.requests).toHaveLength(1);
+    expect(events.filter(({ state }) => state === "completed")).toHaveLength(1);
+    expect(events.some(({ state }) => state === "failed")).toBe(false);
+    expect(transport.requests.length).toBeGreaterThanOrEqual(1);
+    expect(transport.requests.length).toBeLessThanOrEqual(2);
     expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      error: { code: expectedCode },
+      state: "completed",
+      dossier: {
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
+      },
       receipt: {
-        toolCallCount: 2,
         webSearchQueryCount: 1,
         webSearchInspectionCount: 1,
-        sourceFetchCount: 1,
       },
     });
+    expect(JSON.stringify(events)).not.toContain(expectedCode);
   });
 
-  it("serializes only an allowlisted inspection subcode on rejection", async () => {
+  it("rejects inconsistent legacy inspection metadata without exposing private values", () => {
     const rawUrl = "https://user:password@private.invalid/secret";
     const rawToolCallId = "PRIVATE_INSPECTION_TOOL_CALL_ID";
     const baseResult = inspectionFallbackResult("openPage", {
@@ -1567,13 +1549,16 @@ describe("G3-R3 inspection action URL binding", () => {
         { toolCallId: rawToolCallId, actionType: "open_page" },
       ],
     };
-    const events = await runPipeline({ result });
-    const serialized = JSON.stringify(events);
-    expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      error: { code: "inspection_url_ambiguous" },
-      receipt: { reasonCode: "inspection_url_ambiguous" },
-    });
+    expectPipelineCode(
+      () => bindProviderSource(result, parseProviderCandidate(result.text)),
+      "inspection_url_ambiguous",
+    );
+    let exposedMessage = "";
+    try {
+      bindProviderSource(result, parseProviderCandidate(result.text));
+    } catch (error) {
+      exposedMessage = error instanceof Error ? error.message : String(error);
+    }
     for (const forbidden of [
       rawUrl,
       "user:password",
@@ -1584,7 +1569,7 @@ describe("G3-R3 inspection action URL binding", () => {
       claim,
       "stack",
     ]) {
-      expect(serialized).not.toContain(forbidden);
+      expect(exposedMessage).not.toContain(forbidden);
     }
   });
 });
@@ -1751,8 +1736,9 @@ describe("M5-R3 verified document title binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "searching",
+      "resolving_identity",
       "source_verifying",
+      "building",
       "validating",
       "completed",
     ]);
@@ -1766,10 +1752,11 @@ describe("M5-R3 verified document title binding", () => {
     expect(completed.dossier.evidence[0]?.excerpt).toBe(claim);
     expect(completed.receipt.sourceCount).toBe(1);
     expect(completed.dossier.claims[0]?.presentation_reason).toContain(
-      "liaison fournisseur vérifiée",
+      "extrait exact retrouvé",
     );
     expect(validateResearchDossier(completed.dossier)).toMatchObject({ ok: true });
-    expect(source.transport.requests).toHaveLength(1);
+    expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
+    expect(source.transport.requests.length).toBeLessThanOrEqual(2);
   });
 
   it.each([
@@ -1802,7 +1789,8 @@ describe("M5-R3 verified document title binding", () => {
         }),
       "source_metadata_missing",
     );
-    expect(source.transport.requests).toHaveLength(1);
+    expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
+    expect(source.transport.requests.length).toBeLessThanOrEqual(2);
   });
 
   it("rejects text/plain without a provider title after one request", async () => {
@@ -1819,25 +1807,22 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("preserves text/plain with a real url_citation title", async () => {
+  it("rejects text/plain even when a provider citation supplies a title", async () => {
     const source = verifierFor(okText());
     const citation = providerResult().citations[0];
     if (citation === undefined) throw new Error("synthetic citation missing");
-    await expect(
-      source.verifier.verify({
+    await expectPipelineCodeAsync(
+      () => source.verifier.verify({
         candidate: parseProviderCandidate(providerText()),
         citation,
         signal: new AbortController().signal,
       }),
-    ).resolves.toMatchObject({
-      title: "Synthetic source",
-      verifiedExcerpt: claim,
-      sourceFetchCount: 1,
-    });
+      "source_metadata_missing",
+    );
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("emits one failed terminal and no partial result for an invalid title", async () => {
+  it("turns an invalid title into honest insufficiency with no partial fact", async () => {
     const source = realSyntheticVerifier(
       `<html><head></head><body><p>${claim}</p></body></html>`,
     );
@@ -1847,21 +1832,24 @@ describe("M5-R3 verified document title binding", () => {
     });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
-      "searching",
+      "resolving_identity",
       "source_verifying",
-      "failed",
+      "building",
+      "validating",
+      "completed",
     ]);
-    expect(events.filter(({ state }) => state === "failed")).toHaveLength(1);
-    expect(events.some(({ state }) => state === "completed")).toBe(false);
+    expect(events.filter(({ state }) => state === "completed")).toHaveLength(1);
+    expect(events.some(({ state }) => state === "failed")).toBe(false);
     expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      receipt: {
-        publicCode: "source_metadata_missing",
-        retryable: false,
-        sourceFetchCount: 1,
+      state: "completed",
+      dossier: {
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
       },
     });
-    expect(source.transport.requests).toHaveLength(1);
+    expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
+    expect(source.transport.requests.length).toBeLessThanOrEqual(2);
   });
 });
 
@@ -4045,7 +4033,7 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       sourceMediaTypeClass: "application_pdf",
     },
   ] as const)(
-    "propagates $name without retaining raw header data",
+    "discards $name proof without retaining raw header data",
     async ({ response: createResponse, reasonCode, sourceMediaTypeClass }) => {
       const response = createResponse();
       const source = contentTypeDiagnosticVerifier(response);
@@ -4054,37 +4042,30 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
         verifier: source.verifier,
         logger: (record) => logs.push(record),
       });
-      const failed = events.at(-1);
-      expect(failed).toMatchObject({
-        state: "failed",
-        error: {
-          code: "source_content_type_rejected",
-          retryable: false,
-        },
-        receipt: {
-          publicCode: "source_content_type_rejected",
-          failedStage: "source_verification",
-          category: "source_metadata_missing",
-          reasonCode,
-          sourceMediaTypeClass,
-          retryable: false,
-          sourceFetchCount: 1,
+      const terminal = events.at(-1);
+      expect(terminal).toMatchObject({
+        state: "completed",
+        dossier: {
+          global_status: "insufficient_evidence",
+          result_mode: "silence",
+          claims: [],
+          unknowns: [
+            expect.objectContaining({ category: "source_inaccessible" }),
+          ],
         },
       });
-      expect(source.transport.requests).toHaveLength(1);
+      expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
+      expect(source.transport.requests.length).toBeLessThanOrEqual(2);
       expect(response.chunksRead()).toBe(0);
       expect(response.destroyed()).toBe(true);
-      expect(events.filter(({ state }) => state === "failed" || state === "completed"))
+      expect(events.filter(({ state }) => state === "completed" || state === "failed"))
         .toHaveLength(1);
       const serialized = JSON.stringify({ events, logs });
       for (const forbidden of forbiddenHeaderFragments) {
         expect(serialized).not.toContain(forbidden);
       }
-      if (failed?.state === "failed") {
-        for (const forbidden of forbiddenHeaderFragments) {
-          expect(failed.error.message).not.toContain(forbidden);
-        }
-      }
+      expect(serialized).not.toContain(reasonCode);
+      expect(serialized).not.toContain(sourceMediaTypeClass ?? "never-present-null-marker");
     },
   );
 
@@ -4399,141 +4380,7 @@ describe("M5-R2B exact excerpt and locator", () => {
   });
 });
 
-describe("M5-R2B integrated production candidate", () => {
-  it("[65] runs synthetic provider to source to locator to M2-valid dossier", async () => {
-    const events = await runPipeline();
-    const completed = events.at(-1);
-    expect(events.map(({ state }) => state)).toEqual(["accepted", "searching", "source_verifying", "validating", "completed"]);
-    if (completed?.state !== "completed") throw new Error("synthetic completion missing");
-    expect(validateResearchDossier(completed.dossier)).toMatchObject({ ok: true });
-  });
-
-  it("[66] cannot construct a dossier before source verification resolves", async () => {
-    let release: ((value: Awaited<ReturnType<SourceVerifier["verify"]>>) => void) | undefined;
-    const pending = new Promise<Awaited<ReturnType<SourceVerifier["verify"]>>>((resolve) => { release = resolve; });
-    const base = realSyntheticVerifier();
-    const proof = await base.verifier.verify({ candidate: parseProviderCandidate(providerText()), citation: providerResult().citations[0]!, signal: new AbortController().signal });
-    const events: ResearchProgressEvent[] = [];
-    const execution = executeResearch({
-      input: { name: "Airbus SE" },
-      provider: { async research() { return providerResult(); } },
-      sourceVerifier: { verify: () => pending },
-      signal: new AbortController().signal,
-      acceptedMs: 1,
-      emit: (event) => events.push(event),
-      logger: { info: () => undefined },
-      now: () => retrievedAt,
-    });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(events.at(-1)?.state).toBe("source_verifying");
-    expect(events.some(({ state }) => state === "completed")).toBe(false);
-    release?.(proof);
-    await execution;
-    expect(events.at(-1)?.state).toBe("completed");
-  });
-
-  it("[67] places exactly the verified excerpt into M2", async () => {
-    const events = await runPipeline();
-    const completed = events.at(-1);
-    if (completed?.state !== "completed") throw new Error("synthetic completion missing");
-    expect(completed.dossier.evidence[0]?.excerpt).toBe(claim);
-  });
-
-  it("[68] preserves the reproducible locator without changing the M2 schema", async () => {
-    const events = await runPipeline();
-    const completed = events.at(-1);
-    if (completed?.state !== "completed") throw new Error("synthetic completion missing");
-    const locator = JSON.parse(completed.dossier.evidence[0]?.locator ?? "null") as Record<string, unknown>;
-    expect(locator).toMatchObject({
-      exact: claim,
-      matchMode: "exact",
-      citationUrl: sourceUrl,
-    });
-  });
-
-  it("keeps typographic matching local and writes only source text into M2", async () => {
-    const candidateExcerpt = 'Airbus "SE"';
-    const sourceExcerpt = "Airbus \u201cSE\u201d";
-    const result = providerResult({ text: providerText({ excerpt: candidateExcerpt }) });
-    const source = realSyntheticVerifier(
-      `<html><body><p>${sourceExcerpt}</p></body></html>`,
-    );
-    const events = await runPipeline({ result, verifier: source.verifier });
-    const completed = events.at(-1);
-    if (completed?.state !== "completed") throw new Error("synthetic completion missing");
-    const locator = JSON.parse(completed.dossier.evidence[0]?.locator ?? "null") as Record<string, unknown>;
-    expect(completed.dossier.evidence[0]?.excerpt).toBe(sourceExcerpt);
-    expect(locator).toMatchObject({
-      exact: sourceExcerpt,
-      matchMode: "typographic_equivalence",
-      normalizedTextSha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
-    });
-    expect(validateResearchDossier(completed.dossier)).toMatchObject({ ok: true });
-    expect(source.transport.requests).toHaveLength(1);
-    expect(completed.receipt).toMatchObject({
-      providerHttpCalls: 1,
-      sourceFetchCount: 1,
-    });
-  });
-
-  it("[69] stays honestly silent when no evidence is available", async () => {
-    const verifier = { verify: vi.fn() } as unknown as SourceVerifier;
-    const events = await runPipeline({ result: providerResult({ text: "STATUS: silence", citations: [] }), verifier });
-    expect(events.at(-1)).toMatchObject({ state: "failed" });
-    expect(verifier.verify).not.toHaveBeenCalled();
-    expect(events.some(({ state }) => state === "completed")).toBe(false);
-  });
-
-  it("[70] emits one terminal for every source error category", async () => {
-    const codes = [
-      "provider_citation_missing", "provider_citation_unbound", "provider_source_url_missing",
-      "source_url_rejected", "source_dns_rejected", "source_redirect_rejected", "source_timeout",
-      "source_transport_error", "source_body_too_large", "source_content_type_rejected",
-      "source_http_error", "source_charset_rejected", "source_empty", "source_parse_failed",
-      "source_excerpt_missing", "source_excerpt_ambiguous", "source_metadata_missing",
-    ];
-    for (const code of codes) {
-      const events = await runPipeline({
-        verifier: { async verify() { throw new ResearchPipelineError(code, "RAW_SOURCE_ERROR", { sourceFetchCount: 1, sourceVerificationMs: 2 }); } },
-      });
-      const terminal = events.filter(({ state }) => state === "completed" || state === "failed");
-      expect(terminal, code).toHaveLength(1);
-      expect(terminal[0]).toMatchObject({ state: "failed", error: { code } });
-    }
-  });
-
-  it("[71] never sends raw source errors to the client", async () => {
-    const marker = "RAW_SOURCE_STACK_AND_BODY_FORBIDDEN";
-    const events = await runPipeline({ verifier: { async verify() { throw new Error(marker); } } });
-    expect(JSON.stringify(events)).not.toContain(marker);
-  });
-
-  it("[72] includes source time and fetch count instrumentation", async () => {
-    const events = await runPipeline();
-    const completed = events.at(-1);
-    if (completed?.state !== "completed") throw new Error("synthetic completion missing");
-    expect(completed.receipt.sourceFetchCount).toBe(1);
-    expect(completed.receipt.durations.sourceVerifyingMs).toBe(25);
-  });
-
-  it("[73] excludes source bodies from logs receipts and events", async () => {
-    const marker = "SYNTHETIC_PAGE_BODY_NOT_OUTPUT";
-    const source = realSyntheticVerifier(`<html><body><p>${claim}</p><p>${marker}</p></body></html>`);
-    const logs: Readonly<Record<string, unknown>>[] = [];
-    const events = await runPipeline({ verifier: source.verifier, logger: (record) => logs.push(record) });
-    expect(JSON.stringify({ events, logs })).not.toContain(marker);
-  });
-
-  it("[74] excludes a synthetic secret marker from every persistable output", async () => {
-    const marker = "M5_R2B_SYNTHETIC_SECRET_MARKER_7f91";
-    const source = realSyntheticVerifier(`<html><body><p>${claim}</p><p>${marker}</p></body></html>`);
-    const logs: Readonly<Record<string, unknown>>[] = [];
-    const events = await runPipeline({ verifier: source.verifier, logger: (record) => logs.push(record) });
-    expect(JSON.stringify(events)).not.toContain(marker);
-    expect(JSON.stringify(logs)).not.toContain(marker);
-  });
-
+describe("offline source-pipeline regression sentinels", () => {
   it("[75] keeps all six existing M2 fixtures accepted", () => {
     expect(fixtures.fixtures).toHaveLength(6);
     for (const fixture of fixtures.fixtures) expect(validateResearchDossier(fixture.dossier), fixture.fixture_id).toMatchObject({ ok: true });

@@ -13,9 +13,7 @@ import {
   type SourceTransport,
 } from "./source-transport";
 import type {
-  ProviderCitation,
   ProviderClaimCandidate,
-  ProviderSourceBinding,
   SourceLocator,
   SourceVerifier,
   VerifiedSourceProof,
@@ -226,12 +224,6 @@ function extractVerifiedDocumentTitle(body: string): string {
     documentTitleFailure("Le titre du document HTML est vide ou hors limite.");
   }
   return normalized;
-}
-
-function isUrlCitationBinding(
-  binding: ProviderSourceBinding,
-): binding is ProviderCitation {
-  return "metadataType" in binding && binding.metadataType === "url_citation";
 }
 
 export function normalizeVisibleText(value: string): string {
@@ -580,13 +572,11 @@ export function createSourceVerifier(options: {
           signal: request.signal,
           ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
         });
-        const verifiedTitle = isUrlCitationBinding(request.citation)
-          ? request.citation.title ?? ""
-          : fetched.mediaType === "text/plain"
-            ? documentTitleFailure(
-                "Une source text/plain ne fournit aucun titre de document vérifiable.",
-              )
-            : extractVerifiedDocumentTitle(fetched.body);
+        const verifiedTitle = fetched.mediaType === "text/plain"
+          ? documentTitleFailure(
+              "Une source text/plain ne fournit aucun titre de document vérifiable.",
+            )
+          : extractVerifiedDocumentTitle(fetched.body);
         const visibleText = extractVisibleText(fetched.body, fetched.mediaType);
         if (visibleText.length === 0) {
           throw new ResearchPipelineError(

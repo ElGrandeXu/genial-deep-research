@@ -246,7 +246,14 @@ function validationClassification(code: string): Classification {
       failedStage: "source_verification",
     };
   }
-  if (["m2_contract_invalid", "m2_receipt_usage_missing"].includes(code)) {
+  if (
+    [
+      "m2_contract_invalid",
+      "m2_receipt_usage_missing",
+      "runtime_invariants_invalid",
+      "cost_limit_exceeded",
+    ].includes(code)
+  ) {
     return {
       category: "truth_contract_rejected",
       publicCode: "truth_contract_rejected",

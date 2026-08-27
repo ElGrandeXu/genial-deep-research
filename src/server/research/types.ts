@@ -4,6 +4,7 @@ import type { SourceMediaTypeClass } from "./errors";
 export interface ResearchInput {
   readonly name: string;
   readonly context?: string;
+  readonly entityType?: "auto" | "person" | "company";
 }
 
 export interface ProviderCitation {
@@ -26,6 +27,14 @@ export interface ProviderWebSearchSourceBinding {
   readonly toolCallId: string;
 }
 
+export interface ProviderDirectSourceBinding {
+  readonly provider: "openai";
+  readonly bindingType: "provider_source";
+  readonly url: string;
+  readonly sourceId: string;
+  readonly title?: never;
+}
+
 export interface ProviderInspectionActionUrlBinding {
   readonly provider: "openai";
   readonly bindingType: "inspection_action_url";
@@ -37,6 +46,7 @@ export interface ProviderInspectionActionUrlBinding {
 
 export type ProviderSourceBinding =
   | ProviderCitation
+  | ProviderDirectSourceBinding
   | ProviderWebSearchSourceBinding
   | ProviderInspectionActionUrlBinding;
 
@@ -79,12 +89,62 @@ export type WebSearchActionPolicyCode =
 export interface ProviderClaimCandidate {
   readonly entityType: "person" | "company";
   readonly statement: string;
-  readonly claimStart: number;
-  readonly claimEnd: number;
+  readonly claimStart?: number;
+  readonly claimEnd?: number;
   readonly structuredUrl: string;
   readonly excerpt: string;
   readonly prefix: string | null;
   readonly suffix: string | null;
+}
+
+export const FACT_CATEGORIES = [
+  "identity",
+  "activity",
+  "role",
+  "geography",
+  "metric",
+  "event",
+  "recent_signal",
+  "other",
+] as const;
+
+export type FactCategory = (typeof FACT_CATEGORIES)[number];
+
+export interface ProviderIdentityCandidate extends ProviderClaimCandidate {
+  readonly displayName: string;
+}
+
+export interface ProviderFactCandidate extends ProviderClaimCandidate {
+  readonly category: FactCategory;
+  readonly predicate: string;
+  readonly scopeType:
+    | "person"
+    | "company"
+    | "group"
+    | "subsidiary"
+    | "brand"
+    | "country"
+    | "establishment"
+    | "undetermined";
+  readonly scopeLabel: string | null;
+  readonly factPeriodLabel: string | null;
+  readonly factDate: string | null;
+  readonly normalizedValue: string | null;
+  readonly unit: string | null;
+  readonly currency: string | null;
+  readonly contradictionKey: string | null;
+}
+
+export interface ProviderResearchDocument {
+  readonly identityStatus:
+    | "resolved"
+    | "ambiguous"
+    | "insufficient_context"
+    | "not_found";
+  readonly entityType: "person" | "company" | null;
+  readonly candidates: readonly ProviderIdentityCandidate[];
+  readonly claims: readonly ProviderFactCandidate[];
+  readonly missingCategories: readonly FactCategory[];
 }
 
 export interface SourceLocator {
@@ -133,6 +193,7 @@ export interface ProviderUsage {
 
 export interface ProviderResearchResult {
   readonly text: string;
+  readonly document: ProviderResearchDocument;
   readonly citations: readonly ProviderCitation[];
   readonly sources: readonly ProviderSource[];
   readonly webSearchCalls?: readonly ProviderWebSearchCall[];
@@ -172,7 +233,7 @@ export interface PublicReceipt {
   readonly executionId: string;
   readonly provider: "OpenAI";
   readonly model: "gpt-5.6-luna";
-  readonly purpose: "single_sourced_public_identity_fact";
+  readonly purpose: "verified_public_dossier";
   readonly providerHttpCalls: number;
   readonly toolCalls: number;
   readonly webSearchQueryCount: number;
@@ -188,7 +249,7 @@ export interface PublicReceipt {
   readonly timedOutOrCancelled: boolean;
   readonly finalStatus: "completed" | "failed";
   readonly pricing: {
-    readonly date: "2026-08-26";
+    readonly date: "2026-08-27";
     readonly inputUsdPerMillion: 0.2;
     readonly cachedInputUsdPerMillion: 0.02;
     readonly outputUsdPerMillion: 1.2;
@@ -289,7 +350,13 @@ export interface FailureReceipt {
 
 export type ResearchProgressEvent =
   | {
-      readonly state: "accepted" | "searching" | "source_verifying" | "validating";
+      readonly state:
+        | "accepted"
+        | "resolving_identity"
+        | "searching"
+        | "source_verifying"
+        | "building"
+        | "validating";
       readonly executionId: string;
       readonly elapsedMs: number;
     }
