@@ -163,6 +163,8 @@ try {
   await loaded;
   await waitFor(client, "document.readyState === 'complete'", 10_000);
 
+  let terminalEvidence = null;
+  let evidencePath = null;
   if (scenario !== null) {
     const safeScenario = JSON.stringify({
       name: String(scenario.name ?? ""),
@@ -171,6 +173,20 @@ try {
     });
     await evaluate(client, `(() => {
       const scenario = ${safeScenario};
+      const originalFetch = window.fetch.bind(window);
+      window.__genialCaptureSse = null;
+      window.__genialCaptureSsePromise = null;
+      window.fetch = async (...args) => {
+        const response = await originalFetch(...args);
+        const requested = typeof args[0] === 'string' ? args[0] : args[0]?.url ?? '';
+        if (String(requested).includes('/api/research')) {
+          window.__genialCaptureSsePromise = response.clone().text().then((body) => {
+            window.__genialCaptureSse = body;
+            return body;
+          });
+        }
+        return response;
+      };
       const setValue = (selector, value) => {
         const element = document.querySelector(selector);
         if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) throw new Error('field missing');
@@ -189,6 +205,44 @@ try {
       "document.querySelector('.result-card, .error-box') !== null && document.querySelector('[aria-busy=\"true\"]') === null",
       180_000,
     );
+    const rawSse = await evaluate(
+      client,
+      "window.__genialCaptureSsePromise === null ? null : window.__genialCaptureSsePromise",
+    );
+    if (typeof rawSse !== "string") {
+      throw new Error("The research response could not be captured.");
+    }
+    const events = rawSse
+      .trim()
+      .split(/\r?\n\r?\n/u)
+      .flatMap((block) => {
+        const data = block
+          .split(/\r?\n/u)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n");
+        return data.length === 0 ? [] : [JSON.parse(data)];
+      });
+    terminalEvidence = events.findLast(
+      (event) => event.state === "completed" || event.state === "failed",
+    ) ?? null;
+    if (terminalEvidence === null) throw new Error("Captured research has no terminal event.");
+    if (typeof scenario.evidencePath === "string" && scenario.evidencePath.length > 0) {
+      evidencePath = scenario.evidencePath;
+      const evidence = {
+        evidence_version: "1.0.0",
+        captured_at: new Date().toISOString(),
+        deployment_url: new URL(url).origin,
+        input: {
+          name: String(scenario.name ?? ""),
+          entityType: String(scenario.entityType ?? "auto"),
+          context: String(scenario.context ?? ""),
+        },
+        terminal: terminalEvidence,
+      };
+      await mkdir(dirname(evidencePath), { recursive: true });
+      await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+    }
   }
 
   await delay(500);
@@ -219,6 +273,18 @@ try {
     width,
     height: Math.ceil(content.height),
     overflow,
+    evidencePath,
+    terminal: terminalEvidence === null
+      ? null
+      : {
+          state: terminalEvidence.state,
+          elapsedMs: terminalEvidence.elapsedMs,
+          globalStatus: terminalEvidence.dossier?.global_status ?? null,
+          identityStatus: terminalEvidence.dossier?.identity?.status ?? null,
+          claimCount: terminalEvidence.dossier?.claims?.length ?? 0,
+          sourceCount: terminalEvidence.dossier?.sources?.length ?? 0,
+          estimatedCostUsd: terminalEvidence.receipt?.estimatedCostUsd ?? null,
+        },
     profile,
   })}\n`);
 } finally {
