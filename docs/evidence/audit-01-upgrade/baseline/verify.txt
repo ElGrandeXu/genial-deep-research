@@ -1,0 +1,68 @@
+Baseline: 2026-08-27 22:31 CEST
+Commit: 98e7e07
+
+SOURCE_INTEGRITY
+SOURCE_INTEGRITY_OK: 3 files
+SOURCE_INTEGRITY_EXIT=0
+
+GIT_STATUS
+?? AUDIT_01.md
+?? PLAN_ACTION_01.md
+GIT_STATUS_EXIT=0
+
+PNPM_VERIFY
+✓ Lockfile passes supply-chain policies (verified 23h ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+Done in 675ms using pnpm v11.24.0
+$ pwsh -NoProfile -File tools/verify-project.ps1
+SOURCE_INTEGRITY_OK: 3 files
+SECRET_SCAN_OK: mode=Tracked files=141
+FOUNDATION_VERIFY_OK: root, durable controls, sources, attributes, exclusions, env, hooks, identity, G0, secrets
+SECRET_SCAN_OK: mode=WorkingTree files=143
+SECRET_SCAN_OK: mode=Staged files=0
+SECRET_SCAN_OK: mode=Tracked files=141
+SECRET_SCAN_NEGATIVE_PROBE_OK: synthetic OpenAI-shaped key rejected
+M2_TRACEABILITY_OK: requirements=14
+M2_JSON_OK: schema and fixtures
+M2_FIXTURE_OK: supported_claim
+M2_FIXTURE_OK: homonym_clarification
+M2_FIXTURE_OK: conflict_two_versions
+M2_FIXTURE_OK: honest_silence
+M2_FIXTURE_OK: historical_information
+M2_FIXTURE_OK: technical_failure
+M2_SYNTHETIC_SAFETY_OK: fixtures=6
+M2_NEGATIVE_MUTATION_REJECTED: missing_evidence
+M2_NEGATIVE_MUTATION_REJECTED: ambiguous_identity_marked_complete
+M2_NEGATIVE_MUTATION_REJECTED: silence_with_displayed_claim
+M2_NEGATIVE_MUTATION_REJECTED: conflict_flattened_to_one_value
+M2_NEGATIVE_MUTATION_REJECTED: current_claim_without_temporal_qualification
+M2_VERIFY_OK: fixtures=6 negative_mutations=5
+Test Files  1 passed (1)
+Tests  8 passed (8)
+RUNTIME_INVARIANTS_OK: current runtime dossier rules exercised
+PACKAGE_MANAGER_OK: pnpm=11.24.0
+$ eslint . --max-warnings=0
+$ node tools/contract-types.mjs --check && tsc --noEmit
+CONTRACT_TYPES_OK
+$ vitest run
+Test Files  7 passed (7)
+Tests  395 passed (395)
+$ node tools/run-next.mjs build
+Next.js 16.3.3 (Turbopack)
+Compiled successfully
+Route (app)
+  /                 static
+  /_not-found       static
+  /api/health       dynamic
+  /api/research     dynamic
+CLIENT_BUNDLE_OK: files=11
+No known vulnerabilities found
+DEPENDENCY_AUDIT_OK: production dependencies, threshold=high
+VERIFIER_NEGATIVE_PATHS_OK: modified_source, injected_secret, invalid_fixture, fact_without_proof
+PROJECT_VERIFY_OK: build=True dependency_audit=True
+PNPM_VERIFY_EXIT=0
+
+PNPM_AUDIT
+No known vulnerabilities found
+PNPM_AUDIT_EXIT=0
