@@ -748,8 +748,6 @@ button.secondary:hover {
 }
 
 .claim-card {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 32rem;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 1rem;
