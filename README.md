@@ -31,6 +31,7 @@ Le statut proposé par le fournisseur ne suffit jamais à résoudre l’identit�
 ```powershell
 git clone https://github.com/ElGrandeXu/genial-deep-research.git
 Set-Location genial-deep-research
+git config core.hooksPath .githooks
 corepack pnpm install --frozen-lockfile
 Copy-Item .env.example .env.local
 ```
@@ -141,6 +142,7 @@ Le cumul exact est `0,1205530 $`, soit `0,0005530 $` au-dessus de l’enveloppe 
 - [Source accessible de la note](docs/NOTE_ARBITRAGE_FINALE.md)
 - [Bench live final et reçus](docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md)
 - [Validation Production](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md)
+- [Validation du dépôt public et du clean-start](docs/evidence/final-2026-08-28/CLEAN_CLONE_VALIDATION_FINAL.md)
 - [Contrôle WAF](docs/evidence/final-2026-08-28/WAF_VALIDATION.md)
 - [Matrice G0–G12](docs/evidence/final-2026-08-28/GATE_MATRIX_G0_G12.md)
 - [Réaduit final 20/20/20/20/20](docs/evidence/final-2026-08-28/REAUDIT_FINAL.md)
