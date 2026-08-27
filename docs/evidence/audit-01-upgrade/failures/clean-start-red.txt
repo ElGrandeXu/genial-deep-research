@@ -21,3 +21,15 @@ forbid adding them to the package.
 
 Decision: continue proving that both paths are ignored and untracked, but make
 their local presence optional. This removes no safety check relevant to a clone.
+
+Follow-up at commit `2f0de74`:
+
+```text
+corepack pnpm verify -> Exit 0; 478/478 unit tests; 8/8 browser tests
+git status --short -> M docs/evidence/audit-01-upgrade/screenshots/complete-1440.png
+```
+
+Cause: the browser suite rewrote tracked PNG evidence on every ordinary
+verification; PNG bytes are not deterministic across captures. Decision: keep
+responsive assertions in every run, but regenerate release captures only when
+`UPDATE_RELEASE_EVIDENCE=1` is explicit.

@@ -19,6 +19,7 @@ const evidenceDirectory = join(
   "audit-01-upgrade",
   "screenshots",
 );
+const updateReleaseEvidence = process.env.UPDATE_RELEASE_EVIDENCE === "1";
 
 async function mockSse(page: Page, body: string): Promise<void> {
   await page.route("**/api/research", async (route) => {
@@ -81,7 +82,7 @@ async function installStreamingFetch(
 }
 
 test.beforeAll(async () => {
-  await mkdir(evidenceDirectory, { recursive: true });
+  if (updateReleaseEvidence) await mkdir(evidenceDirectory, { recursive: true });
 });
 
 test("complete dossier renders extractive summary, adjacent sources and final focus", async ({ page }) => {
@@ -113,7 +114,9 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
   await expect(page.getByText("Portée : Acme Group — groupe")).toBeVisible();
   await expect(page.locator(".result-focus")).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  await page.screenshot({ path: join(evidenceDirectory, "complete-1440.png"), fullPage: true });
+  if (updateReleaseEvidence) {
+    await page.screenshot({ path: join(evidenceDirectory, "complete-1440.png"), fullPage: true });
+  }
 });
 
 test("partial dossier stays explicit and the 390 px layout does not overflow", async ({ page }) => {
@@ -129,7 +132,9 @@ test("partial dossier stays explicit and the 390 px layout does not overflow", a
   await page.getByText("Détails d’exécution").click();
   await expect(page.getByText(/faits uniques: 2\/3 minimum/u)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  await page.screenshot({ path: join(evidenceDirectory, "partial-390.png"), fullPage: true });
+  if (updateReleaseEvidence) {
+    await page.screenshot({ path: join(evidenceDirectory, "partial-390.png"), fullPage: true });
+  }
 });
 
 test("ambiguity keeps candidates separate and clarification only prefills", async ({ page }) => {
