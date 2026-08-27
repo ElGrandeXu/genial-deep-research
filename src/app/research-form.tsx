@@ -1211,7 +1211,7 @@ export function ResearchForm() {
         </section>
       </div>
 
-      <section className="live-panel" aria-live="polite">
+      <section className={`live-panel live-panel-${status}`} aria-live="polite">
         <div className="live-heading">
           <div>
             <p className="section-kicker">Progression</p>

@@ -1,0 +1,555 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T18:20:56.463Z",
+  "deployment_url": "https://genial-deep-research-nl3aul0ix-el-grande-xue.vercel.app",
+  "input": {
+    "name": "OpenAI",
+    "entityType": "company",
+    "context": "Entreprise IA, San Francisco, site officiel openai.com"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "17ace815-07cc-4bb6-a517-ff35e5a65d72",
+    "elapsedMs": 32516,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-e25f5ef0-439b-4574-a63f-cbb1c7252b8a",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-1d5c7011-9b8f-44ec-9287-da28d02f2f3d",
+        "submitted_at": "2026-08-27T18:20:24.541Z",
+        "name": "OpenAI",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Entreprise IA, San Francisco, site officiel openai.com"
+        },
+        "total_character_count": 60
+      },
+      "identity": {
+        "status": "resolved",
+        "selected_subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+        "candidates": [
+          {
+            "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+            "entity_type": "company",
+            "display_name": "OpenAI",
+            "discriminators": {},
+            "match_rationale": "Le type, le contexte soumis et les extraits vérifiés convergent vers cette entité."
+          }
+        ],
+        "resolution_reason": "L’identité est retenue seulement après concordance du type, du contexte et d’au moins un extrait direct.",
+        "clarification_fields": []
+      },
+      "sources": [
+        {
+          "source_id": "source-0eb258fc-14db-446f-9050-27e6f3eb3f0d",
+          "provider_url": "https://openai.com/about/",
+          "resolved_url": "https://openai.com/about/",
+          "canonical_url": null,
+          "title": "About | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:20:56.854Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI"
+          }
+        },
+        {
+          "source_id": "source-b28e5fbe-819e-4928-8efc-53079c1c3286",
+          "provider_url": "https://openai.com/academy/applications-of-ai/",
+          "resolved_url": "https://openai.com/academy/applications-of-ai/",
+          "canonical_url": null,
+          "title": "Applications of AI at OpenAI | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:20:57.035Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI API"
+          }
+        },
+        {
+          "source_id": "source-5a532761-2d3d-47fa-9571-985e2c75f96d",
+          "provider_url": "https://openai.com/index/announcing-the-stargate-project/",
+          "resolved_url": "https://openai.com/index/announcing-the-stargate-project/",
+          "canonical_url": null,
+          "title": "Announcing The Stargate Project | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:20:56.989Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "assumed_scope": {
+            "type": "group",
+            "label": "The Stargate Project"
+          }
+        },
+        {
+          "source_id": "source-56b1316d-e406-4fe4-bbfa-7de9405bb5ae",
+          "provider_url": "https://developers.openai.com/",
+          "resolved_url": "https://developers.openai.com/",
+          "canonical_url": null,
+          "title": "OpenAI Developers",
+          "publisher": "developers.openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T18:20:56.427Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence-5c9db96f-1999-429e-bc54-1e9cfa6d048e",
+          "source_id": "source-0eb258fc-14db-446f-9050-27e6f3eb3f0d",
+          "claim_id": "claim-fd837b48-1ef0-4fdd-8a6f-d2f2a67c1932",
+          "excerpt": "OpenAI is an AI research and deployment company.",
+          "locator": "{\"exact\":\"OpenAI is an AI research and deployment company.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" Our mission is \",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T18:20:56.854Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373428,\"redirectCount\":0}",
+          "entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:20:56.854Z"
+        },
+        {
+          "evidence_id": "evidence-5497e80a-b63c-4b94-b4de-cc60cad44a4b",
+          "source_id": "source-b28e5fbe-819e-4928-8efc-53079c1c3286",
+          "claim_id": "claim-72ef6fb7-ba8b-4f7e-91e4-3b5186742332",
+          "excerpt": "The OpenAI API provides programmable access to OpenAI models.",
+          "locator": "{\"exact\":\"The OpenAI API provides programmable access to OpenAI models.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" Developers can \",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/academy/applications-of-ai/\",\"citationUrl\":\"https://openai.com/academy/applications-of-ai/\",\"retrievedAt\":\"2026-08-27T18:20:57.035Z\",\"normalizedTextSha256\":\"8f9e20e90c3131632dac8786fff741fc2433123af35e8e10caf6bfa41f5b7b93\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":355926,\"redirectCount\":0}",
+          "entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI API"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:20:57.035Z"
+        },
+        {
+          "evidence_id": "evidence-88fe02a3-f8a1-407e-8665-3678b17f07c5",
+          "source_id": "source-0eb258fc-14db-446f-9050-27e6f3eb3f0d",
+          "claim_id": "claim-cbba111e-e307-431d-a691-3156d878b607",
+          "excerpt": "OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.",
+          "locator": "{\"exact\":\"OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" The OpenAI miss\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T18:20:56.602Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373416,\"redirectCount\":0}",
+          "entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:20:56.602Z"
+        },
+        {
+          "evidence_id": "evidence-430bc432-4cbe-407e-aa1d-106831f96fe3",
+          "source_id": "source-5a532761-2d3d-47fa-9571-985e2c75f96d",
+          "claim_id": "claim-a9421270-7c7d-45e9-a186-68159b98f0d9",
+          "excerpt": "The Stargate Project is a new company which intends to invest $500 billion over the next four years building new AI infrastructure for OpenAI in the United States.",
+          "locator": "{\"exact\":\"The Stargate Project is a new company which intends to invest $500 billion over the next four years building new AI infrastructure for OpenAI in the United States.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" We will begin d\",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/index/announcing-the-stargate-project/\",\"citationUrl\":\"https://openai.com/index/announcing-the-stargate-project/\",\"retrievedAt\":\"2026-08-27T18:20:56.989Z\",\"normalizedTextSha256\":\"4adef53798c03fae2692ea359a8bcf154e11130b7e862a7859c7d45df44bb26e\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":314249,\"redirectCount\":0}",
+          "entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "group",
+            "label": "The Stargate Project"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:20:56.989Z"
+        },
+        {
+          "evidence_id": "evidence-844ae4c2-d1f9-4dcf-b616-fc305f44d79f",
+          "source_id": "source-56b1316d-e406-4fe4-bbfa-7de9405bb5ae",
+          "claim_id": "claim-c282c7d0-7f52-456c-9f33-3c1a67db94a8",
+          "excerpt": "Automating repetitive work at OpenAI with Codex",
+          "locator": "{\"exact\":\"Automating repetitive work at OpenAI with Codex\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\"\",\"occurrenceIndex\":0,\"finalUrl\":\"https://developers.openai.com/\",\"citationUrl\":\"https://developers.openai.com/\",\"retrievedAt\":\"2026-08-27T18:20:56.427Z\",\"normalizedTextSha256\":\"5f268d993ad708df2d3df14bc0918543fe8f5badf70c2ad92643f124e0c6f825\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":314649,\"redirectCount\":0}",
+          "entity_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T18:20:56.427Z"
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "claim-fd837b48-1ef0-4fdd-8a6f-d2f2a67c1932",
+          "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "statement": "OpenAI is an AI research and deployment company.",
+          "predicate": "identity.identity",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-5c9db96f-1999-429e-bc54-1e9cfa6d048e"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-72ef6fb7-ba8b-4f7e-91e4-3b5186742332",
+          "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "statement": "The OpenAI API provides programmable access to OpenAI models.",
+          "predicate": "activity.fournit un accès programmable à ses modèles d’IA via son API",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI API"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-5497e80a-b63c-4b94-b4de-cc60cad44a4b"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-cbba111e-e307-431d-a691-3156d878b607",
+          "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "statement": "OpenAI consists of the nonprofit OpenAI Foundation and the for-profit OpenAI Group. The Foundation governs the Group, which operates as a public benefit corporation.",
+          "predicate": "other.est structurée autour d’OpenAI Foundation et d’OpenAI Group ; la Foundation gouv",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-88fe02a3-f8a1-407e-8665-3678b17f07c5"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-a9421270-7c7d-45e9-a186-68159b98f0d9",
+          "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "statement": "The Stargate Project is a new company which intends to invest $500 billion over the next four years building new AI infrastructure for OpenAI in the United States.",
+          "predicate": "metric.a annoncé un projet Stargate visant un investissement de 500 milliards de dollar",
+          "structured_value": {
+            "value": "500",
+            "value_type": "text"
+          },
+          "unit": "billion dollars",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "group",
+            "label": "The Stargate Project"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-430bc432-4cbe-407e-aa1d-106831f96fe3"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        },
+        {
+          "claim_id": "claim-c282c7d0-7f52-456c-9f33-3c1a67db94a8",
+          "subject_id": "subject-4b978d92-3b94-483e-a154-970420ddecb9",
+          "statement": "Automating repetitive work at OpenAI with Codex",
+          "predicate": "recent_signal.a publié le 25 août 2026 un article sur l’automatisation de tâches répétitives c",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-844ae4c2-d1f9-4dcf-b616-fc305f44d79f"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        }
+      ],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-74908e2b-56ed-4b63-b54d-f5cf0af1b090",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : role, geography, event.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-414438fb-5019-4ee8-93ec-5d11e6e0469b",
+          "category": "source_inaccessible",
+          "description": "1 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-7bb8b595-5f2c-4489-8f9e-96c633fadb4e",
+          "invocation_id": "invocation-9e7d585c-d871-46d4-8110-9b32d8ca569f",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:20:24.541Z",
+          "ended_at": "2026-08-27T18:20:57.036Z",
+          "duration_ms": 31478,
+          "error_code": null
+        },
+        {
+          "step_id": "step-932bdd1f-12c0-4bc7-8558-8ab685419fc9",
+          "invocation_id": "invocation-c186e0de-b31f-4600-b360-44f331d00a66",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:20:24.541Z",
+          "ended_at": "2026-08-27T18:20:57.036Z",
+          "duration_ms": 1015,
+          "error_code": null
+        },
+        {
+          "step_id": "step-8875e3e7-67e7-4a60-b709-c94ddcc3565d",
+          "invocation_id": "invocation-43655030-1b4f-422f-8493-23417265c632",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T18:20:24.541Z",
+          "ended_at": "2026-08-27T18:20:57.036Z",
+          "duration_ms": 1,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [
+          {
+            "kind": "claim",
+            "ref_id": "claim-fd837b48-1ef0-4fdd-8a6f-d2f2a67c1932"
+          },
+          {
+            "kind": "claim",
+            "ref_id": "claim-72ef6fb7-ba8b-4f7e-91e4-3b5186742332"
+          },
+          {
+            "kind": "claim",
+            "ref_id": "claim-cbba111e-e307-431d-a691-3156d878b607"
+          }
+        ],
+        "key_fact_claim_ids": [
+          "claim-fd837b48-1ef0-4fdd-8a6f-d2f2a67c1932",
+          "claim-72ef6fb7-ba8b-4f7e-91e4-3b5186742332",
+          "claim-cbba111e-e307-431d-a691-3156d878b607",
+          "claim-a9421270-7c7d-45e9-a186-68159b98f0d9"
+        ],
+        "recent_signal_claim_ids": [
+          "claim-c282c7d0-7f52-456c-9f33-3c1a67db94a8"
+        ],
+        "ambiguity_claim_ids": [],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-74908e2b-56ed-4b63-b54d-f5cf0af1b090",
+          "unknown-414438fb-5019-4ee8-93ec-5d11e6e0469b"
+        ],
+        "source_ids": [
+          "source-0eb258fc-14db-446f-9050-27e6f3eb3f0d",
+          "source-b28e5fbe-819e-4928-8efc-53079c1c3286",
+          "source-5a532761-2d3d-47fa-9571-985e2c75f96d",
+          "source-56b1316d-e406-4fe4-bbfa-7de9405bb5ae"
+        ]
+      },
+      "receipt": {
+        "run_id": "17ace815-07cc-4bb6-a517-ff35e5a65d72",
+        "started_at": "2026-08-27T18:20:24.541Z",
+        "completed_at": "2026-08-27T18:20:57.057Z",
+        "total_duration_ms": 32516,
+        "latency_ms": 32516,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 23864,
+          "output_tokens": 1345,
+          "total_tokens": 25209
+        },
+        "cost": {
+          "amount_usd": 0.02543064,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "identity, activity, other, metric, recent_signal"
+          ],
+          "stop_reason": "Au moins trois faits et deux pages vérifiées ont été obtenus."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "standard",
+      "global_status": "complete_within_scope",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "La fraîcheur reste inconnue lorsqu’aucune date explicite n’apparaît dans l’extrait.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "17ace815-07cc-4bb6-a517-ff35e5a65d72",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 2,
+      "webSearchQueryCount": 1,
+      "webSearchInspectionCount": 1,
+      "sourceFetchCount": 7,
+      "inputTokens": 23864,
+      "cachedInputTokens": 5312,
+      "outputTokens": 1345,
+      "reasoningTokens": 508,
+      "totalTokens": 25209,
+      "sourceCount": 4,
+      "durations": {
+        "acceptedMs": 5,
+        "searchingMs": 31478,
+        "sourceVerifyingMs": 1015,
+        "validatingMs": 19,
+        "totalMs": 32516
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.02543064,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}
