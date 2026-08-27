@@ -1,0 +1,77 @@
+{
+  "marker": "PROVIDER_TRANSPORT_REPLAY — NOT PRODUCT OUTPUT",
+  "source_evidence": "docs/evidence/m1-api-capabilities-result.json",
+  "observed_at_utc": "2026-08-26T15:44:27.6583378Z",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "response_id_present": true,
+  "response_id_digest": "8f0d82ad9d022d2d",
+  "output": [
+    {
+      "type": "web_search_call",
+      "status": "completed",
+      "source_urls_not_separately_retained": true
+    },
+    {
+      "type": "message",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "representation": "flat_or_nested_not_retained",
+              "url": "https://www.toureiffel.paris/en/news/events/eiffel-tower-turns-120?utm_source=openai",
+              "title": null,
+              "start_index": null,
+              "end_index": null,
+              "excerpt": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "retained_url_union": [
+        "https://www.toureiffel.paris/en/news/130-years/1889-2019-130-years-amazement",
+        "https://www.toureiffel.paris/en/news/events/eiffel-tower-turns-120",
+        "https://www.toureiffel.paris/en/news/130-years/may-15-130th-anniversary-under-sign-youth",
+        "https://www.toureiffel.paris/en/news/history-and-culture/133-years-and-1083-feet",
+        "https://www.toureiffel.paris/en/news/events",
+        "https://www.toureiffel.paris/en/rates-opening-times",
+        "https://www.toureiffel.paris/en/news/130-years/tower-highlight-1889-world-exhibition",
+        "https://sete.toureiffel.paris/en/press/press-releases/eiffel-tower-saga",
+        "https://sete.toureiffel.paris/en/press/press-releases/may-15-2019-eiffel-tower-celebrates-its-anniversary-young-parisians",
+        "https://www.toureiffel.paris/en/news/visit/take-stairs-and-discover-eiffel-tower-new-way",
+        "https://www.toureiffel.paris/en/news/events/eiffel-tower-celebrates-its-125th-anniversary-online",
+        "https://www.toureiffel.paris/en/theme/activities",
+        "https://www.toureiffel.paris/sites/default/files/2026-05/reglement_visite_web_mai2026_en.pdf",
+        "https://www.toureiffel.paris/sites/default/files/2025-03/conditions_generales_de_vente_env20230221-maj-vg-10032025.pdf",
+        "https://www.toureiffel.paris/themes/custom/tour_eiffel/assets/Fiches/EN/en_02_il_etait_une_fois.pdf",
+        "https://www.toureiffel.paris/themes/custom/tour_eiffel/assets/Fiches/EN/en_06_la_tour_est_une_star.pdf",
+        "https://www.toureiffel.paris/en/news/events/eiffel-tower-turns-120?utm_source=openai"
+  ],
+  "usage": {
+    "input_tokens": 8593,
+    "cached_input_tokens": 0,
+    "output_tokens": 72,
+    "reasoning_output_tokens": 36,
+    "total_tokens": 8665
+  },
+  "retained_counts": {
+    "web_search_calls": 1,
+    "completed_web_search_calls": 1,
+    "url_citations": 1,
+    "url_union": 17
+  },
+  "not_retained": [
+    "generated_text",
+    "annotation_representation",
+    "annotation_title",
+    "annotation_start_index",
+    "annotation_end_index",
+    "source_excerpt",
+    "provider_metadata_envelope",
+    "per_url_source_or_citation_origin"
+  ]
+}

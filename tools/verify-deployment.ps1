@@ -1,6 +1,7 @@
 param(
     [uri]$CanonicalUrl = 'https://genial-deep-research.vercel.app',
-    [uri]$ImmutableUrl = 'https://genial-deep-research-9fox16480-el-grande-xue.vercel.app'
+    [uri]$ImmutableUrl = 'https://genial-deep-research-9fox16480-el-grande-xue.vercel.app',
+    [switch]$OfflineEvidenceOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +38,22 @@ function Get-PublicResource {
         LatencyMs = [math]::Round($timer.Elapsed.TotalMilliseconds, 2)
         Body = $body
     }
+}
+
+if ($OfflineEvidenceOnly) {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $evidencePath = Join-Path $repoRoot 'docs/evidence/m4-early-deployment-result.json'
+    Assert-M4 (Test-Path -LiteralPath $evidencePath -PathType Leaf) 'M4 deployment evidence is missing'
+    $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -Depth 100
+    Assert-M4 ($evidence.status -ceq 'M4_VALIDATED') 'M4 evidence status differs'
+    Assert-M4 ($evidence.deployments.production.state -ceq 'READY') 'recorded M4 production state differs'
+    Assert-M4 ($evidence.deployments.production.canonical_url -ceq $CanonicalUrl.AbsoluteUri.TrimEnd('/')) 'recorded canonical URL differs'
+    Assert-M4 ($evidence.deployments.production.immutable_url -ceq $ImmutableUrl.AbsoluteUri.TrimEnd('/')) 'recorded immutable URL differs'
+    Assert-M4 ($evidence.public_validation.root.status -eq 200 -and $evidence.public_validation.health.status -eq 200) 'recorded public status differs'
+    Assert-M4 ($evidence.vercel.environment_variable_count -eq 0 -and $evidence.vercel.provider_environment_variable_count -eq 0) 'recorded M4 environment variables differ'
+    Assert-M4 ($evidence.public_validation.bundle_findings -eq 0 -and $evidence.public_validation.production_log_secret_findings -eq 0) 'recorded M4 disclosure evidence differs'
+    Write-Output 'M4_DEPLOYMENT_OFFLINE_EVIDENCE_OK: preserved M4 evidence only; external state not re-read'
+    return
 }
 
 Assert-M4 ($CanonicalUrl.Scheme -eq 'https') 'canonical URL is not HTTPS'

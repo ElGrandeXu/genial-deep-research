@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "M5_R2B_OFFLINE_SOURCE_PIPELINE",
+  "status": "M5_R2B_OFFLINE_READY",
+  "observed_at_utc": "2026-08-26T21:49:37.1005315Z",
+  "scope": {
+    "offline_only": true,
+    "m5_validated": false,
+    "g3_validated": false,
+    "live_source_behavior_observed": false
+  },
+  "baseline": {
+    "head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+    "remotes": 0,
+    "staged": 0,
+    "tracked_modified": 20,
+    "untracked": 19,
+    "diff_sha256": "4a1683dfd52f16480f636dfffabf09a290b047a7df5458c37a8421e9a3a364a9",
+    "untracked_manifest_sha256": "47f6d0ebd032ace3ec44d6b9cf25811512687e812ced51860b5e03bf3c6743a0",
+    "m2_schema_sha256": "1d90f2e7fda8d9893f48ad047cee402e45d54c8647c9376d08c6ea59774dc3d3"
+  },
+  "implementation": {
+    "provider_metadata": "OpenaiResponsesTextProviderMetadata.url_citation",
+    "source_max_bytes": 524288,
+    "source_timeout_ms": 20000,
+    "max_redirects": 2,
+    "max_requests": 3,
+    "excerpt_max_characters": 500,
+    "context_max_characters": 16,
+    "m2_schema_changed": false
+  },
+  "validation": {
+    "numbered_tests": {
+      "provider_metadata": 10,
+      "url_dns": 15,
+      "transport": 18,
+      "parsing_normalization": 11,
+      "excerpt_locator": 10,
+      "integrated_pipeline": 16,
+      "total": 80,
+      "passed": 80,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "full_test_suite": {
+      "passed": 118,
+      "failed": 0,
+      "files_passed": 5
+    },
+    "offline_frozen_install": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build_without_key": "PASS",
+    "client_bundle_scan": "PASS",
+    "m2": {
+      "fixtures_accepted": 6,
+      "negative_mutations_rejected": 5,
+      "schema_unchanged": true,
+      "status": "PASS"
+    },
+    "cumulative_verifiers": "PASS",
+    "network_guard": {
+      "global_fetch_calls": 0,
+      "node_dns_resolutions": 0,
+      "node_https_requests": 0,
+      "status": "PASS"
+    },
+    "source_integrity": "PASS",
+    "immutable_m5_evidence_integrity": "PASS",
+    "secret_scans": {
+      "working_tree": "PASS",
+      "staged": "PASS",
+      "tracked": "PASS"
+    },
+    "git_diff_check": "PASS"
+  },
+  "real_operations": {
+    "openai_calls": 0,
+    "gemini_calls": 0,
+    "real_dns_resolutions": 0,
+    "real_source_fetches": 0,
+    "localhost_requests": 0,
+    "vercel_operations": 0,
+    "dpapi_reads": 0,
+    "commits": 0,
+    "staged_files": 0
+  },
+  "final_git": {
+    "head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+    "remotes": 0,
+    "staged": 0,
+    "tracked_modified": 20,
+    "untracked": 30,
+    "diff_sha256": "a04688294f050e7a8b84d3e640507ea625da32e3da90414495e7414f3f3f8461",
+    "untracked_manifest_excluding_this_result_sha256": "0c7d3f74fb96192f236f19e2cc1da1c4ccc954d6ec18f5ba2e32b12a1f7503d8",
+    "full_untracked_manifest_sha256": null,
+    "full_untracked_manifest_note": "Self-referential digest is reported in the external final output; the in-file digest excludes only this JSON result."
+  },
+  "immutable_hashes": {
+    "M5_VERTICAL_SLICE.md": "50c3148c59debd3d6d1ab621840ccb6fe2ec2ed99d773815559390c3451ef3ce",
+    "m5-vertical-slice-result.json": "75786bbc7ff343ef05d8412b254620589e4b2a82c08e215082c7f049de43cee6",
+    "m5-attempt-001-failure.json": "7f4ef1c935290225c834254005d41e439ccfa9260ae51358ab94cfc6dc663d2a"
+  },
+  "dependencies": {
+    "added": [],
+    "parse5": "8.0.1",
+    "package_json_sha256": "61320378476359df831a6b46571f56a6cd727205ada88b1538f5fc75406e5ddf",
+    "pnpm_lock_sha256": "eafc98b59f3ee2b62865fbf2665bec9c264d7b7c89a443eb272c1368add82731"
+  },
+  "m5_r2b_files": [
+    { "path": "docs/evidence/M5_R2B_OFFLINE_SOURCE_PIPELINE.md", "change": "created" },
+    { "path": "docs/evidence/m5-r2b-offline-source-pipeline-result.json", "change": "created" },
+    { "path": "src/app/api/research/route.ts", "change": "modified" },
+    { "path": "src/app/research-form.tsx", "change": "modified" },
+    { "path": "src/server/ai/providers.ts", "change": "modified" },
+    { "path": "src/server/research/errors.ts", "change": "created" },
+    { "path": "src/server/research/failure-receipt.ts", "change": "modified" },
+    { "path": "src/server/research/provider-metadata.ts", "change": "created" },
+    { "path": "src/server/research/service.ts", "change": "modified" },
+    { "path": "src/server/research/source-content.ts", "change": "created" },
+    { "path": "src/server/research/source-security.ts", "change": "created" },
+    { "path": "src/server/research/source-transport.ts", "change": "created" },
+    { "path": "src/server/research/types.ts", "change": "modified" },
+    { "path": "tests/fixtures/m5-r2b-synthetic-provider.json", "change": "created" },
+    { "path": "tests/offline-network-guard.ts", "change": "created" },
+    { "path": "tests/research-failure.test.ts", "change": "modified" },
+    { "path": "tests/research.test.ts", "change": "modified" },
+    { "path": "tests/source-pipeline.test.ts", "change": "created" },
+    { "path": "tools/verify-m5-r2b-source-pipeline.ps1", "change": "created" },
+    { "path": "tools/verify-m5-vertical-slice.ps1", "change": "modified" },
+    { "path": "tools/verify-project.ps1", "change": "modified" },
+    { "path": "vitest.config.ts", "change": "modified" }
+  ]
+}

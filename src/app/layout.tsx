@@ -5,7 +5,7 @@ import "./styles.css";
 
 export const metadata: Metadata = {
   title: "Génial Deep Research",
-  description: "Baseline technique locale du projet Génial Deep Research",
+  description: "Une affirmation publique atomique reliée à sa source.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

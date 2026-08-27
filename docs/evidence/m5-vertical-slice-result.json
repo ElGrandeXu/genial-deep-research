@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "status": "M5_FAILED_LOCAL_LIVE",
+  "observed_at_utc": "2026-08-26T18:35:00.6927962Z",
+  "initial_head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+  "deployed_commit": null,
+  "final_head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+  "commits_created": [],
+  "local_live": {
+    "input": {
+      "name": "Airbus SE",
+      "context": "Groupe aéronautique européen ; rechercher un fait d’identité stable et publiquement vérifiable, de préférence sur une source officielle Airbus."
+    },
+    "events": [
+      "accepted",
+      "searching",
+      "validating",
+      "failed"
+    ],
+    "failure_stage": "validation",
+    "failure_code": "unserialized_validation_failure",
+    "openai_http_calls": 1,
+    "gemini_calls": 0,
+    "model": "gpt-5.6-luna",
+    "tool_calls": null,
+    "tokens": null,
+    "latency_ms": null,
+    "cost_usd": null,
+    "claim": null,
+    "source": null,
+    "human_source_support": "not_performed_no_retained_source",
+    "retry_count": 0,
+    "retry_reason": "No transient error was proven; manual retry was forbidden."
+  },
+  "vercel": {
+    "project": "genial-deep-research",
+    "plan": "HOBBY",
+    "canonical_url": "https://genial-deep-research.vercel.app",
+    "production_immutable_url": "https://genial-deep-research-9fox16480-el-grande-xue.vercel.app",
+    "production_status": "READY_M4_BASELINE_UNCHANGED",
+    "m5_preview_url": null,
+    "control_incident_preview_urls": [
+      "https://genial-deep-research-8y1r9e3lo-el-grande-xue.vercel.app",
+      "https://genial-deep-research-jaad04s5u-el-grande-xue.vercel.app",
+      "https://genial-deep-research-reg3lch6l-el-grande-xue.vercel.app",
+      "https://genial-deep-research-dlnkfm915-el-grande-xue.vercel.app"
+    ],
+    "control_incident_scope": "Four READY Preview deployments of the unchanged M4 baseline; Production was not changed.",
+    "waf": {
+      "final_rule": null,
+      "proof_429": false,
+      "draft_changes": false
+    },
+    "environment_variable_names": {
+      "production": [],
+      "preview": [],
+      "development": []
+    }
+  },
+  "captures": [],
+  "secrets": {
+    "dpapi_store": "validated_external_child_process_only",
+    "value_exposed": false,
+    "production_openai_key_present": false,
+    "gemini_variable_present": false
+  },
+  "limitations": [
+    "The failed SSE receipt was not serialized by the first probe harness version, so tool calls, tokens, exact latency, cost, validation code, claim, and source are unknown.",
+    "No second paid call was made because the observed failure occurred after provider completion during validation and was not a proven transient error.",
+    "WAF, Production secret, M5 deployment, public live validation, source support, logs, and screenshots were not attempted after the local-live gate failed."
+  ]
+}

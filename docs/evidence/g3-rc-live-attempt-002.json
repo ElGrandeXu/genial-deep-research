@@ -1,0 +1,221 @@
+{
+  "schemaVersion": "1.0",
+  "attempt": "g3-production-live-attempt-002",
+  "status": "G3_RC_PRODUCTION_LIVE_ATTEMPT_002_FAILED",
+  "observedAtUtc": "2026-08-27T16:22:23.109Z",
+  "deployment": {
+    "canonicalUrl": "https://genial-deep-research.vercel.app",
+    "resolvedDeploymentUrl": "https://genial-deep-research-j4jorn1m6-el-grande-xue.vercel.app",
+    "deploymentIdSha256": "17e84608b86288a1f2df57140fef1ef6ce0d461d9083475dc5e1fe3e465c5209",
+    "readyState": "READY",
+    "identityMatchedBaseline": true,
+    "buildPerformed": false,
+    "deploymentPerformed": false,
+    "promotionPerformed": false,
+    "vercelConfigurationChanged": false
+  },
+  "preflight": {
+    "observedAtUtc": "2026-08-27T16:19:09.7726296Z",
+    "rootStatus": 200,
+    "healthStatus": 200,
+    "firstG3Proof": {
+      "path": "docs/evidence/g3-rc-deployment-result.json",
+      "sha256": "f9cbe64471df73a8633a6c0269bb612fc3f240c936ed7b3e023f755495d1fdd7",
+      "intact": true
+    },
+    "m5Attempt009Sha256": "ef74074a5571228303e97ac4b11eb4e7dfd9b49d158342c581c0164e58940b95",
+    "m5Proofs001To009Intact": true,
+    "authorities": "3/3",
+    "m2": "6/5",
+    "m5NegativeMutations": 22,
+    "attempt002ProofAbsent": true,
+    "existingG3ProbeAvailable": false,
+    "probeModified": false,
+    "probeAstCheck": "not_applicable",
+    "providerCalls": 0,
+    "git": {
+      "head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+      "remotes": 0,
+      "staged": 0,
+      "trackedModified": 20,
+      "untracked": 39
+    }
+  },
+  "request": {
+    "endpoint": "https://genial-deep-research.vercel.app/api/research",
+    "input": {
+      "name": "Airbus SE",
+      "context": "Corporate parent entity; not an aircraft model or a local subsidiary."
+    },
+    "missionBusinessRequests": 1,
+    "cumulativeG3ProductionBusinessRequests": 2,
+    "retries": 0,
+    "stoppedAtFirstTerminal": true,
+    "thirdRequestPerformed": false
+  },
+  "sequence": [
+    {
+      "state": "accepted",
+      "elapsedMs": 1
+    },
+    {
+      "state": "searching",
+      "elapsedMs": 1
+    },
+    {
+      "state": "failed",
+      "elapsedMs": 8185
+    }
+  ],
+  "terminal": "failed",
+  "failure": {
+    "code": "source_metadata_missing",
+    "retryable": false,
+    "failedStage": "metadata_extraction",
+    "category": "source_metadata_missing",
+    "publicCode": "source_metadata_missing",
+    "reasonCode": "source_metadata_missing",
+    "sourceMediaTypeClass": null
+  },
+  "safeDiagnostics": {
+    "providerMetadataStatus": null,
+    "citationsCount": null,
+    "providerSearchSourcesCount": 0,
+    "matchingSourceCount": null,
+    "webSearchQueryCount": 1,
+    "webSearchInspectionCount": 1,
+    "sourceFetchCount": 0,
+    "reasonCode": "source_metadata_missing",
+    "diagnosticAvailability": "only_fields_exposed_by_public_failure_receipt"
+  },
+  "receipt": {
+    "provider": "OpenAI",
+    "model": "gpt-5.6-luna",
+    "callsAttempted": 1,
+    "httpStatus": null,
+    "finishReason": "stop",
+    "usage": {
+      "inputTokens": 13638,
+      "cachedInputTokens": 4930,
+      "outputTokens": 386,
+      "reasoningTokens": 377,
+      "totalTokens": 14024
+    },
+    "toolCallCount": 2,
+    "webSearchQueryCount": 1,
+    "webSearchInspectionCount": 1,
+    "sourceCount": 0,
+    "sourceFetchCount": 0,
+    "sourceVerificationMs": 0,
+    "outputPresent": true,
+    "outputCharacterCount": 15,
+    "outputLineCount": 1,
+    "terminalLineBreakCount": 0,
+    "durationMs": 8185,
+    "estimatedCostUsd": null,
+    "requestIdPresent": true,
+    "receiptPersistence": "memory",
+    "observedAt": "08/27/2026 16:21:14"
+  },
+  "counters": {
+    "publicBusinessRequests": 1,
+    "publicBusinessRetries": 0,
+    "providerHttpCalls": 1,
+    "webSearchQueries": 1,
+    "webSearchInspections": 1,
+    "webSearchActions": 2,
+    "sourceFetches": 0,
+    "sourceRetrievalChains": 0,
+    "providerRetries": 0,
+    "geminiCalls": 0
+  },
+  "cost": {
+    "receiptEstimatedUsd": null,
+    "derivedEstimatedUsd": 0.0223034,
+    "derivation": "frozen_production_estimate_formula_using_exposed_usage_and_tool_action_count",
+    "pricing": {
+      "date": "2026-08-26",
+      "inputUsdPerMillion": 0.2,
+      "cachedInputUsdPerMillion": 0.02,
+      "outputUsdPerMillion": 1.2,
+      "webSearchUsdPerAction": 0.01
+    },
+    "ceilingUsd": 0.05,
+    "derivedWithinCeiling": true,
+    "receiptCostKnown": false,
+    "limitations": [
+      "Estimate based on provider-exposed token usage and the frozen production pricing formula.",
+      "Taxes, discounts, service tiers, and unexposed charges are excluded."
+    ]
+  },
+  "validation": {
+    "requiredSequenceReached": false,
+    "providerBindingValidated": false,
+    "htmlSourceRetrieved": false,
+    "sourceTitleValidated": false,
+    "exactExcerptValidated": false,
+    "locatorValidated": false,
+    "atomicClaimValidated": false,
+    "m2DossierValidated": false,
+    "completed": false,
+    "noFactPersisted": true
+  },
+  "durations": {
+    "clientTotalMs": 8560,
+    "terminalElapsedMs": 8185
+  },
+  "redaction": {
+    "providerOutputStored": false,
+    "providerQueryStored": false,
+    "rawIdentifierStored": false,
+    "unvalidatedProviderUrlStored": false,
+    "providerPayloadStored": false,
+    "sourceBodyStored": false,
+    "secretStored": false,
+    "environmentRead": false,
+    "dpapiAccessed": false,
+    "stackStored": false,
+    "cookiesStored": false,
+    "requestIdentifierPresenceOnly": true
+  },
+  "git": {
+    "beforeEvidence": {
+      "absent": true,
+      "head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+      "remotes": 0,
+      "staged": 0,
+      "trackedModified": 20,
+      "untracked": 39
+    },
+    "expectedFinalAfterImmutableEvidenceCreation": {
+      "head": "b3a313e5c0333d62bbbd6d2c6c0206a370a15a34",
+      "remotes": 0,
+      "staged": 0,
+      "trackedModified": 20,
+      "untracked": 40,
+      "newUntrackedEvidence": "docs/evidence/g3-rc-live-attempt-002.json",
+      "committed": false
+    }
+  },
+  "operationsNotPerformed": [
+    "source_change",
+    "test_change",
+    "build",
+    "staged_deployment",
+    "promotion",
+    "redeployment",
+    "rollback",
+    "vercel_configuration_change",
+    "openai_key_read_or_write",
+    "dpapi_access",
+    "gemini_call",
+    "commit",
+    "staging",
+    "remote_change",
+    "reset",
+    "stash",
+    "clean",
+    "third_business_request",
+    "product_fix"
+  ]
+}

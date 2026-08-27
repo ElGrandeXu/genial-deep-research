@@ -27,6 +27,25 @@
 
 Une case vide ne peut être cochée que par une mission ultérieure explicitement autorisée et munie de preuves observables.
 
+## Sortie M5 — échec local
+
+- [x] **FAIT VALIDÉ** — Baseline M5, sources, secrets, M0/M2/M3/cumulatif, installation figée, lint, typecheck, tests et build sans secret validés avant l’appel réel.
+- [x] **FAIT VALIDÉ** — Candidat local et 16 tests M5 hors réseau construits ; scan bundle client vert.
+- [x] **FAIT VALIDÉ** — Probe réel : `accepted → searching → validating → failed`, OpenAI 1, Gemini 0, retry 0.
+- [ ] **FAIT VALIDÉ** — Affirmation, source et soutien humain : non obtenus.
+- [ ] **FAIT VALIDÉ** — Preview M5, WAF 429/final, secret Production et Production M5 : non tentés après le gate local.
+- [ ] **G3 — Boucle verticale en ligne.** Reste partiel et non validé.
+
+## Sortie M5 R1 — diagnostic hors réseau
+
+- [x] **FAIT VALIDÉ** — Worktree M5 préservé, aucun staged, aucun remote, HEAD inchangé et preuve immuable de l’essai 1 créée.
+- [x] **FAIT VALIDÉ** — Reçu central allowlisté, gardes AI SDK installées, request ID digéré, métriques inconnues à `null`, terminal unique et repli mémoire.
+- [x] **FAIT VALIDÉ** — Probe durci : terminal conservé sur échec, flux incomplet ou JSON invalide ; écriture temporaire validée puis remplacement final ; exit non nul après persistance d’un échec.
+- [x] **FAIT VALIDÉ** — Replay M1 marqué non-produit : 1 recherche, 1 citation, 17 URLs et usage relus sans réseau.
+- [x] **FAIT VALIDÉ** — 38 tests hors réseau verts ; six fixtures M2 acceptées et cinq mutations négatives rejetées ; schema M2 inchangé.
+- [ ] **FAIT VALIDÉ** — Compatibilité M2 complète : bloquée par l’absence d’extrait de contenu source authentique dans les métadonnées conservées.
+- [ ] **G3 — Boucle verticale en ligne.** Reste partiel et non validé.
+
 ## Critères observables M1
 
 - [x] **FAIT VALIDÉ** — Baseline exacte revalidée avant mutation ; M0, intégrité, secrets, exclusions et absence de remote conformes.

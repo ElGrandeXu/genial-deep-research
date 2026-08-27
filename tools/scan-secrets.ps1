@@ -36,6 +36,11 @@ $excludedInputs = @(
     'PASSATION_CHATGPT_GENIAL_2026-08-26.md',
     'PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md'
 )
+$knownNonSecretAssignments = @{
+    'docs/evidence/m5-attempt-009-live-result.json' = @(
+        '  "secret_store": "external_dpapi",'
+    )
+}
 foreach ($relativePath in $files) {
     if ([string]::IsNullOrWhiteSpace($relativePath)) { continue }
     if ($relativePath -in $excludedInputs) {
@@ -57,6 +62,8 @@ foreach ($relativePath in $files) {
     for ($index = 0; $index -lt $lines.Count; $index++) {
         foreach ($rule in $rules) {
             if ($lines[$index] -match $rule.Pattern) {
+                $allowedLines = $knownNonSecretAssignments[$relativePath]
+                if ($null -ne $allowedLines -and $lines[$index] -cin $allowedLines) { continue }
                 $findings.Add("${relativePath}:$($index + 1):$($rule.Name)")
             }
         }

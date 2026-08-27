@@ -47,3 +47,21 @@
 - **FAIT VALIDÉ** — Neuf chemins sensibles retournent 404 sans redirection ; bundles et logs ne contiennent aucune forme de clé ou donnée d’autorité brute.
 - **FAIT VALIDÉ** — Appels OpenAI 0, appels Gemini 0, coût IA 0 USD, coût Vercel `UNKNOWN`.
 - **DÉCISION** — G0 à G2 restent validés ; G3 reste partiel et non validé ; G4 à G7 restent non terminés.
+
+## Résultat M5 — 2026-08-26
+
+- **FAIT VALIDÉ** — Statut `M5_FAILED_LOCAL_LIVE`.
+- **FAIT VALIDÉ** — Candidat local OpenAI-only implémenté et 16 tests hors réseau verts ; aucun commit M5 créé.
+- **FAIT VALIDÉ** — Le probe réel a produit `accepted → searching → validating → failed` après un appel HTTP OpenAI ; Gemini 0 ; aucun retry.
+- **FAIT VALIDÉ** — La première version du probe n’a pas sérialisé le reçu d’échec ; cause exacte, usage, coût, affirmation et source restent inconnus.
+- **DÉCISION** — Aucun second appel, WAF, secret Production ou déploiement M5 ; Production M4 inchangée.
+- **DÉCISION** — G0 à G2 restent validés ; G3 reste partiel ; G4 à G7 restent non terminés.
+
+## Résultat M5 R1 — 2026-08-26
+
+- **FAIT VALIDÉ** — Statut `M5_R1_BLOCKED_TRUTH_CONTRACT`.
+- **FAIT VALIDÉ** — La cause racine du premier appel reste inconnue ; seule sa position pendant ou après `validating` est prouvée.
+- **FAIT VALIDÉ** — Reçu d’échec expurgé, terminal unique, fallback de sérialisation, repli mémoire et écriture atomique du probe sont couverts hors réseau.
+- **FAIT VALIDÉ** — Replay M1 lisible par l’adaptateur, mais incomplet pour M2 : aucun extrait source, titre ou offsets conservés.
+- **FAIT VALIDÉ** — 38 tests verts ; OpenAI 0, Gemini 0, DPAPI 0, déploiement 0, commit 0 pendant R1.
+- **DÉCISION** — Aucun probe réel : ajouter une provenance d’extrait source authentique avant toute nouvelle tentative.

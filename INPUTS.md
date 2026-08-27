@@ -56,3 +56,9 @@ Statut commun : `OBSOLETE — EXCLUDED FROM AUTHORITY, HISTORY AND PROGRESS EVID
 - **FAIT VALIDÉ** — Documentation M4 limitée aux pages officielles Vercel de déploiement CLI, link, deploy, inspect, Node.js, durée, build et Deployment Protection ; Vercel CLI stable `59.6.2`.
 - **FAIT VALIDÉ** — Authentification existante ; unique scope utilisable de type `team`, plan `HOBBY`, sans ambiguïté ni modification de facturation.
 - **DÉCISION** — Les clés fournisseur, le magasin DPAPI et les deux passations restent hors entrée M4 ; aucune valeur n’est chargée, copiée ou envoyée.
+
+## Entrées M5
+
+- **FAIT VALIDÉ — 2026-08-26** — Baseline reçue : HEAD `b3a313e5c0333d62bbbd6d2c6c0206a370a15a34`, titre `docs: record early production deployment`, worktree propre, aucun remote, G0–G2 validés et G3 partiel.
+- **FAIT VALIDÉ** — Projet `genial-deep-research` Hobby, Fluid Compute activé, Production M4 `READY`, aucune variable fournisseur et aucune règle WAF au départ.
+- **DÉCISION** — Le magasin DPAPI extérieur fournit uniquement la clé au processus applicatif enfant du probe ; aucune valeur n’est conservée.

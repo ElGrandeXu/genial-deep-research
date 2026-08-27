@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "attempt": "attempt-004",
+  "status": "M5_FAILED_LOCAL_LIVE",
+  "observed_at_utc": "2026-08-27T12:25:28.5776109Z",
+  "input": {
+    "name": "Airbus SE",
+    "context": "Corporate parent entity; not an aircraft model or a local subsidiary."
+  },
+  "events": [
+    {
+      "state": "accepted",
+      "elapsed_ms": 1
+    },
+    {
+      "state": "searching",
+      "elapsed_ms": 1
+    },
+    {
+      "state": "source_verifying",
+      "elapsed_ms": 5319
+    },
+    {
+      "state": "failed",
+      "elapsed_ms": 5572
+    }
+  ],
+  "error": {
+    "code": "source_content_type_rejected",
+    "retryable": false
+  },
+  "receipt": {
+    "attemptId": "fb604ab2-dcef-4461-8a6a-2f2ab3fdc4ab",
+    "terminalStatus": "failed",
+    "failedStage": "source_verification",
+    "category": "source_metadata_missing",
+    "publicCode": "source_content_type_rejected",
+    "reasonCode": null,
+    "retryable": false,
+    "provider": "OpenAI",
+    "model": "gpt-5.6-luna",
+    "callsAttempted": 1,
+    "httpStatus": null,
+    "finishReason": "stop",
+    "usage": {
+      "inputTokens": 8899,
+      "cachedInputTokens": 0,
+      "outputTokens": 217,
+      "reasoningTokens": 118,
+      "totalTokens": 9116
+    },
+    "toolCallCount": 1,
+    "sourceCount": 0,
+    "sourceFetchCount": 1,
+    "sourceVerificationMs": 253,
+    "outputPresent": true,
+    "outputCharacterCount": 320,
+    "outputLineCount": 7,
+    "terminalLineBreakCount": 0,
+    "durationMs": 5572,
+    "estimatedCostUsd": null,
+    "requestIdPresent": true,
+    "requestIdDigest": "2c0526cf68755ac6",
+    "receiptPersistence": "file",
+    "observedAt": "08/27/2026 12:25:28"
+  },
+  "openai_calls": 1,
+  "web_search_calls": 1,
+  "source_fetches": 1,
+  "provider_retries": 0,
+  "gemini_calls": 0,
+  "secret_value_exposed": false
+}

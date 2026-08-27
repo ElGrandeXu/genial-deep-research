@@ -1,0 +1,16 @@
+{
+  "marker": "M5_R2B_SYNTHETIC_FIXTURE_NOT_PROVIDER_OUTPUT",
+  "provider": "openai",
+  "generated_text": "STATUS: evidence\nENTITY_TYPE: company\nCLAIM: Airbus SE est une société européenne.\nSOURCE_URL: https://research.public.org/airbus\nEXCERPT: Airbus SE est une société européenne.\nPREFIX: NONE\nSUFFIX: NONE",
+  "source": {
+    "sourceType": "url",
+    "id": "source-synthetic",
+    "url": "https://research.public.org/airbus",
+    "title": "Synthetic Airbus source"
+  },
+  "tool_call": {
+    "toolName": "web_search",
+    "toolCallId": "tool-synthetic"
+  },
+  "metadata_note": "Synthetic representation limited to installed public OpenAIResponsesTextProviderMetadata fields."
+}

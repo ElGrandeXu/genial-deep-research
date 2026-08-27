@@ -205,3 +205,24 @@ Les décisions ci-dessous sont subordonnées au brief, à l’audit formel et au
 - **Justification** : aucun appel fournisseur n’existe ; le plan est prouvé mais l’usage facturé et la limite effective ne le sont pas.
 - **Conséquence** : aucune revendication de gratuité Vercel ni de compatibilité avec une future recherche longue.
 - **Déclencheur de révision** : première facture, métrique d’usage ou route métier longue mesurée.
+
+## D-M5-001 — Frontière fournisseur unique
+
+- **Statut** : accepté pour le candidat local M5.
+- **Décision** : OpenAI `gpt-5.6-luna`, Responses via provider AI SDK direct, Web Search forcé, `store: false`, parallélisme désactivé, un appel HTTP et un outil maximum, aucun retry automatique ; dépendance Gemini retirée du runtime.
+- **Conséquence** : aucune seconde architecture fournisseur ni fallback.
+
+## D-M5-002 — Arrêt au gate local
+
+- **Statut** : appliqué.
+- **Contexte** : le probe réel a atteint `validating` puis `failed`; aucune erreur transitoire fournisseur n’est prouvée.
+- **Décision** : aucun retry manuel, commit applicatif, WAF, secret Production ou déploiement M5.
+- **Conséquence** : `M5_FAILED_LOCAL_LIVE`, G3 reste partiel ; reprise uniquement après nouvelle autorisation et correction de la preuve d’échec.
+
+## D-M5-R1-001 — Contrat de vérité prioritaire
+
+- **Statut** : bloqué hors réseau.
+- **Contexte** : AI SDK `7.0.79` et OpenAI provider `4.0.47` exposent citation URL, titre et offsets dans le texte généré, sans extrait du contenu source ; M1 n’a pas conservé cet extrait.
+- **Décision** : ne pas fabriquer l’extrait, ne pas réutiliser l’affirmation, ne pas affaiblir M2 et échouer fermé avec `source_metadata_missing`.
+- **Conséquence** : `M5_R1_BLOCKED_TRUTH_CONTRACT`; un prochain probe réel n’est pas autorisé par R1.
+- **Déclencheur de révision** : architecture fournissant un extrait source authentique et un locator par collecte autorisée ou métadonnée fournisseur prouvée.

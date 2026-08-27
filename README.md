@@ -1,14 +1,14 @@
 # Génial Deep Research
 
-Socle technique public d’une future application de recherche sourcée. Le dépôt contient une application Next.js minimale, un endpoint de santé et l’intégration testable du contrat M2. Il ne contient encore ni formulaire fonctionnel, ni moteur de recherche, ni appel fournisseur, ni résultat de démonstration.
+Candidat local d’une boucle verticale de recherche sourcée. Le worktree contient un formulaire, une route OpenAI/Web Search bornée, une affirmation maximale et un reçu mesuré. Le probe réel M5 a échoué fermé pendant la validation : ce candidat n’est ni commit, ni déployé, ni validé.
 
-## Déploiement public précoce
+## Production publique inchangée
 
 - URL canonique : <https://genial-deep-research.vercel.app>
 - santé : <https://genial-deep-research.vercel.app/api/health>
 - preuve M4 : [`docs/evidence/M4_EARLY_DEPLOYMENT.md`](docs/evidence/M4_EARLY_DEPLOYMENT.md)
 
-Ce déploiement valide uniquement le socle technique. La recherche métier et la capacité contractuelle finale ne sont pas disponibles ; G3 reste partiel et non validé.
+La Production sert toujours la baseline M4. La recherche métier publique n’est pas disponible ; G3 reste partiel et non validé.
 
 ## Prérequis
 
@@ -37,7 +37,7 @@ corepack pnpm start
 corepack pnpm verify
 ```
 
-`dev`, `build` et `start` désactivent la télémétrie Next.js via le lanceur local. Le vérificateur cumulatif exécute intégrité, secrets, contrats, tests négatifs, lint, typecheck, tests, build, scan du bundle client et vérification HTTP publique M4.
+`dev`, `build` et `start` désactivent la télémétrie Next.js via le lanceur local. Sans secret, la page et le formulaire fonctionnent, mais une recherche valide se termine par une erreur de configuration explicite sans appel fournisseur. Le vérificateur cumulatif exécute intégrité, secrets, contrats, tests négatifs, frontières M3/M5, lint, typecheck, tests, build, scan du bundle client et vérification HTTP publique M4.
 
 Pour omettre exceptionnellement le build, une justification est obligatoire :
 
@@ -49,20 +49,21 @@ pwsh -NoProfile -File tools/verify-project.ps1 -SkipBuild -SkipBuildReason "rais
 
 ```text
 OPENAI_API_KEY
-GEMINI_API_KEY
 ```
 
-Les valeurs restent absentes de `.env.example`. Elles ne sont ni publiques ni requises au build. Leur validation n’intervient que lorsqu’un fournisseur serveur est explicitement instancié. Aucun nom `NEXT_PUBLIC_*` fournisseur n’est autorisé.
+La valeur reste absente de `.env.example`. Elle n’est ni publique ni requise au build. Aucun nom `NEXT_PUBLIC_*` fournisseur n’est autorisé. Gemini n’appartient pas au runtime M5.
 
 ## État et limites
 
-- page statique de baseline, sans interaction métier ;
+- formulaire local pour personnes et organisations publiques ;
 - `GET /api/health` retourne uniquement `{"status":"ok"}` ;
+- `POST /api/research` exige JSON same-origin, borne l’entrée, diffuse cinq états réels et échoue fermé ;
+- OpenAI `gpt-5.6-luna`, Responses et Web Search constituent l’unique voie locale ; un appel HTTP et un outil maximum, aucun retry automatique, `store: false` ;
 - JSON Schema M2 canonique validé par Ajv et contrôlé par le vérificateur sémantique existant ;
 - types TypeScript générés depuis le schéma, avec contrôle de dérive ;
-- configuration fournisseur serveur préparée, jamais invoquée en M3 ;
-- aucune variable fournisseur configurée sur Vercel et aucun appel IA pendant M4 ;
+- aucune variable fournisseur configurée sur Vercel ; Production M4 inchangée ;
 - aucune base, authentification, persistance métier, queue, télémétrie distante ou SDK d’hébergement ;
-- aucune recherche métier n’existe encore ; G3 n’est pas validé.
+- une seule affirmation est visée ; aucun dossier complet, HOMONYME, CONFLIT ou SILENCE complet n’est revendiqué ;
+- le premier probe réel M5 a échoué à la validation après un appel OpenAI ; aucun retry, WAF, secret Production ou déploiement M5 ; G3 n’est pas validé.
 
 Architecture et limites de déploiement : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

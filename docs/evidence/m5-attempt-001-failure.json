@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "M5_ATTEMPT_FAILURE",
+  "immutability": "append_only_do_not_overwrite",
+  "attempt": 1,
+  "observed_at_utc": "2026-08-26T18:35:00.6927962Z",
+  "model": "gpt-5.6-luna",
+  "calls": {
+    "openai": 1,
+    "gemini": 0
+  },
+  "retries": 0,
+  "events": [
+    "accepted",
+    "searching",
+    "validating",
+    "failed"
+  ],
+  "tool_calls": null,
+  "usage": null,
+  "latency_ms": null,
+  "cost_usd": null,
+  "claim": null,
+  "source": null,
+  "exact_error": null,
+  "deployment": "none",
+  "knowledge_status": {
+    "tool_calls": "UNKNOWN",
+    "usage": "UNKNOWN",
+    "latency_ms": "UNKNOWN",
+    "cost_usd": "UNKNOWN",
+    "claim": "UNKNOWN",
+    "source": "UNKNOWN",
+    "exact_error": "UNKNOWN"
+  },
+  "original_m5_evidence": {
+    "path": "docs/evidence/m5-vertical-slice-result.json",
+    "sha256": "75786bbc7ff343ef05d8412b254620589e4b2a82c08e215082c7f049de43cee6"
+  }
+}

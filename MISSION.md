@@ -81,3 +81,17 @@ Une contradiction est résolue en faveur de la source de rang supérieur. Les st
 - **FAIT VALIDÉ** — Preview et Production du même `deployedCommit` en état `READY`, accessibles sans authentification, avec HTTP 200 sur `/` et `/api/health`.
 - **FAIT VALIDÉ** — Aucun environnement fournisseur, appel IA, secret public, source d’autorité, passation ou chemin local divulgué.
 - **DÉCISION** — G0 à G2 restent validés ; G3 reste partiel et non validé ; G4 à G7 restent non terminés.
+
+## Mission M5 — Tranche verticale sourcée
+
+- **EXIGENCE EXPLICITE** — Relier une entrée publique à une recherche Web OpenAI réelle, une affirmation atomique maximale, une source fournisseur directe et un reçu d’usage/coût/latence.
+- **DÉCISION** — OpenAI `gpt-5.6-luna` seul ; Responses via AI SDK direct ; Web Search forcé ; un appel HTTP et un outil maximum ; aucun retry automatique ni persistance.
+- **DÉCISION** — L’échec local après retour fournisseur bloque Preview M5, WAF, secret Production, Production M5 et G3.
+- **FAIT VALIDÉ** — Statut de sortie : `M5_FAILED_LOCAL_LIVE` ; G0–G2 préservés ; G3 partiel ; G4–G7 non terminés.
+
+## Mission M5 R1 — Récupération hors réseau
+
+- **EXIGENCE EXPLICITE** — Préserver le candidat M5 non commité, rendre le prochain échec diagnostiquable et rejouer uniquement les métadonnées M1 déjà expurgées.
+- **DÉCISION** — Aucun réseau, accès DPAPI, appel fournisseur, mutation Vercel, déploiement, commit, stash ou suppression.
+- **FAIT VALIDÉ** — Les métadonnées installées fournissent URL, titre et offsets dans le texte généré, mais aucun extrait du contenu source exigé par M2.
+- **DÉCISION** — Statut : `M5_R1_BLOCKED_TRUTH_CONTRACT`. L’observabilité est réparée ; aucun nouveau probe réel tant que la provenance d’un extrait source authentique manque.

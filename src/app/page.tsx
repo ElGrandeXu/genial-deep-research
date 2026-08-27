@@ -1,12 +1,17 @@
+import { ResearchForm } from "./research-form";
+
 export default function HomePage() {
   return (
     <main>
-      <p className="eyebrow">Baseline technique</p>
-      <h1>Génial Deep Research</h1>
-      <p>
-        Le socle applicatif est compilable et testable. Aucune recherche métier ni
-        aucun formulaire fonctionnel ne sont encore implémentés.
-      </p>
+      <header className="hero">
+        <p className="eyebrow">Boucle verticale sourcée · M5</p>
+        <h1>Un fait.<br />Une source.</h1>
+        <p className="intro">
+          Génial recherche une seule affirmation publique et atomique. Ce prototype
+          ne produit pas encore un dossier complet.
+        </p>
+      </header>
+      <ResearchForm />
     </main>
   );
 }

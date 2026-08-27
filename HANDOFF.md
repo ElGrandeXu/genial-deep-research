@@ -1,4 +1,16 @@
-# Handoff M4
+# Handoff M5 R1 bloqué par le contrat de vérité
+
+## Reprise sûre
+
+- **FAIT VALIDÉ** — HEAD reste `b3a313e5c0333d62bbbd6d2c6c0206a370a15a34` ; aucun commit M5 ; worktree modifié avec candidat et preuves d’échec.
+- **FAIT VALIDÉ** — Un appel OpenAI réel, Gemini 0, aucun retry ; `accepted → searching → validating → failed`.
+- **DÉCISION** — Ne pas refaire d’appel réel sans nouvelle autorisation : l’échec n’était pas transitoire prouvé.
+- **FAIT VALIDÉ** — Aucune règle WAF, variable Vercel ou mutation Production ; baseline M4 canonique toujours `READY`.
+- **FAIT VALIDÉ** — Quatre Preview accidentelles du baseline M4 sont consignées dans la preuve M5 et n’ont pas été supprimées.
+- **DÉCISION** — G0–G2 validés ; G3 partiel ; G4–G7 non terminés.
+- **FAIT VALIDÉ** — R1 hors réseau : observabilité d’échec réparée, 38 tests verts, aucun appel fournisseur, accès DPAPI, déploiement ou commit.
+- **FAIT VALIDÉ** — Cause exacte du premier échec toujours `UNKNOWN`; aucun timeout, statut API, défaut de citation ou rejet de schema ne lui est attribué.
+- **DÉCISION** — `M5_R1_BLOCKED_TRUTH_CONTRACT` : les métadonnées disponibles ne contiennent aucun extrait du contenu source exigé par M2.
 
 ## État exact
 
@@ -33,4 +45,4 @@
 
 ## Gate
 
-**DÉCISION — Attente obligatoire de l’audit externe de la sortie M4 avant toute mission suivante.**
+**DÉCISION — Aucun nouveau probe réel avant une architecture fournissant un extrait source authentique avec locator, puis audit externe du candidat hors réseau.**

@@ -1,5 +1,7 @@
 # Preuves M0
 
+> Sortie M5 : [`docs/evidence/M5_VERTICAL_SLICE.md`](docs/evidence/M5_VERTICAL_SLICE.md) et [`docs/evidence/m5-vertical-slice-result.json`](docs/evidence/m5-vertical-slice-result.json). Statut `M5_FAILED_LOCAL_LIVE` ; aucune preuve publique M5 revendiquée.
+
 ## Instructions EGX applicables
 
 | Chemin absolu | Portée | Rôle et applicabilité |
@@ -165,3 +167,12 @@ Les sorties de scan indiquent uniquement le chemin, le numéro de ligne et l'ide
 - **FAIT VALIDÉ** — `tools/verify-deployment.ps1` utilise un client HTTP ordinaire sans authentification et vérifie santé, contenu honnête, neuf chemins de non-divulgation et bundles publics.
 - **FAIT VALIDÉ** — Appels OpenAI 0, Gemini 0, accès DPAPI 0, recherche métier 0, coût IA 0 USD ; coût Vercel `UNKNOWN`.
 - **DÉCISION** — La preuve M4 étend le vérificateur cumulatif sans modifier l’allowlist historique M0.
+
+## Preuves M5 R1 — 2026-08-26
+
+- **FAIT VALIDÉ** — `docs/evidence/m5-attempt-001-failure.json` fige l’essai 1 sans reconstruire les champs `UNKNOWN` ; SHA-256 de la preuve originale : `75786bbc7ff343ef05d8412b254620589e4b2a82c08e215082c7f049de43cee6`.
+- **FAIT VALIDÉ** — `docs/evidence/M5_R1_OFFLINE_FAILURE_DIAGNOSTIC.md` sépare fait, inférence, inconnu et décision, puis trace toutes les frontières route/SSE/provider/validation/reçu/probe.
+- **FAIT VALIDÉ** — Fixture M1 : `PROVIDER_TRANSPORT_REPLAY — NOT PRODUCT OUTPUT`; 1 tool call, 1 citation, 17 URLs et usage conservé ; titre, offsets, extrait et enveloppe exacte non conservés.
+- **FAIT VALIDÉ** — 38 tests déterministes verts ; gardes réelles `APICallError`, `LoadAPIKeyError`, `NoObjectGeneratedError`, `NoOutputGeneratedError`, `RetryError` ; six fixtures M2 et cinq mutations inchangées.
+- **FAIT VALIDÉ** — Appels OpenAI/Gemini R1 : 0/0 ; déploiements : 0 ; commits : 0 ; accès DPAPI : 0.
+- **DÉCISION** — `M5_R1_BLOCKED_TRUTH_CONTRACT` : l’extrait obligatoire M2 n’existe pas dans les métadonnées disponibles.

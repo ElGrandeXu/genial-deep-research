@@ -41,3 +41,11 @@ Registre concentré sur les risques restant après M1 et le gel contractuel. L�
 | R-M4-003 | Dérive de frontière d’upload | Une première règle a exclu le schéma requis. | Liste explicite, build distant, 18 fichiers observés, tests de non-divulgation et vérificateur public. | Nouvel import hors frontière → build bloqué jusqu’à correction et redéploiement. |
 | R-M4-004 | Déploiement en erreur conservé | Premier déploiement classé Production et terminé `ERROR`. | Aucun nettoyage automatique ; état, cause et URL consignés. | Bruit opérationnel seulement ; suppression future exige accord explicite. |
 | R-M4-005 | Capacité longue non prouvée | Fluid Compute est activé, mais limite de plateforme et recherche réelle non testées. | `maxDuration=5` uniquement sur santé ; aucune conclusion sur la future route métier. | Mesurer plan, durée et streaming avant toute revendication G3. |
+
+## Risques M5 observés
+
+| ID | Risque | Signal M5 | Réponse | Risque résiduel / déclencheur |
+|---|---|---|---|---|
+| R-M5-001 | Sortie fournisseur rejetée après Web Search | Probe réel : `validating → failed`; cause précise non sérialisée. | Échec fermé, aucun fait affiché, aucun retry non autorisé, aucun passage en Production. | Corriger d’abord le probe pour conserver tout reçu d’échec, puis obtenir une nouvelle autorisation d’appel réel. |
+| R-M5-002 | Preuve M2 incomplète sans extrait source | AI SDK conserve annotation, titre, URL et offsets du texte généré, mais pas un extrait du contenu source ; M1 n’en a pas conservé. | Échec fermé `source_metadata_missing` ; aucune affirmation, titre ou phrase explicative utilisée comme faux extrait ; schema M2 inchangé. | Blocker R1 : ajouter une collecte autorisée d’extrait source avec locator avant tout nouveau probe. |
+| R-M5-003 | Mutation Vercel involontaire par CLI | Quatre Preview du baseline M4 créées pendant une commande d’inspection mal formée. | Production et configuration inchangées ; incident conservé ; aucun nettoyage sans accord. | Employer uniquement `npx --package=vercel@59.6.2 vercel ...` et vérifier `--version` avant toute commande. |
