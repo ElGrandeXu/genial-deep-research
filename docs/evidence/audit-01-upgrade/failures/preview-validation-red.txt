@@ -1,0 +1,25 @@
+Command: pwsh -NoProfile -File tools/verify-release-deployment.ps1 -BaseUrl <Preview>
+Date: 2026-08-28 00:04 CEST
+Exit: 1
+
+Raw failure: `Exception calling .ctor with 3 argument(s): The value cannot be
+an empty string. (Parameter 'mediaType')`.
+
+Cause: PowerShell bound an optional nullable string as an empty string before
+constructing `StringContent`.
+
+Decision: normalize a null or blank media type to `text/plain`; rerun the exact
+remote verification. No deployment behavior changed.
+
+Follow-up free gate:
+
+```text
+Command: corepack pnpm verify
+Date: 2026-08-28 00:06 CEST
+Exit: 1
+SECRET_SCAN_FINDING: tools/verify-release-deployment.ps1:174:nonempty-secret-assignment
+```
+
+Cause: a map label named `vercel_secret` intentionally held a detection regex,
+not a credential. Decision: rename the label to `vercel_auth_marker`; do not
+weaken or allowlist the scanner.

@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const baseURL = externalBaseUrl && externalBaseUrl.length > 0
+  ? externalBaseUrl
+  : "http://127.0.0.1:3100";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -9,17 +14,19 @@ export default defineConfig({
   reporter: [["line"]],
   outputDir: "test-results",
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: "corepack pnpm start -H 127.0.0.1 -p 3100",
-    url: "http://127.0.0.1:3100",
-    reuseExistingServer: false,
-    timeout: 120_000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: externalBaseUrl
+    ? undefined
+    : {
+        command: "corepack pnpm start -H 127.0.0.1 -p 3100",
+        url: "http://127.0.0.1:3100",
+        reuseExistingServer: false,
+        timeout: 120_000,
+        stdout: "pipe",
+        stderr: "pipe",
+      },
 });
