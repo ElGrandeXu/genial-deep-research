@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "Génial Deep Research",
-  description: "Une affirmation publique atomique reliée à sa source.",
+  title: "GENIAL — Recherche publique vérifiable",
+  description:
+    "Un dossier compact où chaque fait public reste relié à sa preuve consultable.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

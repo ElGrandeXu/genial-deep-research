@@ -4,14 +4,34 @@ export default function HomePage() {
   return (
     <main>
       <header className="hero">
-        <p className="eyebrow">Boucle verticale sourcée · M5</p>
-        <h1>Un fait.<br />Une source.</h1>
-        <p className="intro">
-          Génial recherche une seule affirmation publique et atomique. Ce prototype
-          ne produit pas encore un dossier complet.
-        </p>
+        <div className="masthead">
+          <span className="wordmark">GENIAL</span>
+          <span>Recherche publique vérifiable</span>
+        </div>
+        <div className="hero-grid">
+          <div>
+            <p className="eyebrow">Décider avec des faits traçables</p>
+            <h1>Un dossier.<br />Des preuves.</h1>
+          </div>
+          <div className="hero-copy">
+            <p>
+              Entrez une personne ou une entreprise. GENIAL distingue l’identité,
+              recherche des informations publiques et rattache chaque fait affiché
+              à son extrait source.
+            </p>
+            <ul>
+              <li>Ambiguïtés refusées</li>
+              <li>Informations datées</li>
+              <li>Contradictions visibles</li>
+            </ul>
+          </div>
+        </div>
       </header>
       <ResearchForm />
+      <footer className="site-footer">
+        <span>GENIAL</span>
+        <p>Recherche bornée à des informations publiques et vérifiables.</p>
+      </footer>
     </main>
   );
 }
