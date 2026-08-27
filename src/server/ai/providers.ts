@@ -269,6 +269,65 @@ function exposedNumber(value: number | undefined): number | undefined {
   return value;
 }
 
+function boundedString(
+  value: string | null,
+  maximum: number,
+): string | null {
+  if (value === null) return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed.slice(0, maximum);
+}
+
+function normalizeProviderDocument(
+  output: z.infer<typeof providerDocumentOutputSchema>,
+): z.infer<typeof providerDocumentSchema> {
+  const candidateSchema = providerDocumentSchema.shape.candidates.element;
+  const claimSchema = providerDocumentSchema.shape.claims.element;
+  const candidates = output.candidates.slice(0, 3).flatMap((candidate) => {
+    const parsed = candidateSchema.safeParse({
+      ...candidate,
+      displayName: candidate.displayName.trim().slice(0, 160),
+      excerpt: candidate.excerpt.trim().slice(0, 500),
+      prefix: boundedString(candidate.prefix, 16),
+      suffix: boundedString(candidate.suffix, 16),
+    });
+    return parsed.success ? [parsed.data] : [];
+  });
+  const claims = output.claims.slice(0, 6).flatMap((claim) => {
+    const parsed = claimSchema.safeParse({
+      ...claim,
+      predicate: claim.predicate.trim().slice(0, 80),
+      scopeLabel: boundedString(claim.scopeLabel, 160),
+      factPeriodLabel: boundedString(claim.factPeriodLabel, 80),
+      factDate: boundedString(claim.factDate, 40),
+      normalizedValue: boundedString(claim.normalizedValue, 160),
+      unit: boundedString(claim.unit, 40),
+      currency: boundedString(claim.currency, 20),
+      contradictionKey: boundedString(claim.contradictionKey, 100),
+      excerpt: claim.excerpt.trim().slice(0, 500),
+      prefix: boundedString(claim.prefix, 16),
+      suffix: boundedString(claim.suffix, 16),
+    });
+    return parsed.success ? [parsed.data] : [];
+  });
+  const hadRejectedOutput =
+    candidates.length !== output.candidates.length ||
+    claims.length !== output.claims.length ||
+    output.missingCategories.length > 8;
+  const missingCategories = [...new Set(output.missingCategories)].slice(0, 8);
+  if (hadRejectedOutput && !missingCategories.includes("other")) {
+    if (missingCategories.length === 8) missingCategories[7] = "other";
+    else missingCategories.push("other");
+  }
+  return {
+    identityStatus: output.identityStatus,
+    entityType: output.entityType,
+    candidates,
+    claims,
+    missingCategories,
+  };
+}
+
 export function createOpenAIResearchProvider(): ResearchProvider {
   return {
     async research(input, signal): Promise<ProviderResearchResult> {
@@ -313,7 +372,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           },
         });
 
-        const document = providerDocumentSchema.parse(result.output);
+        const document = normalizeProviderDocument(result.output);
         const toolCalls: OpenAIWebSearchToolCall[] = result.toolCalls.flatMap(
           ({ toolName, toolCallId }) =>
             toolName === "web_search"

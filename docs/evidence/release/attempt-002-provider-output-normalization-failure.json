@@ -1,0 +1,52 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T18:18:26.349Z",
+  "deployment_url": "https://genial-deep-research-2u4zpbkc1-el-grande-xue.vercel.app",
+  "input": {
+    "name": "OpenAI",
+    "entityType": "company",
+    "context": "Entreprise IA, San Francisco, site officiel openai.com"
+  },
+  "terminal": {
+    "state": "failed",
+    "executionId": "d8a6e476-6dda-47fc-a3a9-f5180cc5c7ec",
+    "elapsedMs": 12774,
+    "error": {
+      "code": "internal_failure",
+      "message": "La recherche est indisponible sans exposer de données de requête.",
+      "retryable": false
+    },
+    "receipt": {
+      "attemptId": "d8a6e476-6dda-47fc-a3a9-f5180cc5c7ec",
+      "terminalStatus": "failed",
+      "failedStage": "generation",
+      "category": "internal_unknown",
+      "publicCode": "internal_failure",
+      "reasonCode": null,
+      "sourceMediaTypeClass": null,
+      "retryable": false,
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "callsAttempted": 1,
+      "httpStatus": null,
+      "finishReason": null,
+      "usage": null,
+      "toolCallCount": null,
+      "webSearchQueryCount": null,
+      "webSearchInspectionCount": null,
+      "sourceCount": null,
+      "sourceFetchCount": 0,
+      "sourceVerificationMs": 0,
+      "outputPresent": null,
+      "outputCharacterCount": null,
+      "outputLineCount": null,
+      "terminalLineBreakCount": null,
+      "durationMs": 12774,
+      "estimatedCostUsd": null,
+      "requestIdPresent": false,
+      "requestIdDigest": null,
+      "receiptPersistence": "memory",
+      "observedAt": "2026-08-27T18:18:27.071Z"
+    }
+  }
+}
