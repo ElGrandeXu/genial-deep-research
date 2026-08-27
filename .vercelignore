@@ -15,6 +15,8 @@ AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md
 PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md
 PASSATION_CHATGPT_GENIAL_2026-08-26.md
 PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md
+AUDIT_01.md
+PLAN_ACTION_01.md
 
 # Metadonnees, caches et donnees locales
 .git
@@ -26,6 +28,8 @@ PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md
 .next
 node_modules
 coverage
+playwright-report
+test-results
 logs
 tmp
 temp

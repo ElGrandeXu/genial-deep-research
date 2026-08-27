@@ -1,0 +1,16 @@
+Command: vercel deploy --dry --json
+Date: 2026-08-27 23:59 CEST
+Exit: 0, manifest rejected for release
+
+Raw observations:
+- fileCount: 284
+- totalSize: 13,837,087 bytes
+- `AUDIT_01.md` and `PLAN_ACTION_01.md` appeared in `files`
+- the ignored `test-results/lighthouse-chrome-final-20260827/` browser profile appeared in `files`
+
+Cause: Vercel CLI applies `.vercelignore` as its deployment authority; the
+existing file excluded `tests` but not `test-results`, and predated the two
+mission-reference documents.
+
+Decision: extend `.vercelignore` narrowly. Preserve every local file; upload
+none of these non-runtime artifacts.
