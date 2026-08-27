@@ -476,6 +476,9 @@ describe("verified dossier service", () => {
       sources: [],
     });
     expect(terminal.dossier.unknowns.length).toBeGreaterThan(0);
+    expect(terminal.dossier.unknowns[0]?.description).toBe(
+      "Catégories recherchées sans preuve affichable : identité, activité.",
+    );
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 

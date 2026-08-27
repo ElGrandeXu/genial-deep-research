@@ -38,6 +38,16 @@ const PRICING = Object.freeze({
 });
 const MAX_ESTIMATED_COST_USD = 0.1;
 const FRESHNESS_WINDOW_MS = 548 * 24 * 60 * 60 * 1_000;
+const FACT_CATEGORY_LABELS: Readonly<Record<FactCategory, string>> = {
+  identity: "identité",
+  activity: "activité",
+  role: "rôle",
+  geography: "présence géographique",
+  metric: "chiffres clés",
+  event: "événements",
+  recent_signal: "signaux récents",
+  other: "autres informations",
+};
 
 type DossierClaim = ResearchDossier["claims"][number];
 type DossierFactPeriod = DossierClaim["fact_period"];
@@ -581,7 +591,9 @@ function buildDossier(options: {
   if (missing.length > 0) {
     addUnknown(
       "not_verified",
-      `Catégories recherchées sans preuve affichable : ${missing.join(", ")}.`,
+      `Catégories recherchées sans preuve affichable : ${missing
+        .map((category) => FACT_CATEGORY_LABELS[category])
+        .join(", ")}.`,
       "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
     );
   }

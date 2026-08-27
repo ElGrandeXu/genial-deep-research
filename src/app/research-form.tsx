@@ -122,6 +122,15 @@ function isFactPeriod(value: unknown): boolean {
   );
 }
 
+function sourceAttribution(source: DossierSource): string {
+  const domain = sourceDomain(source);
+  const publisher = source.publisher.trim();
+  const normalizedPublisher = publisher.toLocaleLowerCase("fr").replace(/^www\./, "");
+  return normalizedPublisher === domain.toLocaleLowerCase("fr")
+    ? domain
+    : `${publisher} · ${domain}`;
+}
+
 function isDossier(value: unknown): value is ResearchDossier {
   if (!isRecord(value)) return false;
   const request = value.request;
@@ -546,7 +555,7 @@ function EvidenceList({
             <a className="source-link" href={href} target="_blank" rel="noopener noreferrer">
               <span className="source-title">{source.title}</span>
               <span className="source-publisher">
-                {source.publisher} · {sourceDomain(source)} <span aria-hidden="true">↗</span>
+                {sourceAttribution(source)} <span aria-hidden="true">↗</span>
               </span>
               <span className="sr-only">Ouvrir la source dans un nouvel onglet</span>
             </a>
