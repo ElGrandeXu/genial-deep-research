@@ -97,6 +97,85 @@ const providerDocumentSchema = z.object({
   ).max(8),
 });
 
+// OpenAI Structured Outputs accepts a deliberately limited JSON Schema subset.
+// Keep transport constraints structural, then apply the stricter local schema
+// after generation (URLs, lengths and cardinalities are still rejected before
+// any provider value can reach source retrieval or the public dossier).
+const sourceProofOutputSchema = z.object({
+  sourceUrl: z.string(),
+  excerpt: z.string(),
+  prefix: z.string().nullable(),
+  suffix: z.string().nullable(),
+});
+const providerDocumentOutputSchema = z.object({
+  identityStatus: z.enum([
+    "resolved",
+    "ambiguous",
+    "insufficient_context",
+    "not_found",
+  ]),
+  entityType: entityTypeSchema.nullable(),
+  candidates: z.array(
+    z.object({
+      displayName: z.string(),
+      entityType: entityTypeSchema,
+      sourceUrl: sourceProofOutputSchema.shape.sourceUrl,
+      excerpt: sourceProofOutputSchema.shape.excerpt,
+      prefix: sourceProofOutputSchema.shape.prefix,
+      suffix: sourceProofOutputSchema.shape.suffix,
+    }),
+  ),
+  claims: z.array(
+    z.object({
+      category: z.enum([
+        "identity",
+        "activity",
+        "role",
+        "geography",
+        "metric",
+        "event",
+        "recent_signal",
+        "other",
+      ]),
+      entityType: entityTypeSchema,
+      predicate: z.string(),
+      scopeType: z.enum([
+        "person",
+        "company",
+        "group",
+        "subsidiary",
+        "brand",
+        "country",
+        "establishment",
+        "undetermined",
+      ]),
+      scopeLabel: z.string().nullable(),
+      factPeriodLabel: z.string().nullable(),
+      factDate: z.string().nullable(),
+      normalizedValue: z.string().nullable(),
+      unit: z.string().nullable(),
+      currency: z.string().nullable(),
+      contradictionKey: z.string().nullable(),
+      sourceUrl: sourceProofOutputSchema.shape.sourceUrl,
+      excerpt: sourceProofOutputSchema.shape.excerpt,
+      prefix: sourceProofOutputSchema.shape.prefix,
+      suffix: sourceProofOutputSchema.shape.suffix,
+    }),
+  ),
+  missingCategories: z.array(
+    z.enum([
+      "identity",
+      "activity",
+      "role",
+      "geography",
+      "metric",
+      "event",
+      "recent_signal",
+      "other",
+    ]),
+  ),
+});
+
 function requireOpenAIKey(): string {
   const value = process.env.OPENAI_API_KEY;
   if (value === undefined || value.trim().length === 0) {
@@ -215,7 +294,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           },
           toolChoice: { type: "tool", toolName: "web_search" },
           output: Output.object({
-            schema: providerDocumentSchema,
+            schema: providerDocumentOutputSchema,
             name: "verified_public_dossier",
             description: "Résolution d’identité et faits publics avec extraits exacts.",
           }),
@@ -234,6 +313,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           },
         });
 
+        const document = providerDocumentSchema.parse(result.output);
         const toolCalls: OpenAIWebSearchToolCall[] = result.toolCalls.flatMap(
           ({ toolName, toolCallId }) =>
             toolName === "web_search"
@@ -272,9 +352,9 @@ export function createOpenAIResearchProvider(): ResearchProvider {
         return {
           text: result.text,
           document: {
-            identityStatus: result.output.identityStatus,
-            entityType: result.output.entityType,
-            candidates: result.output.candidates.map((candidate) => ({
+            identityStatus: document.identityStatus,
+            entityType: document.entityType,
+            candidates: document.candidates.map((candidate) => ({
               displayName: candidate.displayName,
               entityType: candidate.entityType,
               statement: candidate.excerpt,
@@ -283,7 +363,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               prefix: candidate.prefix,
               suffix: candidate.suffix,
             })),
-            claims: result.output.claims.map((claim) => ({
+            claims: document.claims.map((claim) => ({
               category: claim.category,
               entityType: claim.entityType,
               statement: claim.excerpt,
@@ -301,7 +381,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               prefix: claim.prefix,
               suffix: claim.suffix,
             })),
-            missingCategories: result.output.missingCategories,
+            missingCategories: document.missingCategories,
           },
           citations: normalizedMetadata.citations,
           sources: normalizedMetadata.sources,

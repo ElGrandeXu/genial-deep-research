@@ -296,6 +296,11 @@ describe("provider multi-fact contract", () => {
       expect(JSON.stringify(requestBody)).toContain("identityStatus");
       expect(JSON.stringify(requestBody)).toContain("contradictionKey");
       expect(JSON.stringify(requestBody)).toContain("missingCategories");
+      const serializedRequest = JSON.stringify(requestBody);
+      expect(serializedRequest).not.toContain('"format":"uri"');
+      expect(serializedRequest).not.toContain('"minLength"');
+      expect(serializedRequest).not.toContain('"maxLength"');
+      expect(serializedRequest).not.toContain('"maxItems"');
     } finally {
       if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
       else process.env.OPENAI_API_KEY = previousKey;
