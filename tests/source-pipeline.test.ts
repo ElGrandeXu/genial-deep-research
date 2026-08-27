@@ -1133,7 +1133,7 @@ describe("M5-R3 action-aware Web Search accounting", () => {
     },
   );
 
-  it("rejects two distinct search actions as web_search_not_unique", () => {
+  it("accepts several distinct searches within the four-action budget", () => {
     const normalized = normalizeWebSearchActions({
       results: [
         webSearchToolResult("search-1", "search"),
@@ -1141,8 +1141,8 @@ describe("M5-R3 action-aware Web Search accounting", () => {
       ],
     });
     expect(normalized).toMatchObject({
-      webSearchActionPolicyStatus: "rejected",
-      webSearchActionPolicyCode: "web_search_not_unique",
+      webSearchActionPolicyStatus: "supported",
+      webSearchActionPolicyCode: null,
       webSearchQueryCount: 2,
       webSearchActionCount: 2,
     });
@@ -1158,13 +1158,31 @@ describe("M5-R3 action-aware Web Search accounting", () => {
       ],
     ],
     ["inspection without search", [webSearchToolResult("inspect-1", "openPage")]],
-  ] as const)("rejects %s", (_case, results) => {
+  ] as const)("classifies %s", (_case, results) => {
     expect(normalizeWebSearchActions({ results })).toMatchObject({
-      webSearchActionPolicyStatus: "rejected",
+      webSearchActionPolicyStatus:
+        _case === "two inspections" ? "supported" : "rejected",
       webSearchActionPolicyCode:
         _case === "two inspections"
-          ? "inspection_url_ambiguous"
+          ? null
           : "web_search_action_invalid",
+    });
+  });
+
+  it("rejects more than four observed actions", () => {
+    const normalized = normalizeWebSearchActions({
+      results: [
+        webSearchToolResult("search-1", "search"),
+        webSearchToolResult("search-2", "search"),
+        webSearchToolResult("search-3", "search"),
+        webSearchToolResult("search-4", "search"),
+        webSearchToolResult("search-5", "search"),
+      ],
+    });
+    expect(normalized).toMatchObject({
+      webSearchActionPolicyStatus: "rejected",
+      webSearchActionPolicyCode: "web_search_action_invalid",
+      webSearchActionCount: 5,
     });
   });
 
@@ -1479,7 +1497,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("rejects unsupported %s accounting before source verification", async (_case, results) => {
+  ] as const)("allows bounded %s accounting and still requires direct proof", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1497,17 +1515,23 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
       "resolving_identity",
-      "failed",
+      "source_verifying",
+      "building",
+      "validating",
+      "completed",
     ]);
     expect(events.at(-1)).toMatchObject({
-      state: "failed",
-      error: { retryable: false },
+      state: "completed",
+      dossier: {
+        global_status: "insufficient_evidence",
+        claims: [],
+      },
       receipt: {
         webSearchQueryCount: 1,
         webSearchInspectionCount: 2,
       },
     });
-    expect(verificationCalls).toBe(0);
+    expect(verificationCalls).toBeGreaterThan(0);
   });
 
   it("rejects search alone as inspection_url_missing", () => {

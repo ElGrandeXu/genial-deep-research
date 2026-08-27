@@ -310,14 +310,13 @@ function normalizeWebSearchAccounting(options: {
       ),
   );
   const policyCode: WebSearchActionPolicyCode | null =
-    queryCount > 1
-      ? "web_search_not_unique"
-      : inspectionCount > 1 || inspectionActionContradiction
-        ? "inspection_url_ambiguous"
-        : invalid ||
-          queryCount !== 1 ||
-          actionCount !== queryCount + inspectionCount ||
-          (actionCount !== 1 && actionCount !== 2)
+    inspectionActionContradiction
+      ? "inspection_url_ambiguous"
+      : invalid ||
+          queryCount < 1 ||
+          actionCount < 1 ||
+          actionCount > 4 ||
+          actionCount !== queryCount + inspectionCount
         ? "web_search_action_invalid"
         : null;
   return {
