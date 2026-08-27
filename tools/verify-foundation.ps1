@@ -46,10 +46,7 @@ foreach ($relativePath in @(
     'PASSATION_CHATGPT_GENIAL_2026-08-26.md',
     'PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md'
 )) {
-    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $relativePath) -PathType Leaf)) {
-        throw "FOUNDATION_VERIFY_FAILED: excluded handoff missing: $relativePath"
-    }
-    & git -C $repoRoot check-ignore -q -- $relativePath
+    & git -C $repoRoot check-ignore --no-index -q -- $relativePath
     if ($LASTEXITCODE -ne 0) { throw "FOUNDATION_VERIFY_FAILED: excluded handoff is not ignored: $relativePath" }
     & git -C $repoRoot ls-files --error-unmatch -- $relativePath 2>$null
     if ($LASTEXITCODE -eq 0) { throw "FOUNDATION_VERIFY_FAILED: excluded handoff is tracked: $relativePath" }

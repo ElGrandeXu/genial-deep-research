@@ -1,0 +1,23 @@
+Environment: detached clean worktree at commit `400f2fa`
+Date: 2026-08-28 00:11 CEST
+
+Command:
+
+```powershell
+corepack pnpm verify
+```
+
+Raw result:
+
+```text
+SOURCE_INTEGRITY_OK: 3 files
+FOUNDATION_VERIFY_FAILED: excluded handoff missing: PASSATION_CHATGPT_GENIAL_2026-08-26.md
+Exit 1
+```
+
+Cause: the cumulative verifier required two deliberately ignored handoff files
+to exist. A clean clone cannot contain them, while the release rules explicitly
+forbid adding them to the package.
+
+Decision: continue proving that both paths are ignored and untracked, but make
+their local presence optional. This removes no safety check relevant to a clone.
