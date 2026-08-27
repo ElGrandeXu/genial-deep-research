@@ -109,7 +109,7 @@ Les entrées sont néanmoins transmises à OpenAI et peuvent conduire à consult
 
 Le reçu applique le barème public daté du 27 août 2026 : entrée `0,20 $/M`, entrée en cache `0,02 $/M`, sortie `1,20 $/M`, et `0,01 $` par action Web Search observée. Taxes, remises et paliers éventuels sont exclus.
 
-Sur les quatre exécutions de démonstration retenues, une fiche coûte entre `0,01208396 $` et `0,03583244 $`. Le succès desktop principal coûte `0,02470444 $` pour cinq faits et deux pages directement vérifiées. Le runtime rejette un résultat estimé au-dessus de `0,10 $`.
+Sur les validations finales Preview et Production, une fiche coûte entre `0,01205174 $` et `0,03446444 $`. Le succès Production principal coûte `0,02500484 $` pour six faits et trois pages directement vérifiées. Le runtime rejette un résultat estimé au-dessus de `0,10 $`.
 
 ## Limites assumées
 
@@ -130,3 +130,4 @@ Sur les quatre exécutions de démonstration retenues, une fiche coûte entre `0
 - [Schéma canonique du dossier](docs/contracts/research-dossier.schema.json)
 - [Captures de la release](docs/captures/release/)
 - [Reçus expurgés de la release](docs/evidence/release/)
+- [Validation Preview et Production](docs/evidence/release/DEPLOYMENT_VALIDATION.md)

@@ -103,4 +103,5 @@ Le projet cible Vercel avec Node 24. `OPENAI_API_KEY` est une variable sensible 
 - [OpenAI — Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
 - [OpenAI — tarifs API](https://developers.openai.com/api/docs/pricing)
 - [Vercel — durée des fonctions](https://vercel.com/docs/functions/configuring-functions/duration)
+- [Vercel — promotion d’un déploiement](https://vercel.com/docs/deployments/promoting-a-deployment)
 - [Next.js — en-têtes](https://nextjs.org/docs/app/api-reference/config/next-config-js/headers)

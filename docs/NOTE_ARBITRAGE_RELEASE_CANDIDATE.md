@@ -64,7 +64,7 @@ Le cas « Société Azur Pamplemousse 9137 » termine en données publiques insu
 
 ## Expérience d’attente
 
-Une recherche dure couramment entre cinq et treize secondes sur les cas retenus, avec un essai antérieur à 32 secondes. L’attente est donc un livrable. Le panneau affiche durée écoulée et étapes réelles reçues du serveur : admission, résolution, recherche, consultation, vérification et construction. Il ne montre aucun pourcentage fictif. L’utilisateur peut annuler ; le focus revient ensuite vers le résultat ou l’erreur.
+Une recherche dure entre neuf et seize secondes sur les cas Production retenus, avec un essai antérieur à 32 secondes. L’attente est donc un livrable. Le panneau affiche durée écoulée et étapes réelles reçues du serveur : admission, résolution, recherche, consultation, vérification et construction. Il ne montre aucun pourcentage fictif. L’utilisateur peut annuler ; le focus revient ensuite vers le résultat ou l’erreur.
 
 Le résultat privilégie la lecture rapide : statut global, identité, groupes de faits, preuve immédiatement sous le fait, contradictions et inconnues, puis reçu technique replié. Les interfaces 1 440 px et 390 px ont été capturées et contrôlées : pas de débordement horizontal, chevauchement, texte coupé ou dépendance au survol.
 
@@ -72,9 +72,9 @@ Le résultat privilégie la lecture rapide : statut global, identité, groupes d
 
 Le barème versionné au 27 août 2026 reprend les tarifs publics : `0,20 $/M` de jetons d’entrée, `0,02 $/M` d’entrée en cache, `1,20 $/M` de sortie, et `0,01 $` par action Web Search observée. Taxes, remises et paliers sont exclus. Le runtime bloque tout résultat estimé au-dessus de `0,10 $`.
 
-Les quatre exécutions de démonstration staging coûtent respectivement `0,02470444 $`, `0,01296104 $`, `0,03583244 $` et `0,01208396 $`. La plage par fiche est donc `0,01208396–0,03583244 $`. Le succès principal fournit cinq faits sur deux pages pour `0,02470444 $`.
+Les validations finales coûtent `0,02479644 $` en Preview puis `0,02500484 $`, `0,03446444 $` et `0,01205174 $` en Production. La plage finale par fiche est donc `0,01205174–0,03446444 $`. Le succès principal fournit six faits sur trois pages pour `0,02500484 $`.
 
-Le cumul connu des reçus de release est `0,12403136 $`. En ajoutant un essai Production antérieur (`0,02261440 $`), les échecs dont l’usage permet un calcul conservateur, quatre actions supposées pour un échec sans comptage, et la borne complète de `0,10 $` pour l’unique appel sans usage récupérable, la borne mission avant validation finale est `0,36274480 $`. Elle est volontairement pessimiste et laisse `0,13725520 $` sous le plafond de `0,50 $`.
+Le cumul connu des reçus de release avant le cycle final est `0,12403136 $`. En ajoutant un essai Production antérieur (`0,02261440 $`), les échecs dont l’usage permet un calcul conservateur, quatre actions supposées pour un échec sans comptage, la borne complète de `0,10 $` pour l’unique appel sans usage récupérable, puis les quatre validations finales (`0,09631746 $`), la borne mission finale est `0,45906226 $`. Elle est volontairement pessimiste et reste `0,04093774 $` sous le plafond de `0,50 $`. L’échec d’authentification Preview s’est arrêté avant génération et n’ajoute aucun coût fournisseur mesurable.
 
 Références : [tarifs OpenAI](https://developers.openai.com/api/docs/pricing), [modèle](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [Web Search](https://developers.openai.com/api/docs/guides/tools-web-search), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
 
@@ -91,6 +91,8 @@ La recherche transmet toutefois l’entrée à OpenAI et consulte des sites publ
 Les principaux échecs ont amélioré la frontière produit. Le premier schéma fournisseur utilisait un format URI non accepté par Structured Outputs ; le format a été simplifié côté transport puis validé strictement localement. Certaines sorties valides omettaient des champs nullables ; une récupération bornée a été ajoutée sans fabriquer de contenu. Les métadonnées de citations et les séquences multi-actions n’avaient pas toujours la même forme ; leur normalisation et leur comptabilité sont désormais testées.
 
 Côté interface, un panneau d’attente pouvait recouvrir le résultat après terminaison et l’optimisation `content-visibility` laissait des cartes vides dans une capture longue. Les deux ont été supprimés après inspection réelle. Les tentatives échouées sont conservées comme historique, sans être présentées comme preuves finales.
+
+La première Preview a aussi reçu le masque non lisible d’une variable Vercel sensible et a échoué en 401 avant génération. Cette preuve a été conservée. La variable Preview a ensuite été configurée depuis le magasin DPAPI local existant, sans afficher ni écrire la clé, puis une nouvelle Preview a produit un dossier réel. La commande de promotion Vercel relie cette Preview au déploiement Production par `originalDeploymentId` tout en substituant l’environnement sensible Production.
 
 ## Limites assumées
 

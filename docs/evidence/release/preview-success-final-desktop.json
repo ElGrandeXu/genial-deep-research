@@ -1,0 +1,283 @@
+{
+  "evidence_version": "1.0.0",
+  "captured_at": "2026-08-27T19:01:08.553Z",
+  "deployment_url": "https://genial-deep-research-7rz6z1gol-el-grande-xue.vercel.app",
+  "input": {
+    "name": "OpenAI",
+    "entityType": "company",
+    "context": "Entreprise IA, San Francisco, site officiel openai.com"
+  },
+  "terminal": {
+    "state": "completed",
+    "executionId": "28692343-ad33-4144-a152-7a83ed528291",
+    "elapsedMs": 16086,
+    "dossier": {
+      "schema_version": "1.0.0",
+      "dossier_id": "dossier-57f83c14-7908-47d0-a33a-d9a9ff9646ae",
+      "origin": "runtime",
+      "request": {
+        "request_id": "request-65d4f444-31ff-4507-a2e6-fa132d7daba3",
+        "submitted_at": "2026-08-27T19:00:53.131Z",
+        "name": "OpenAI",
+        "suggested_type": "company",
+        "context": {
+          "discriminating_hint": "Entreprise IA, San Francisco, site officiel openai.com"
+        },
+        "total_character_count": 60
+      },
+      "identity": {
+        "status": "resolved",
+        "selected_subject_id": "subject-5e73f557-eb8c-4467-b4cd-7d550c27ee7b",
+        "candidates": [
+          {
+            "subject_id": "subject-5e73f557-eb8c-4467-b4cd-7d550c27ee7b",
+            "entity_type": "company",
+            "display_name": "OpenAI",
+            "discriminators": {},
+            "match_rationale": "Le type, le contexte soumis et les extraits vérifiés convergent vers cette entité."
+          }
+        ],
+        "resolution_reason": "L’identité est retenue seulement après concordance du type, du contexte et d’au moins un extrait direct.",
+        "clarification_fields": []
+      },
+      "sources": [
+        {
+          "source_id": "source-046e79b3-9a1e-4e1d-b982-6a7e397b550a",
+          "provider_url": "https://openai.com/about/",
+          "resolved_url": "https://openai.com/about/",
+          "canonical_url": null,
+          "title": "About | OpenAI",
+          "publisher": "openai.com",
+          "source_type": "search_result",
+          "published_at": null,
+          "accessed_at": "2026-08-27T19:01:09.178Z",
+          "collection_method": "direct_access",
+          "collection_compliance": "not_verified",
+          "accessibility_status": "accessible",
+          "assumed_entity_id": "subject-5e73f557-eb8c-4467-b4cd-7d550c27ee7b",
+          "assumed_scope": {
+            "type": "company",
+            "label": "OpenAI"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence-e393b9af-0c06-44a6-abd4-a0e70bd46281",
+          "source_id": "source-046e79b3-9a1e-4e1d-b982-6a7e397b550a",
+          "claim_id": "claim-81223aac-c7c2-46a6-84dc-34d6743b8569",
+          "excerpt": "OpenAI is an AI research and deployment company.",
+          "locator": "{\"exact\":\"OpenAI is an AI research and deployment company.\",\"matchMode\":\"exact\",\"prefix\":\"\",\"suffix\":\" Our mission is \",\"occurrenceIndex\":0,\"finalUrl\":\"https://openai.com/about/\",\"citationUrl\":\"https://openai.com/about/\",\"retrievedAt\":\"2026-08-27T19:01:09.178Z\",\"normalizedTextSha256\":\"e30fc181f7ac7bc9cef06405037081cb345d73a65a045838a7f4c778970fd7a6\",\"contentType\":\"text/html; charset=utf-8\",\"bytesRead\":373416,\"redirectCount\":0}",
+          "entity_id": "subject-5e73f557-eb8c-4467-b4cd-7d550c27ee7b",
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "relation": "supports",
+          "verification_method": "source_content",
+          "verified_at": "2026-08-27T19:01:09.178Z"
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "claim-81223aac-c7c2-46a6-84dc-34d6743b8569",
+          "subject_id": "subject-5e73f557-eb8c-4467-b4cd-7d550c27ee7b",
+          "statement": "OpenAI is an AI research and deployment company.",
+          "predicate": "activity.décrit son activité comme la recherche et le déploiement en IA",
+          "structured_value": null,
+          "unit": null,
+          "fact_period": {
+            "status": "unknown",
+            "start": null,
+            "end": null,
+            "as_of": null,
+            "label": null
+          },
+          "scope": {
+            "type": "company",
+            "label": "OpenAI"
+          },
+          "temporal_status": "unknown",
+          "evidence_ids": [
+            "evidence-e393b9af-0c06-44a6-abd4-a0e70bd46281"
+          ],
+          "claim_state": "supported",
+          "reconciliation_state": "confirmation",
+          "presentation_decision": "display_fact",
+          "presentation_reason": "Le texte affiché est l’extrait exact retrouvé dans la page source consultée."
+        }
+      ],
+      "inferences": [],
+      "contradictions": [],
+      "unknowns": [
+        {
+          "unknown_id": "unknown-d616f0a3-1de7-46fe-bdc3-e8df94823eb7",
+          "category": "not_verified",
+          "description": "Catégories recherchées sans preuve affichable : présence géographique, signaux récents.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "Aucun extrait direct suffisamment fiable n’a franchi la vérification.",
+          "retry_context": []
+        },
+        {
+          "unknown_id": "unknown-44be6967-02a8-4aee-96b2-2872d0c97ffb",
+          "category": "source_inaccessible",
+          "description": "5 preuve(s) proposée(s) ont été écartées avant affichage.",
+          "explored_scope": [
+            "Recherche Web publique et accès direct aux pages proposées"
+          ],
+          "source_categories": [
+            "search_result"
+          ],
+          "stop_reason": "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+          "retry_context": []
+        }
+      ],
+      "execution_steps": [
+        {
+          "step_id": "step-fbb88be6-b1fa-411a-91fb-b82f82ac512c",
+          "invocation_id": "invocation-755e799e-da64-4cc5-beea-58653efd3dde",
+          "operation": "identity_resolution",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T19:00:53.131Z",
+          "ended_at": "2026-08-27T19:01:09.179Z",
+          "duration_ms": 15594,
+          "error_code": null
+        },
+        {
+          "step_id": "step-93bd0f60-706d-4920-b41b-1d5020c5381e",
+          "invocation_id": "invocation-006caddd-407b-43f2-9991-f189912cb95a",
+          "operation": "verification",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T19:00:53.131Z",
+          "ended_at": "2026-08-27T19:01:09.179Z",
+          "duration_ms": 453,
+          "error_code": null
+        },
+        {
+          "step_id": "step-1431f2bf-0143-45d8-83e2-6c662ac85fff",
+          "invocation_id": "invocation-9d9d7599-46a0-49d7-840f-7a74db53f131",
+          "operation": "composition",
+          "status": "completed",
+          "attempt": 1,
+          "retry_of": null,
+          "started_at": "2026-08-27T19:00:53.131Z",
+          "ended_at": "2026-08-27T19:01:09.179Z",
+          "duration_ms": 1,
+          "error_code": null
+        }
+      ],
+      "presentation": {
+        "summary_items": [
+          {
+            "kind": "claim",
+            "ref_id": "claim-81223aac-c7c2-46a6-84dc-34d6743b8569"
+          }
+        ],
+        "key_fact_claim_ids": [
+          "claim-81223aac-c7c2-46a6-84dc-34d6743b8569"
+        ],
+        "recent_signal_claim_ids": [],
+        "ambiguity_claim_ids": [],
+        "contradiction_ids": [],
+        "unknown_ids": [
+          "unknown-d616f0a3-1de7-46fe-bdc3-e8df94823eb7",
+          "unknown-44be6967-02a8-4aee-96b2-2872d0c97ffb"
+        ],
+        "source_ids": [
+          "source-046e79b3-9a1e-4e1d-b982-6a7e397b550a"
+        ]
+      },
+      "receipt": {
+        "run_id": "28692343-ad33-4144-a152-7a83ed528291",
+        "started_at": "2026-08-27T19:00:53.131Z",
+        "completed_at": "2026-08-27T19:01:09.217Z",
+        "total_duration_ms": 16086,
+        "latency_ms": 16086,
+        "provider_calls": 1,
+        "usage": {
+          "input_tokens": 21977,
+          "output_tokens": 1131,
+          "total_tokens": 23108
+        },
+        "cost": {
+          "amount_usd": 0.02479644,
+          "status": "estimated",
+          "assumptions": [
+            "Tarifs publics OpenAI datés du 27 août 2026.",
+            "Web Search compté conservativement à 0,01 USD par action observée ; taxes et remises exclues."
+          ]
+        },
+        "search_scope": {
+          "categories": [
+            "activity"
+          ],
+          "stop_reason": "Seules les preuves directement vérifiables sont conservées."
+        },
+        "resumed_from_run_id": null
+      },
+      "result_mode": "standard",
+      "global_status": "partial",
+      "error": null,
+      "limitations": [
+        "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
+        "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+        "La fraîcheur reste inconnue lorsqu’aucune date explicite n’apparaît dans l’extrait.",
+        "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes."
+      ]
+    },
+    "receipt": {
+      "executionId": "28692343-ad33-4144-a152-7a83ed528291",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-luna",
+      "purpose": "verified_public_dossier",
+      "providerHttpCalls": 1,
+      "toolCalls": 2,
+      "webSearchQueryCount": 2,
+      "webSearchInspectionCount": 0,
+      "sourceFetchCount": 6,
+      "inputTokens": 21977,
+      "cachedInputTokens": 5312,
+      "outputTokens": 1131,
+      "reasoningTokens": 414,
+      "totalTokens": 23108,
+      "sourceCount": 1,
+      "durations": {
+        "acceptedMs": 4,
+        "searchingMs": 15594,
+        "sourceVerifyingMs": 453,
+        "validatingMs": 18,
+        "totalMs": 16086
+      },
+      "timedOutOrCancelled": false,
+      "finalStatus": "completed",
+      "pricing": {
+        "date": "2026-08-27",
+        "inputUsdPerMillion": 0.2,
+        "cachedInputUsdPerMillion": 0.02,
+        "outputUsdPerMillion": 1.2,
+        "webSearchUsdPerCall": 0.01
+      },
+      "estimatedCostUsd": 0.02479644,
+      "costLimitations": [
+        "Estimation fondée sur les jetons exposés et les tarifs publics datés du 27 août 2026.",
+        "Web Search est compté conservativement par action observée ; taxes, remises et paliers sont exclus."
+      ]
+    }
+  }
+}
