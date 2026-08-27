@@ -699,7 +699,7 @@ describe("terminal failure guarantees", () => {
     expect(emitted.filter(({ state }) => state === "failed" || state === "completed")).toHaveLength(0);
   });
 
-  it("does not expose a URL present only in generated text", async () => {
+  it("exposes a structured URL only after direct excerpt verification", async () => {
     const events = await executeWith({
       result: providerResult({
         text,
@@ -714,11 +714,11 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "silence",
-        global_status: "insufficient_evidence",
-        claims: [],
-        evidence: [],
-        sources: [],
+        result_mode: "standard",
+        global_status: "partial",
+        claims: [{ statement: claim, claim_state: "supported" }],
+        evidence: [{ excerpt: claim, verification_method: "source_content" }],
+        sources: [{ provider_url: sourceUrl, accessibility_status: "accessible" }],
       },
     });
   });

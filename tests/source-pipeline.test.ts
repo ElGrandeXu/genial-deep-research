@@ -1019,6 +1019,47 @@ describe("M5-R2B provider metadata boundary", () => {
     expect(syntheticProviderFixture.marker).toBe("M5_R2B_SYNTHETIC_FIXTURE_NOT_PROVIDER_OUTPUT");
     expect(syntheticProviderFixture.metadata_note).toContain("Synthetic");
   });
+
+  it("binds a structured-output URL only for direct source verification", () => {
+    const text = providerText();
+    const parsed = parseProviderCandidate(text);
+    const { claimStart: _claimStart, claimEnd: _claimEnd, ...candidate } = parsed;
+    void _claimStart;
+    void _claimEnd;
+    expect(bindProviderSource({
+      text,
+      citations: [],
+      sources: [],
+      webSearchCalls: [],
+      webSearchInspections: [],
+      providerMetadataStatus: "supported",
+    }, candidate)).toEqual({
+      provider: "openai",
+      bindingType: "structured_output_url",
+      url: sourceUrl,
+    });
+  });
+
+  it("rejects an unsafe structured-output URL before direct verification", () => {
+    const text = providerText();
+    const parsed = parseProviderCandidate(text);
+    const { claimStart: _claimStart, claimEnd: _claimEnd, ...withoutOffsets } = parsed;
+    void _claimStart;
+    void _claimEnd;
+    const candidate = {
+      ...withoutOffsets,
+      structuredUrl: "http://127.0.0.1/private",
+    };
+    expectPipelineCode(
+      () => bindProviderSource({
+        text,
+        citations: [],
+        sources: [],
+        providerMetadataStatus: "supported",
+      }, candidate),
+      "source_url_rejected",
+    );
+  });
 });
 
 describe("M5-R3 action-aware Web Search accounting", () => {

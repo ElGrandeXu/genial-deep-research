@@ -44,11 +44,19 @@ export interface ProviderInspectionActionUrlBinding {
   readonly actionType: "open_page" | "find_in_page";
 }
 
+export interface ProviderStructuredOutputUrlBinding {
+  readonly provider: "openai";
+  readonly bindingType: "structured_output_url";
+  readonly url: string;
+  readonly title?: never;
+}
+
 export type ProviderSourceBinding =
   | ProviderCitation
   | ProviderDirectSourceBinding
   | ProviderWebSearchSourceBinding
-  | ProviderInspectionActionUrlBinding;
+  | ProviderInspectionActionUrlBinding
+  | ProviderStructuredOutputUrlBinding;
 
 export interface ProviderSource {
   readonly sourceId: string;

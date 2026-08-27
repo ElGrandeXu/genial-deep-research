@@ -703,10 +703,15 @@ export function bindProviderSource(
       }
     }
 
-    throw new ResearchPipelineError(
-      "source_metadata_missing",
-      "L’URL structurée ne correspond à aucune source réellement consultée.",
-    );
+    // Structured Outputs do not always carry URL annotations or an expanded
+    // source list. The URL still has to pass the strict public-URL policy, then
+    // the source verifier fetches it directly and locates the exact excerpt.
+    // No provider-only statement can reach the dossier through this fallback.
+    return {
+      provider: "openai",
+      bindingType: "structured_output_url",
+      url: structuredUrl.safeHref,
+    };
   }
 
   const webSearchCalls = result.webSearchCalls ?? [];
