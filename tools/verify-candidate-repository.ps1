@@ -127,49 +127,8 @@ $pdfPages = [regex]::Matches($pdfAscii, '/Type\s*/Page(?!s)\b').Count
 Assert-Candidate ($pdfPages -ge 2 -and $pdfPages -le 4) "final PDF page count outside 2-4: $pdfPages"
 Write-Output "PDF_STRUCTURE_OK: pages=$pdfPages bytes=$($pdfBytes.Length)"
 
-$vercelIgnore = Join-Path $repoRoot '.vercelignore'
-$vercelPatterns = @(
-    Get-Content -LiteralPath $vercelIgnore |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('#') }
-)
-function Test-VercelPattern {
-    param([string]$RelativePath, [string]$Pattern)
-
-    $candidatePattern = $Pattern.TrimStart('!').Replace('\', '/')
-    $candidatePath = $RelativePath.Replace('\', '/')
-    if ($candidatePattern.EndsWith('/**')) {
-        return $candidatePath.StartsWith($candidatePattern.Substring(0, $candidatePattern.Length - 2), [StringComparison]::Ordinal)
-    }
-    if ($candidatePattern.EndsWith('/')) {
-        return $false
-    }
-    if ($candidatePattern.Contains('/')) {
-        return $candidatePath -like $candidatePattern
-    }
-    return ([IO.Path]::GetFileName($candidatePath) -like $candidatePattern)
-}
-
-$vercelFiles = [System.Collections.Generic.List[string]]::new()
-foreach ($relativePath in $candidateFiles) {
-    $ignored = $false
-    foreach ($pattern in $vercelPatterns) {
-        if (Test-VercelPattern -RelativePath $relativePath -Pattern $pattern) {
-            $ignored = -not $pattern.StartsWith('!')
-        }
-    }
-    if (-not $ignored) { $vercelFiles.Add($relativePath) }
-}
-$unexpectedVercel = @($vercelFiles | Where-Object {
-    ($_.StartsWith('docs/') -and $_ -ne 'docs/contracts/research-dossier.schema.json') -or
-    $_.StartsWith('tests/') -or
-    ($_.StartsWith('tools/') -and $_ -ne 'tools/run-next.mjs') -or
-    $_ -in @('playwright.config.ts', 'vitest.config.ts', 'eslint.config.mjs')
-})
-Assert-Candidate ($unexpectedVercel.Count -eq 0) ("unexpected Vercel payload: " + ($unexpectedVercel -join ', '))
-Assert-Candidate ($vercelFiles -contains 'docs/contracts/research-dossier.schema.json') 'runtime schema absent from Vercel context'
-Assert-Candidate ($vercelFiles -contains 'tools/run-next.mjs') 'Next launcher absent from Vercel context'
-$vercelBytes = [int64](($vercelFiles | ForEach-Object { Get-Item -LiteralPath (Join-Path $repoRoot $_) } | Measure-Object Length -Sum).Sum)
-$vercelFamilies = @($vercelFiles | ForEach-Object { if ($_ -match '/') { ($_ -split '/')[0] } else { '<root>' } } | Sort-Object -Unique)
-Write-Output "VERCEL_CONTEXT_OK: files=$($vercelFiles.Count) bytes=$vercelBytes families=$($vercelFamilies -join ',')"
+$vercelVerifier = Join-Path $PSScriptRoot 'verify-vercel-context.ps1'
+Assert-Candidate (Test-Path -LiteralPath $vercelVerifier -PathType Leaf) 'Vercel context verifier missing'
+& pwsh -NoProfile -File $vercelVerifier
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Output "CANDIDATE_REPOSITORY_OK: files=$($candidateFiles.Count)"

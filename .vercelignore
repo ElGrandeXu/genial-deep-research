@@ -20,7 +20,12 @@ temp/**
 .env.*
 
 # Documentation, tests et outils absents du contexte de déploiement
-docs/**
+docs/ARCHITECTURE.md
+docs/NOTE_ARBITRAGE_FINALE.*
+docs/PRODUCT_TRUTH_CONTRACT.md
+docs/captures/**
+docs/evidence/**
+docs/contracts/contract-fixtures.json
 tests/**
 tools/**
 playwright.config.ts
@@ -43,8 +48,6 @@ AUDIT_*
 PLAN_ACTION_*
 PASSATION_*
 
-# Deux fichiers requis par le build/runtime
-!docs/contracts/
-!docs/contracts/research-dossier.schema.json
+# Outil requis par le build/runtime
 !tools/
 !tools/run-next.mjs

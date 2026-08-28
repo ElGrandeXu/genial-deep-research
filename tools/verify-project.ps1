@@ -49,7 +49,7 @@ function Test-SecretScannerNegativeProbe {
 }
 
 # Candidate repository boundary: required product files, final receipts,
-# portable links and the simulated Vercel context.
+# portable links and the official Vercel dry-run context.
 Invoke-RepositoryScript -Name 'verify-candidate-repository.ps1'
 
 # Scan every relevant Git view explicitly. A clean staged set is still a valid
