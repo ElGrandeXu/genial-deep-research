@@ -2,10 +2,14 @@
 
 Verdict : `POST_RELEASE_LIVE_SMOKE_FAIL`
 
-Date UTC : `2026-08-28T16:07:01.104Z`  
-Production : <https://genial-deep-research.vercel.app>  
-Déploiement : `dpl_4AaBdE1cQhuocuGnaiDDAaYKqJpz` (`READY`)  
-Preview source : `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V`  
+Date UTC : `2026-08-28T16:07:01.104Z`
+
+Production : <https://genial-deep-research.vercel.app>
+
+Déploiement : `dpl_4AaBdE1cQhuocuGnaiDDAaYKqJpz` (`READY`)
+
+Preview source : `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V`
+
 Runtime : `f53b7aed0d25e45aed26dfe96a0ed8c271365218`
 
 ## Exécution
