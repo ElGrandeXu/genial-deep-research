@@ -582,6 +582,8 @@ describe("verified dossier service", () => {
     const identityEvidence = terminal.dossier.evidence.filter(({ evidence_id }) =>
       identityClaim?.evidence_ids.includes(evidence_id) === true
     );
+    expect(identityClaim?.presentation_reason).toContain("corroboration factuelle vérifiée");
+    expect(identityClaim?.presentation_reason).not.toContain("séparée des faits métier");
     expect(identityClaim?.evidence_ids).toHaveLength(2);
     expect(identityEvidence.map(({ relation }) => relation)).toEqual([
       "supports",

@@ -480,7 +480,9 @@ function buildDossier(options: {
       claim_state: "supported",
       reconciliation_state: "confirmation",
       presentation_decision: "display_fact",
-      presentation_reason: "Preuve d’identité séparée des faits métier ; l’extrait exact retrouvé est conservé et les corroborations utilisées restent traçables.",
+      presentation_reason: selected.proofBasis === "verified_facts"
+        ? "Identité établie par corroboration factuelle vérifiée ; chaque extrait utilisé reste relié à sa source."
+        : "Preuve d’identité dédiée, distincte des faits métier ; l’extrait exact retrouvé est conservé.",
     });
   }
 

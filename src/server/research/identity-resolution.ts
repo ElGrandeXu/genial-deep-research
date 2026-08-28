@@ -1589,10 +1589,12 @@ function narrowedFactBackedItem(options: {
     : null;
   const primaryProof = dedicatedProof ?? options.support.proofs[0];
   if (primaryProof === undefined) return options.factItem;
+  const primaryProofKey = proofKey(primaryProof);
   const corroboratingProofs = [...new Map(
     [
       ...(dedicatedProof === null ? options.support.proofs.slice(1) : options.support.proofs),
-    ].map((proof) => [proofKey(proof), proof] as const),
+    ].filter((proof) => proofKey(proof) !== primaryProofKey)
+      .map((proof) => [proofKey(proof), proof] as const),
   ).values()];
   return {
     candidate: options.original.candidate,

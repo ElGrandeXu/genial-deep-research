@@ -159,7 +159,6 @@ describe("server identity resolution", () => {
         { candidate: profile, proof: proof(profile) },
       ],
     });
-
     const decision = resolveIdentity({
       input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
       providerStatus: "insufficient_context",
@@ -648,6 +647,63 @@ describe("server identity resolution", () => {
     expect(decision.reasonCodes).toContain("fact_corroborated_identity");
     expect(decision.selected?.proof.finalUrl).toBe(identity.structuredUrl);
     expect(decision.selected?.corroboratingProofs).toHaveLength(2);
+  });
+
+  it("does not duplicate a dedicated proof that also participates in fact corroboration", () => {
+    const sharedExcerpt = "Camille Durand développe une activité de design à Rennes.";
+    const sharedUrl = "https://studio.example/equipe/camille-durand";
+    const identity = personCandidate({
+      statement: sharedExcerpt,
+      excerpt: sharedExcerpt,
+      structuredUrl: sharedUrl,
+      discriminators: {
+        city: "Rennes",
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+    });
+    const duplicateRole = personFact({
+      category: "activity",
+      predicate: "développe",
+      statement: sharedExcerpt,
+      excerpt: sharedExcerpt,
+      structuredUrl: sharedUrl,
+    });
+    const activity = personFact({
+      category: "activity",
+      predicate: "conçoit",
+      statement: "Camille Durand conçoit des services numériques à Rennes.",
+      excerpt: "Camille Durand conçoit des services numériques à Rennes.",
+      structuredUrl: "https://camille-durand.fr/profil",
+    });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{ candidate: identity, proof: proof(identity) }],
+      verifiedFacts: [
+        { candidate: duplicateRole, proof: proof(duplicateRole) },
+        { candidate: activity, proof: proof(activity) },
+      ],
+    });
+    expect(assembled[0]?.corroboratingProofs?.map(({ finalUrl }) => finalUrl)).toEqual([
+      identity.structuredUrl,
+      activity.structuredUrl,
+    ]);
+
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
+      providerStatus: "resolved",
+      candidates: assembled,
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("fact_corroborated_identity");
+    expect(decision.selected?.proof.finalUrl).toBe(identity.structuredUrl);
+    expect(decision.selected?.corroboratingProofs).toHaveLength(1);
+    expect(decision.selected?.corroboratingProofs?.[0]?.finalUrl).toBe(activity.structuredUrl);
   });
 
   it("resolves an exact-name person from an uppercase context token corroborated across fact evidence", () => {

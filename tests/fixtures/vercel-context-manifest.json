@@ -3,7 +3,7 @@
     "slug": "nextjs"
   },
   "fileCount": 40,
-  "totalSize": 724905,
+  "totalSize": 725149,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 51966,
+      "size": 52078,
       "mode": 33188
     },
     {
@@ -167,7 +167,7 @@
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 55907,
+      "size": 56039,
       "mode": 33188
     },
     {
