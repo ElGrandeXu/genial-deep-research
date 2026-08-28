@@ -1,4 +1,33 @@
-# Gouvernance, autorites et preuves locales
+# Dépendances, métadonnées et sorties locales
+.git/**
+.vercel/**
+.gitattributes
+.gitignore
+.vercelignore
+.nvmrc
+README.md
+.next/**
+node_modules/**
+coverage/**
+playwright-report/**
+test-results/**
+logs/**
+tmp/**
+temp/**
+*.log
+*.tsbuildinfo
+.env
+.env.*
+
+# Documentation, tests et outils absents du contexte de déploiement
+docs/**
+tests/**
+tools/**
+playwright.config.ts
+vitest.config.ts
+eslint.config.mjs
+
+# Documents internes, y compris s'ils réapparaissent localement
 AGENTS.md
 MISSION.md
 INPUTS.md
@@ -8,45 +37,14 @@ EVIDENCE.md
 HANDOFF.md
 DECISIONS.md
 RISKS.md
-README.md
 SOURCE_SHA256SUMS
 epreuve-deep-research.md
-AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md
-PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md
-PASSATION_CHATGPT_GENIAL_2026-08-26.md
-PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md
-AUDIT_01.md
-PLAN_ACTION_01.md
+AUDIT_*
+PLAN_ACTION_*
+PASSATION_*
 
-# Metadonnees, caches et donnees locales
-.git
-.gitattributes
-.gitignore
-.vercel
-.vercelignore
-.githooks
-.next
-node_modules
-coverage
-playwright-report
-test-results
-logs
-tmp
-temp
-*.log
-*.tsbuildinfo
-.env
-.env.*
-
-# Documentation locale exclue ; le schema importe par TypeScript reste inclus
-docs/ARCHITECTURE.md
-docs/PRODUCT_TRUTH_CONTRACT.md
-docs/evidence/
-docs/contracts/contract-fixtures.json
-
-# Outillage local exclu, sauf le lanceur requis par le script de build
-tools/**
+# Deux fichiers requis par le build/runtime
+!docs/contracts/
+!docs/contracts/research-dossier.schema.json
+!tools/
 !tools/run-next.mjs
-tests
-eslint.config.mjs
-vitest.config.ts

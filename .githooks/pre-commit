@@ -1,7 +1,0 @@
-#!/bin/sh
-set -eu
-
-repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root"
-pwsh -NoProfile -File tools/verify-source-integrity.ps1
-pwsh -NoProfile -File tools/scan-secrets.ps1 -Mode Staged

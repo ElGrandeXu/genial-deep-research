@@ -143,9 +143,10 @@ try {
         '/.env',
         '/.env.local',
         '/.git/config',
-        '/AUDIT_01.md',
-        '/PLAN_ACTION_01.md',
-        '/epreuve-deep-research.md',
+        '/docs/NOTE_ARBITRAGE_FINALE.pdf',
+        '/docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md',
+        '/tests/research-failure.test.ts',
+        '/tools/scan-secrets.ps1',
         '/test-results/.last-run.json'
     )
     foreach ($path in $disclosurePaths) {

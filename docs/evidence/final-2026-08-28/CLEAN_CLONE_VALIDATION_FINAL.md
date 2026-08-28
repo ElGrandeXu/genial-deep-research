@@ -1,48 +1,49 @@
-# Dépôt public et clean-start
+# Validation finale du dépôt candidat et du clone propre
 
 Date : 2026-08-28
 
-Remote : <https://github.com/ElGrandeXu/genial-deep-research>
+Branche candidate : `fix/audit-01-truth-gates`
 
-## Accès public
+Runtime Production de référence : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
 
-Le contrôle sans authentification retourne :
+## Protocole
 
-```json
-{"full_name":"ElGrandeXu/genial-deep-research","private":false,"visibility":"public","default_branch":"main","html_url":"https://github.com/ElGrandeXu/genial-deep-research"}
-```
+Le commit local contenant ce document est cloné dans un répertoire temporaire créé exclusivement pour la validation. Le clone ne reçoit ni fichier d’environnement, ni clé fournisseur, ni configuration de hook, ni lien vers une archive ou un workspace externe.
 
-`git -c credential.helper= ls-remote` accède au dépôt sans jeton. Les branches `main` et `fix/audit-01-truth-gates` doivent résoudre vers le même commit final ; la branche locale conservée reste `fix/audit-01-truth-gates`.
-
-## Échec conservé
-
-Premier clone anonyme : installation figée réussie, puis `corepack pnpm verify` rouge avant les suites :
-
-```text
-verify-foundation.ps1:63
-You cannot call a method on a null-valued expression.
-```
-
-Cause générique : `core.hooksPath` est une configuration Git locale et ne voyage pas avec un clone. Le README ne réactivait pas les hooks versionnés avant le gate.
-
-## Correction documentaire
-
-Le clean-start documente désormais, avant l’installation :
+Séquence rejouée :
 
 ```powershell
-git config core.hooksPath .githooks
+corepack pnpm install --frozen-lockfile
+corepack pnpm verify
 ```
 
-Aucune logique applicative ni aucun vérificateur n’a été relâché. Après activation explicite des hooks, le clone propre passe :
+Le vérificateur cumulatif contrôle aussi les liens Markdown, la structure du PDF, l’intégrité SHA-256 des cinq reçus live finaux, l’absence de chemin absolu, la frontière du dépôt candidat et le manifeste Vercel simulé.
+
+## Résultats candidats
 
 ```text
-SOURCE_INTEGRITY_OK: 3 files
-Tests: 478 passed
-Playwright: 8 passed
-Lighthouse desktop: 100 / 100 / 100 / 100
-Lighthouse mobile: 99 / 100 / 100 / 100
-No known vulnerabilities found
+Fichiers candidats : 108
+Reçus finaux : 5 hashes SHA-256 inchangés
+Tests Vitest : 477 passed
+Playwright : 8 passed
+Lighthouse desktop : 100 / 100 / 100 / 100
+Lighthouse mobile : 99 / 100 / 100 / 100
+PDF : 3 pages A4
+Contexte Vercel simulé : 39 fichiers, 597859 octets
+Audit production : aucune vulnérabilité connue au seuil high
+RUNTIME_DIFF : EMPTY
 PROJECT_VERIFY_OK: build=True dependency_audit=True
 ```
 
-La validation finale rejoue la séquence complète du README sur `main` depuis un nouveau répertoire temporaire, sans clé fournisseur.
+L’accueil, le build et toutes les validations fonctionnent sans clé. Une clé OpenAI n’est requise que pour une recherche réelle, qui n’appartient pas à ce protocole. Aucun appel fournisseur ni appel réel à `/api/research` n’est effectué.
+
+## Portabilité
+
+- aucune dépendance à une archive externe ;
+- aucune dépendance à un chemin Windows absolu ;
+- aucun hook Git obligatoire ;
+- aucune clé requise pour installer, construire, tester ou afficher l’accueil ;
+- aucune mutation GitHub ou Vercel ;
+- contexte de déploiement limité au runtime, au schéma canonique et au lanceur Next.
+
+Verdict : **clone propre reproductible et dépôt candidat autonome**.

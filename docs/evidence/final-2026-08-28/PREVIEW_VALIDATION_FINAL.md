@@ -7,7 +7,7 @@ URL : <https://genial-deep-research-2vqm7di0u-el-grande-xue.vercel.app>
 
 ## Provenance du paquet
 
-Le déploiement a été créé depuis un worktree détaché propre au commit ci-dessus. Le manifeste `vercel deploy --dry --json` contient `60` fichiers pour `7 317 065` octets et aucun des chemins interdits (`AUDIT_01.md`, `PLAN_ACTION_01.md`, `epreuve-deep-research.md`, `test-results/`).
+Le déploiement a été créé depuis un worktree détaché propre au commit ci-dessus. Le manifeste `vercel deploy --dry --json` contient `60` fichiers pour `7 317 065` octets et aucun document de pilotage, audit local, résultat de test ou fichier d’environnement.
 
 Métadonnées Vercel observées :
 
@@ -55,4 +55,3 @@ Running 8 tests using 1 worker
 ```
 
 Les huit scénarios sont déterministes et interceptent l'API payante : complet, partiel à 390 px, ambiguïté et préremplissage, silence distinct d'une panne, SSE fragmenté, annulation, masque client d'un dossier résolu avec deux candidats et route 404. Cette validation n'a effectué aucun appel OpenAI.
-

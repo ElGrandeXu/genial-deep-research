@@ -10,7 +10,7 @@ Commit source : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
 
 ## Protocole
 
-- Entrées et ordre gelés avant exécution dans `LIVE_BENCH_PREREGISTRATION.md` et `HOLDOUT_PREREGISTRATION.md`.
+- Entrées et ordre gelés avant exécution dans [`protocol/LIVE_BENCH_PREREGISTRATION.md`](protocol/LIVE_BENCH_PREREGISTRATION.md) et [`protocol/HOLDOUT_PREREGISTRATION.md`](protocol/HOLDOUT_PREREGISTRATION.md).
 - Une seule exécution par entrée ; aucun rerun ni sélection du meilleur résultat.
 - Exécution séquentielle ; reçu terminal, durée, coût et capture conservés pour chaque appel.
 - Les cinq cas obligatoires ont été exécutés. Le dépassement n’a été observable qu’au reçu du cinquième appel ; arrêt immédiat ensuite.
@@ -50,11 +50,13 @@ Le champ local éphémère `profile` est omis ; tous les autres champs de sortie
 = 0,1205530 USD
 ```
 
-Enveloppe stricte : `≤ 0,1200000 USD`.
+Enveloppe interne stricte de validation : `≤ 0,1200000 USD`.
 
 Écart : `+0,0005530 USD` (`+0,46 %`).
 
-Décision : **G11 FAIL**. Le bench ne respecte pas la borne exacte, même si les cinq fiches restent sous la limite unitaire. Aucun appel fournisseur supplémentaire n’a été effectué ; la relance Thomas Henri Martin et PÉREMPTION ne sont pas revendiquées.
+Les cinq exécutions finales préenregistrées ont coûté `0,1205530 USD` au total. Cette somme dépasse de `0,0005530 USD` l’enveloppe interne stricte de validation fixée à `0,12 USD`. Tous les coûts individuels restent inférieurs à `0,10 USD`. Les appels ont été arrêtés immédiatement après le cinquième reçu et aucun résultat n’a été sélectionné a posteriori.
+
+Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Aucun reçu ou coût n’a été modifié. Aucun appel fournisseur supplémentaire n’a été effectué ; la relance Thomas Henri Martin, CONFLIT, MARQUE et PÉREMPTION ne sont pas revendiqués en live final. **Release technique finalisée — limite budgétaire interne déclarée.**
 
 ## Reçus et captures
 

@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 
 const REPORTS = [
-  "docs/evidence/audit-01-upgrade/lighthouse/desktop.report.json",
-  "docs/evidence/audit-01-upgrade/lighthouse/mobile-390.report.json",
+  "docs/evidence/final-2026-08-28/lighthouse/desktop.report.json",
+  "docs/evidence/final-2026-08-28/lighthouse/mobile-390.report.json",
 ];
 
 const THRESHOLDS = {

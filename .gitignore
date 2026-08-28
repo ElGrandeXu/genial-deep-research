@@ -41,7 +41,3 @@ Thumbs.db
 *.tmp
 .idea/
 .vscode/
-
-# Passations historiques exclues de toute autorité et de Git
-/PASSATION_CHATGPT_GENIAL_2026-08-26.md
-/PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md

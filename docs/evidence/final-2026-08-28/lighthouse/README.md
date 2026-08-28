@@ -14,8 +14,7 @@ Measured on 2026-08-27 against `next start`:
 | Desktop | 100 | 100 | 100 | 100 | 211 ms | 467 ms | 0 | 0 ms |
 | Mobile 390 px | 99 | 100 | 100 | 100 | 754 ms | 2,196 ms | 0 | 42 ms |
 
-Raw reports: `desktop.report.json`, `desktop.report.html`,
-`mobile-390.report.json`, and `mobile-390.report.html`.
+Raw reports: `desktop.report.json` and `mobile-390.report.json`.
 
 Threshold check:
 

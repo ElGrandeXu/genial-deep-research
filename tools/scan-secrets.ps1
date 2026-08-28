@@ -32,14 +32,7 @@ $rules = @(
 )
 
 $findings = [System.Collections.Generic.List[string]]::new()
-$excludedInputs = @(
-    'PASSATION_CHATGPT_GENIAL_2026-08-26.md',
-    'PASSATION_MIGRATION_TOUR_GENIAL_2026-08-26.md'
-)
 $knownNonSecretAssignments = @{
-    'docs/evidence/m5-attempt-009-live-result.json' = @(
-        '  "secret_store": "external_dpapi",'
-    )
     'src/server/research/service.ts' = @(
         '  const inputTokens = options.result.usage.inputTokens;',
         '  const outputTokens = options.result.usage.outputTokens;',
@@ -53,11 +46,6 @@ $knownNonSecretAssignments = @{
 }
 foreach ($relativePath in $files) {
     if ([string]::IsNullOrWhiteSpace($relativePath)) { continue }
-    if ($relativePath -in $excludedInputs) {
-        $findings.Add("${relativePath}:0:excluded-input")
-        continue
-    }
-
     if ($ProbeSyntheticSecret -and $relativePath -eq '__synthetic_secret_probe__') {
         $lines = @('sk-' + (('A' * 24) -join ''))
     } elseif ($Mode -eq 'Staged') {

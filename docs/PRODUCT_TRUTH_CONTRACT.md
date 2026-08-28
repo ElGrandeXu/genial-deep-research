@@ -1,19 +1,18 @@
-# Contrat produit et contrat de vérité — M2
+# Contrat produit et contrat de vérité
 
 Version : `1.0.0`
-Statut : **DÉCISION — FIGÉ POUR LA RELEASE INITIALE**
-Portée : contrat indépendant de toute stack ; M2 ne construit aucune application.
+Statut : **APPLIQUÉ À LA RELEASE TECHNIQUE**
+Portée : sémantique du dossier, frontières de preuve et invariants appliqués par le runtime.
 
 ## 1. Autorité et vocabulaire
 
 | Rang | Statut | Source | Usage dans ce contrat |
 |---:|---|---|---|
-| 1 | **EXIGENCE EXPLICITE** | `epreuve-deep-research.md` | Contrat original immuable. |
-| 2 | **FAIT VALIDÉ** | Faits du mail rapportés dans l’audit formel | Calendrier et clés, sans extrapolation. |
-| 3 | **EXIGENCE EXPLICITE** | `AUDIT_FORMEL_MISSION_GENIAL_DEEP_RESEARCH.md` | Analyse normative subordonnée au brief. |
-| 4 | **PROPOSITION** | `PLAN_ACTION_DETAILLE_GENIAL_DEEP_RESEARCH.md` | Méthode adaptable. |
-| 5 | **FAIT VALIDÉ** | Preuves M0 et M1 | Constats matériels datés. |
-| 6 | **DÉCISION** | Présent contrat, `DECISIONS.md` | Arbitrages M2 révisables uniquement explicitement. |
+| 1 | **CONTRAT EXÉCUTABLE** | `docs/contracts/research-dossier.schema.json` | Structure canonique du dossier et des reçus. |
+| 2 | **CONTRAT EXÉCUTABLE** | `src/server/research/invariants.ts` | Invariants runtime qui décident l’identité, la preuve et la complétude. |
+| 3 | **CONTRAT PRODUIT** | Présent document | Règles sémantiques qui ne dépendent pas du fournisseur. |
+| 4 | **DESCRIPTION CANDIDATE** | `README.md`, `docs/ARCHITECTURE.md` | Périmètre livré, architecture et limites publiques. |
+| 5 | **FAIT VALIDÉ** | `docs/evidence/final-2026-08-28/` | Résultats datés, reçus et validations finales. |
 
 Les termes ont toujours le sens suivant :
 
@@ -23,7 +22,7 @@ Les termes ont toujours le sens suivant :
 - **DÉCISION** : arbitrage produit adopté pour la release initiale ;
 - **FAIT VALIDÉ** : observation prouvée, datée et limitée à son protocole.
 
-**FAIT VALIDÉ — 2026-08-26** — M1 a observé chez OpenAI et Gemini l’authentification, les sorties structurées, la recherche avec métadonnées, les citations, les URL, l’usage, le coût et la latence. Ces observations prouvent seulement des capacités API à cette date. Elles ne choisissent ni fournisseur, ni modèle, ni architecture.
+**FAIT VALIDÉ — 2026-08-28** — Le runtime livré utilise OpenAI côté serveur pour la génération structurée et Web Search, puis récupère et vérifie directement les pages proposées. Gemini n’appartient pas au runtime candidat. Le fournisseur ne décide ni l’identité finale, ni la portée, ni la complétude.
 
 ## 2. Promesse, utilisateur et travail à accomplir
 
@@ -276,7 +275,7 @@ La détection qu’une inférence introduit un nouveau fait exige en plus une co
 
 ## 15. Matrice de traçabilité avec le brief
 
-| ID | Exigence du brief | Décision/artefact M2 | Preuve M2 |
+| ID | Exigence produit | Décision ou artefact candidat | Preuve candidate |
 |---|---|---|---|
 | `BRIEF-INPUT` | Nom personne/entreprise, contexte optionnel | Sections 4 et 5 | Schéma `request` et fixtures identité |
 | `BRIEF-OUTPUT` | Dossier lisible, exploitable, sourcé | Sections 2, 6 et 7 | Schéma `presentation` |
@@ -286,15 +285,15 @@ La détection qu’une inférence introduit un nouveau fait exige en plus une co
 | `BRIEF-CONFLICT` | Ne pas masquer deux chiffres | Sections 3 et 11 | Fixture `conflict_two_versions` |
 | `BRIEF-SILENCE` | Ne pas combler l’absence par du plausible | Sections 3 et 12 | Fixture `honest_silence` |
 | `BRIEF-STALE` | Dater au lieu de présenter l’ancien comme actuel | Sections 3 et 9.6 | Fixture `historical_information` |
-| `BRIEF-SCOPE` | Peu de cas solides, cas différés assumés | Section 3 | `DECISIONS.md` |
+| `BRIEF-SCOPE` | Peu de cas solides, cas différés assumés | Section 3 | Note d’arbitrage et bench final |
 | `BRIEF-NO-PRESET` | Aucun résultat préparé pour la démonstration | Section 14 | Métadonnées synthétiques obligatoires des fixtures |
 | `BRIEF-TERMS` | Aucun contournement des conditions d’utilisation | Section 10 | Champ de conformité et vérification finale |
 | `BRIEF-PRIVACY` | Pas de conservation excessive | Section 13 | Décision de non-persistance |
 | `BRIEF-COST` | Dire ce que coûte une fiche | Sections 6 et 14 | Reçu usage/coût/latence non négatif |
-| `BRIEF-ONLINE` | Application accessible en ligne | Hors M2 ; exigence conservée | G3–G7 non terminés, aucune implémentation |
+| `BRIEF-ONLINE` | Application accessible en ligne | URL Production publiée | Validation Production finale |
 
 ## 16. Limites du contrat
 
 **DÉCISION** — Ce contrat ne choisit ni fournisseur, ni modèle, ni stack, ni architecture, ni interface, ni hébergement. Il ne prouve pas l’accès futur au contenu réel des sources, la résolution systématique des redirections, la qualité sur requêtes inconnues, la précision d’un résolveur d’identité, ni la couverture complète de MARQUE ou FILIALE.
 
-**PROPOSITION — M3 OU ULTÉRIEUR, NON ENGAGÉE** — Transformer le schéma en types, appliquer le vérificateur à chaque frontière du pipeline, puis éprouver le comportement sur requêtes non préparées avant toute revendication produit.
+**SUITE RECOMMANDÉE, NON ENGAGÉE** — Élargir le benchmark aveugle annoté avant d’augmenter le rappel, d’ajouter un fournisseur ou de revendiquer de nouveaux cas live.

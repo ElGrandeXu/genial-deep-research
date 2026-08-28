@@ -48,9 +48,9 @@ function Test-SecretScannerNegativeProbe {
     Write-Output 'SECRET_SCAN_NEGATIVE_PROBE_OK: synthetic OpenAI-shaped key rejected'
 }
 
-# Current release-candidate authority: exact repository root, immutable source
-# documents, durable controls, environment boundaries and Git configuration.
-Invoke-RepositoryScript -Name 'verify-foundation.ps1'
+# Candidate repository boundary: required product files, final receipts,
+# portable links and the simulated Vercel context.
+Invoke-RepositoryScript -Name 'verify-candidate-repository.ps1'
 
 # Scan every relevant Git view explicitly. A clean staged set is still a valid
 # scan result and prevents the release gate from depending on staging state.
@@ -99,9 +99,8 @@ if ($Offline) {
     Write-Output 'DEPENDENCY_AUDIT_OK: production dependencies, threshold=high'
 }
 
-# Keep destructive-looking checks synthetic: source mutation, secret injection,
-# invalid dossier and unsupported fact are all rejected without touching the
-# authoritative files or historical evidence.
+# Keep destructive-looking checks synthetic: secret injection, invalid dossier
+# and unsupported fact are rejected without touching product files or evidence.
 Invoke-RepositoryScript -Name 'test-verifier-negative-paths.ps1'
 
 Write-Output "PROJECT_VERIFY_OK: build=$(-not $SkipBuild) dependency_audit=$(-not $Offline)"

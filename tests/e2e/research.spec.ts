@@ -14,10 +14,8 @@ import {
 
 const evidenceDirectory = join(
   process.cwd(),
-  "docs",
-  "evidence",
-  "audit-01-upgrade",
-  "screenshots",
+  "test-results",
+  "e2e-screenshots",
 );
 const updateReleaseEvidence = process.env.UPDATE_RELEASE_EVIDENCE === "1";
 
