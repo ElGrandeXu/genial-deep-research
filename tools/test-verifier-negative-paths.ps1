@@ -22,7 +22,11 @@ function Assert-VercelManifestRejected {
     $output = @(& pwsh -NoProfile -File (Join-Path $PSScriptRoot 'verify-vercel-context.ps1') -ManifestPath $Path 2>&1)
     $verifierExit = $LASTEXITCODE
     $text = $output -join "`n"
-    if ($verifierExit -eq 0 -or -not $text.Contains($ExpectedDiagnostic, [StringComparison]::Ordinal)) {
+    $ansiPattern = "$([char]27)\[[0-?]*[ -/]*[@-~]"
+    $plainText = [regex]::Replace($text, $ansiPattern, '').Replace('|', ' ')
+    $comparableText = [regex]::Replace($plainText, '\s+', ' ').Trim()
+    $comparableExpected = [regex]::Replace($ExpectedDiagnostic, '\s+', ' ').Trim()
+    if ($verifierExit -eq 0 -or -not $comparableText.Contains($comparableExpected, [StringComparison]::Ordinal)) {
         throw "VERIFIER_NEGATIVE_FAILED: Vercel manifest was not rejected as expected: $ExpectedDiagnostic"
     }
 }

@@ -1,6 +1,6 @@
-# Validation Production historique — runtime `8e91ed0c`
+# Validation Production — historique et finition premium
 
-Cette preuve décrit la Production saine observée avant la finition premium. Elle est conservée pour la traçabilité et le rollback ; la validation du nouveau runtime est ajoutée dans la section « Production premium » après promotion.
+La première partie décrit la Production saine observée avant la finition premium. Elle est conservée pour la traçabilité et le rollback ; la validation du nouveau runtime est enregistrée ensuite.
 
 Date : 2026-08-28
 
@@ -79,3 +79,45 @@ Captures Production sans recherche payante :
 ## Conclusion
 
 Promotion, alias, santé, gardes HTTP, indexation, navigateur, responsive et non-divulgation : **PASS**.
+
+## Production premium
+
+Date : 2026-08-28
+
+Commit et runtime : `f53b7aed0d25e45aed26dfe96a0ed8c271365218`
+
+Tree : `219d288b238715c8e734359c03f534d26dc72eba`
+
+Production : `dpl_4AaBdE1cQhuocuGnaiDDAaYKqJpz`
+
+URL unique : <https://genial-deep-research-66yrfkyf4-el-grande-xue.vercel.app>
+
+Preview source : `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V`
+
+Provenance Vercel :
+
+```text
+target=production
+readyState=READY
+readySubstate=PROMOTED
+originalDeploymentId=dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V
+gitCommitSha=f53b7aed0d25e45aed26dfe96a0ed8c271365218
+gitCommitRef=release/premium-polish
+runtimeCommit=f53b7aed0d25e45aed26dfe96a0ed8c271365218
+releaseGate=mission-final-premium
+aliases=genial-deep-research.vercel.app, genial-deep-research-el-grande-xue.vercel.app
+```
+
+La commande `vercel promote` a promu la Preview validée ; Vercel conserve son ID dans `meta.originalDeploymentId`. Aucun autre déploiement n’a été reconstruit pour la promotion.
+
+Smokes après promotion : accueil principal `200`, santé principale `200 {"status":"ok"}`, santé alias secondaire `200`, santé URL unique `200`, robots `200`, icône `200`, document privé `404`. CSP, HSTS, Referrer Policy, Permissions Policy, `nosniff` et protection frame sont présents.
+
+Les onze parcours Playwright Production passent en 11,1 s avec `/api/research` intercepté. À 1 440 et 390 px : `scrollWidth=clientWidth`, aucune erreur console, aucune requête échouée. Aucun appel fournisseur ; coût `0 USD`.
+
+La suite des cinq gardes POST a été exécutée une fois sur la Preview source exacte, avant promotion. Elle n’a pas été répétée sous les alias Production afin de respecter la fenêtre WAF de 600 s ; les smokes Production n’ont jamais appelé le fournisseur.
+
+Métadonnées d’environnement : `OPENAI_API_KEY`, type `Sensitive`, portée Production, valeur `Hidden` ; aucune variable Gemini ni fournisseur `NEXT_PUBLIC_*`. WAF : règle `rule_research_api_8_req_10_min_ip_Hlc4Sd`, chemin exact `/api/research`, `8/600s`, clé IP, dépassement `deny`, aucun brouillon. Aucun réglage d’environnement, WAF ou domaine n’a été modifié.
+
+Le dernier déploiement sain antérieur `dpl_147u62uYJuUU8x7hmioCsME3MJRF` a été conservé comme cible de rollback ; aucun rollback n’a été nécessaire.
+
+Verdict Production premium : **PASS — runtime courant aligné sur le candidat validé**.

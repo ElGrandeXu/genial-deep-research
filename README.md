@@ -6,7 +6,8 @@ GENIAL Deep Research transforme un nom de personne ou d’entreprise en un dossi
 
 - Production : <https://genial-deep-research.vercel.app>
 - Dépôt : <https://github.com/ElGrandeXu/genial-deep-research>
-- Runtime Production observé avant cette finition : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af` ([preuve historique](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md))
+- Runtime Production courant : `f53b7aed0d25e45aed26dfe96a0ed8c271365218`, promu depuis la Preview exacte `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V` ([preuve Production](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md))
+- Runtime Production antérieur conservé pour rollback : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
 
 ## Installer et relancer
 
