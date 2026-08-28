@@ -12,6 +12,8 @@ Preview source : `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V`
 
 Runtime : `f53b7aed0d25e45aed26dfe96a0ed8c271365218`
 
+Nature du verdict : échec du protocole de preuve end-to-end, et non technical_failure observé du produit. Le serveur Production a terminé completed après un appel fournisseur, une recherche Web et la vérification des sources ; le collecteur Playwright n’a pas conservé le corps SSE ni le rendu permettant de valider le client sur cette même tentative.
+
 ## Exécution
 
 Entrée exacte : `company` · `GENIAL` · `Agence IA générative, Bordeaux, site officiel wearegenial.com`.
@@ -20,7 +22,7 @@ Une soumission réelle a été effectuée depuis l’interface publique Producti
 
 Coût séparé : `0,0142808 USD`, inférieur à `0,10 USD`. Usage : `15 499` tokens. Sources serveur : `1`.
 
-## Motif d’échec
+## Motif d’échec du protocole de preuve
 
 Le collecteur Playwright n’a pas pu récupérer le corps SSE terminé après la réponse. Il s’est arrêté sans resoumission. Le dossier terminal assaini, la chronologie SSE reçue par le client, le rendu terminal, les faits affichés, l’ouverture des sources, les diagnostics console/réseau complets et le screenshot final ne sont donc pas prouvés. Le reçu serveur ne suffit pas à valider la chaîne end-to-end demandée.
 
