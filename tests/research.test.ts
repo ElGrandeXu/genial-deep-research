@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -151,6 +153,7 @@ function providerResult(
 
 function exactSourceVerifier(options: {
   readonly rejectExcerpt?: string;
+  readonly documentText?: string;
 } = {}): SourceVerifier {
   return {
     async verify(request) {
@@ -162,13 +165,14 @@ function exactSourceVerifier(options: {
         );
       }
       const url = request.candidate.structuredUrl;
+      const documentText = options.documentText ?? request.candidate.excerpt;
       return {
         citation: request.citation,
         citationUrl: url,
         finalUrl: url,
         title: `Verified title — ${new URL(url).hostname}`,
         verifiedExcerpt: request.candidate.excerpt,
-        documentText: request.candidate.excerpt,
+        documentText,
         locator: {
           exact: request.candidate.excerpt,
           matchMode: "exact",
@@ -178,7 +182,9 @@ function exactSourceVerifier(options: {
           finalUrl: url,
           citationUrl: url,
           retrievedAt: consultedAt,
-          normalizedTextSha256: "a".repeat(64),
+          normalizedTextSha256: createHash("sha256")
+            .update(documentText, "utf8")
+            .digest("hex"),
           contentType: "text/html; charset=utf-8",
           bytesRead: 512,
           redirectCount: 0,
@@ -684,19 +690,19 @@ describe("verified dossier service", () => {
   it("shows contradictory values and never selects one silently", async () => {
     const document = resolvedDocument({
       claims: [
-        fact("Airbus SE had a 2024 workforce of 150,000 employees.", sourceB, {
+        fact("Airbus SE reported a year-end calendar year 2024 workforce of 150,000 employees.", sourceB, {
           category: "metric",
           predicate: "workforce",
-          factPeriodLabel: "2024",
+          factPeriodLabel: "calendar year 2024",
           factDate: "2024",
           normalizedValue: "150000",
           unit: "employees",
           contradictionKey: "workforce-2024",
         }),
-        fact("Airbus SE had a 2024 workforce of 157,894 employees.", sourceC, {
+        fact("Airbus SE reported a year-end calendar year 2024 workforce of 157,894 employees.", sourceC, {
           category: "metric",
           predicate: "workforce",
-          factPeriodLabel: "2024",
+          factPeriodLabel: "calendar year 2024",
           factDate: "2024",
           normalizedValue: "157894",
           unit: "employees",
@@ -710,6 +716,8 @@ describe("verified dossier service", () => {
     expect(terminal.dossier.contradictions[0]).toMatchObject({
       classification: "contradiction",
       visible: true,
+      published_or_estimated_checked: true,
+      metric_definition: "Effectif de fin d’année publié",
       versions: expect.arrayContaining([
         expect.objectContaining({ normalized_value: 150000 }),
         expect.objectContaining({ normalized_value: 157894 }),
@@ -718,6 +726,190 @@ describe("verified dossier service", () => {
     expect(terminal.dossier.contradictions[0]?.explanation).toContain(
       "aucune version n’est choisie",
     );
+    const conflict = terminal.dossier.contradictions[0]!;
+    const conflictClaims = conflict.versions.map(({ claim_id }) =>
+      terminal.dossier.claims.find((claim) => claim.claim_id === claim_id)!,
+    );
+    expect(new Set(conflictClaims.map(({ subject_id }) => subject_id)).size).toBe(1);
+    expect(new Set(conflictClaims.map(({ predicate }) => predicate)).size).toBe(1);
+    expect(new Set(conflict.versions.map(({ unit, currency }) => `${unit}:${currency}`)).size).toBe(1);
+    expect(terminal.dossier.presentation.summary_items).toEqual([]);
+    expect(terminal.dossier.presentation.key_fact_claim_ids.map((claimId) =>
+      terminal.dossier.claims.find(({ claim_id }) => claim_id === claimId)?.predicate,
+    )).toEqual(["identity.proof"]);
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("does not treat two query variants of one fetched document as independent conflict sources", async () => {
+    const first = "Airbus SE reported a year-end calendar year 2024 workforce of 150,000 employees.";
+    const second = "Airbus SE reported a year-end calendar year 2024 workforce of 157,894 employees.";
+    const document = resolvedDocument({
+      claims: [
+        fact(first, `${sourceB}?view=first`, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "calendar year 2024",
+          factDate: "2024",
+          normalizedValue: "150000",
+          unit: "employees",
+          contradictionKey: "workforce-2024",
+        }),
+        fact(second, `${sourceB}?view=second`, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "calendar year 2024",
+          factDate: "2024",
+          normalizedValue: "157894",
+          unit: "employees",
+          contradictionKey: "workforce-2024",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      sourceVerifier: exactSourceVerifier({ documentText: `${first}\n${second}` }),
+    }));
+    expect(terminal.dossier.contradictions).toEqual([]);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+      ]));
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("keeps two values indeterminate when their published-or-estimated nature is absent", async () => {
+    const document = resolvedDocument({
+      claims: [
+        fact("Airbus SE indicates a year-end 2024 workforce of 150,000 employees.", sourceB, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "2024",
+          factDate: "2024",
+          normalizedValue: "150000",
+          unit: "employees",
+          contradictionKey: "workforce",
+        }),
+        fact("Airbus SE indicates a year-end 2024 workforce of 157,894 employees.", sourceC, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "2024",
+          factDate: "2024",
+          normalizedValue: "157894",
+          unit: "employees",
+          contradictionKey: "workforce",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    expect(terminal.dossier.contradictions).toEqual([]);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
+      .toHaveLength(2);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+      ]));
+    expect(terminal.dossier.presentation.summary_items).toEqual([]);
+    expect(terminal.dossier.presentation.key_fact_claim_ids.map((claimId) =>
+      terminal.dossier.claims.find(({ claim_id }) => claim_id === claimId)?.predicate,
+    )).toEqual(["identity.proof"]);
+    expect(terminal.dossier.unknowns.some(({ description }) =>
+      description.includes("restent non comparables"))).toBe(true);
+    expect(terminal.dossier.global_status).toBe("partial");
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("never creates a conflict from metric metadata contradicted by exact excerpts", async () => {
+    const document = resolvedDocument({
+      claims: [
+        fact("Airbus SE reported 2024 revenue of 10 million EUR.", sourceB, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "2024",
+          factDate: "2024",
+          normalizedValue: "10000000",
+          unit: "employees",
+          currency: null,
+          contradictionKey: "workforce-2024",
+        }),
+        fact("Airbus SE reported 2024 revenue of 12 million EUR.", sourceC, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "2024",
+          factDate: "2024",
+          normalizedValue: "12000000",
+          unit: "employees",
+          currency: null,
+          contradictionKey: "workforce-2024",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    expect(terminal.dossier.contradictions).toEqual([]);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+        expect.objectContaining({
+          claim_state: "rejected",
+          reconciliation_state: "indetermination",
+          presentation_decision: "reject",
+        }),
+      ]));
+    expect(terminal.dossier.global_status).toBe("partial");
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("records a temporal difference as explainable instead of a contradiction", async () => {
+    const document = resolvedDocument({
+      claims: [
+        fact("Airbus SE reported a year-end calendar year 2024 workforce of 150,000 employees.", sourceB, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "calendar year 2024",
+          factDate: "2024",
+          normalizedValue: "150000",
+          unit: "employees",
+          contradictionKey: "workforce",
+        }),
+        fact("Airbus SE reported a year-end calendar year 2025 workforce of 157,894 employees.", sourceC, {
+          category: "metric",
+          predicate: "workforce",
+          factPeriodLabel: "calendar year 2025",
+          factDate: "2025",
+          normalizedValue: "157894",
+          unit: "employees",
+          contradictionKey: "workforce",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    expect(terminal.dossier.contradictions).toEqual([]);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ reconciliation_state: "explainable_difference" }),
+        expect.objectContaining({ reconciliation_state: "explainable_difference" }),
+      ]));
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 

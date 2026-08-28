@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { ResearchDossier } from "../../src/domain/research-dossier";
 
 const startedAt = "2026-08-27T12:00:00.000Z";
@@ -52,6 +54,12 @@ function locator(url: string, excerpt: string): string {
     finalUrl: url,
     citationUrl: url,
     retrievedAt: startedAt,
+    normalizedTextSha256: createHash("sha256")
+      .update(`${url}\n${excerpt}`, "utf8")
+      .digest("hex"),
+    contentType: "text/html; charset=utf-8",
+    bytesRead: excerpt.length,
+    redirectCount: 0,
   });
 }
 
@@ -266,6 +274,180 @@ export function partialDossier(): ResearchDossier {
   return dossier;
 }
 
+export function conflictDossier(): ResearchDossier {
+  const dossier = completeDossier();
+  const conflictScope = scope("company", "Entreprise Synthétique Borée");
+  const conflictPeriod: ResearchDossier["claims"][number]["fact_period"] = {
+    status: "stated",
+    start: "2025-01-01T00:00:00.000Z",
+    end: "2025-12-31T23:59:59.999Z",
+    as_of: null,
+    label: "exercice 2025",
+  };
+  const identityText = "Entreprise Synthétique Borée est une société identifiée par SYN-BOREE-001.";
+  const versionA = "Entreprise Synthétique Borée publie un chiffre d’affaires de 10 millions d’euros pour l’exercice 2025.";
+  const versionB = "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.";
+  const sources = [
+    source(
+      "source-conflict-identity",
+      "https://registry.example.invalid/boree",
+      "Registre synthétique — Borée",
+      subjectId,
+      conflictScope,
+    ),
+    source(
+      "source-conflict-official",
+      "https://official.example.invalid/boree-2025",
+      "Rapport synthétique Borée 2025",
+      subjectId,
+      conflictScope,
+    ),
+    source(
+      "source-conflict-specialized",
+      "https://specialized.example.invalid/boree-2025",
+      "Analyse synthétique Borée 2025",
+      subjectId,
+      conflictScope,
+    ),
+  ];
+  const claims: ResearchDossier["claims"] = [
+    {
+      ...dossier.claims[0]!,
+      statement: identityText,
+      scope: conflictScope,
+      evidence_ids: ["evidence-conflict-identity"],
+    },
+    {
+      ...dossier.claims[1]!,
+      claim_id: "claim-conflict-value-a",
+      statement: versionA,
+      predicate: "metric.revenue",
+      structured_value: { value: 10_000_000, value_type: "number" },
+      unit: "million",
+      fact_period: conflictPeriod,
+      scope: conflictScope,
+      temporal_status: "historical",
+      evidence_ids: ["evidence-conflict-value-a"],
+      claim_state: "contested",
+      reconciliation_state: "contradiction",
+      presentation_reason: "Version A conservée avec sa preuve concurrente.",
+    },
+    {
+      ...dossier.claims[1]!,
+      claim_id: "claim-conflict-value-b",
+      statement: versionB,
+      predicate: "metric.revenue",
+      structured_value: { value: 12_000_000, value_type: "number" },
+      unit: "million",
+      fact_period: conflictPeriod,
+      scope: conflictScope,
+      temporal_status: "historical",
+      evidence_ids: ["evidence-conflict-value-b"],
+      claim_state: "contested",
+      reconciliation_state: "contradiction",
+      presentation_reason: "Version B conservée avec sa preuve concurrente.",
+    },
+  ];
+  const evidence: ResearchDossier["evidence"] = [
+    ["evidence-conflict-identity", "source-conflict-identity", "claim-identity", identityText, period()],
+    ["evidence-conflict-value-a", "source-conflict-official", "claim-conflict-value-a", versionA, conflictPeriod],
+    ["evidence-conflict-value-b", "source-conflict-specialized", "claim-conflict-value-b", versionB, conflictPeriod],
+  ].map(([evidenceId, sourceId, claimId, excerpt, factPeriod]) => {
+    const linkedSource = sources.find((item) => item.source_id === sourceId);
+    if (linkedSource === undefined) throw new Error("Synthetic conflict source missing.");
+    return {
+      evidence_id: String(evidenceId),
+      source_id: String(sourceId),
+      claim_id: String(claimId),
+      excerpt: String(excerpt),
+      locator: locator(linkedSource.provider_url, String(excerpt)),
+      entity_id: subjectId,
+      fact_period: factPeriod as ResearchDossier["evidence"][number]["fact_period"],
+      scope: conflictScope,
+      relation: "supports" as const,
+      verification_method: "source_content" as const,
+      verified_at: startedAt,
+    };
+  });
+
+  return {
+    ...dossier,
+    dossier_id: "dossier-browser-conflict",
+    request: {
+      ...dossier.request,
+      request_id: "request-browser-conflict",
+      name: "Entreprise Synthétique Borée",
+      context: { country: "Pays Synthétique" },
+    },
+    identity: {
+      status: "resolved",
+      selected_subject_id: subjectId,
+      candidates: [{
+        subject_id: subjectId,
+        entity_type: "company",
+        display_name: "Entreprise Synthétique Borée",
+        discriminators: { legal_identifier: "SYN-BOREE-001" },
+        match_rationale: "L’identifiant synthétique est explicite dans la preuve d’identité.",
+      }],
+      resolution_reason: "L’identité est résolue ; la métrique reste contestée.",
+      clarification_fields: [],
+    },
+    sources,
+    evidence,
+    claims,
+    contradictions: [{
+      contradiction_id: "contradiction-revenue-2025",
+      predicate: "metric.revenue",
+      period: conflictPeriod,
+      scope: conflictScope,
+      metric_definition: "Chiffre d’affaires publié en EUR",
+      published_or_estimated_checked: true,
+      classification: "contradiction",
+      versions: [
+        {
+          claim_id: "claim-conflict-value-a",
+          evidence_ids: ["evidence-conflict-value-a"],
+          normalized_value: 10_000_000,
+          unit: "million",
+          currency: "EUR",
+        },
+        {
+          claim_id: "claim-conflict-value-b",
+          evidence_ids: ["evidence-conflict-value-b"],
+          normalized_value: 12_000_000,
+          unit: "million",
+          currency: "EUR",
+        },
+      ],
+      explanation: "Même entité, même métrique, même période, même périmètre, même unité et même devise : aucune valeur n’est retenue comme gagnante.",
+      visible: true,
+    }],
+    presentation: {
+      summary_items: [],
+      key_fact_claim_ids: ["claim-identity"],
+      recent_signal_claim_ids: [],
+      ambiguity_claim_ids: [],
+      contradiction_ids: ["contradiction-revenue-2025"],
+      unknown_ids: [],
+      source_ids: sources.map(({ source_id }) => source_id),
+    },
+    receipt: {
+      ...receipt("Conflit déterministe conservé sans arbitrage silencieux."),
+      provider_calls: 0,
+      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+      cost: {
+        amount_usd: 0,
+        status: "exact",
+        assumptions: ["Scénario navigateur déterministe sans appel fournisseur."],
+      },
+    },
+    global_status: "partial",
+    limitations: [
+      "Scénario de test déterministe : données synthétiques, aucun appel fournisseur et aucun coût.",
+    ],
+  };
+}
+
 export function ambiguousDossier(): ResearchDossier {
   const candidates = [
     { id: "subject-thomas-studio", employer: "Studio Public", domain: "studio.public.org" },
@@ -360,6 +542,21 @@ export function ambiguousDossier(): ResearchDossier {
     result_mode: "standard",
     global_status: "needs_clarification",
   };
+}
+
+export function singleCandidateDossier(): ResearchDossier {
+  const dossier = ambiguousDossier();
+  dossier.dossier_id = "dossier-browser-single-candidate";
+  dossier.identity.status = "insufficient_context";
+  dossier.identity.candidates = dossier.identity.candidates.slice(0, 1);
+  dossier.identity.resolution_reason = "Un candidat est plausible, mais le contexte reste insuffisant.";
+  dossier.sources = dossier.sources.slice(0, 1);
+  dossier.evidence = dossier.evidence.slice(0, 1);
+  dossier.claims = dossier.claims.slice(0, 1);
+  dossier.unknowns[0]!.description = "Un candidat plausible reste à confirmer.";
+  dossier.presentation.ambiguity_claim_ids = dossier.claims.map(({ claim_id }) => claim_id);
+  dossier.presentation.source_ids = dossier.sources.map(({ source_id }) => source_id);
+  return dossier;
 }
 
 export function silenceDossier(): ResearchDossier {

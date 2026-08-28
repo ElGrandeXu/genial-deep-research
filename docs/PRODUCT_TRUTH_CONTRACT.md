@@ -9,7 +9,7 @@ Portée : sémantique du dossier, frontières de preuve et invariants appliqués
 | Rang | Statut | Source | Usage dans ce contrat |
 |---:|---|---|---|
 | 1 | **CONTRAT EXÉCUTABLE** | `docs/contracts/research-dossier.schema.json` | Structure canonique du dossier et des reçus. |
-| 2 | **CONTRAT EXÉCUTABLE** | `src/server/research/invariants.ts` | Invariants runtime qui décident l’identité, la preuve et la complétude. |
+| 2 | **CONTRAT EXÉCUTABLE** | `src/domain/runtime-invariants.ts` | Invariants runtime qui décident l’identité, la preuve, les conflits et la complétude. |
 | 3 | **CONTRAT PRODUIT** | Présent document | Règles sémantiques qui ne dépendent pas du fournisseur. |
 | 4 | **DESCRIPTION CANDIDATE** | `README.md`, `docs/ARCHITECTURE.md` | Périmètre livré, architecture et limites publiques. |
 | 5 | **FAIT VALIDÉ** | `docs/evidence/final-2026-08-28/` | Résultats datés, reçus et validations finales. |
@@ -41,7 +41,7 @@ Les termes ont toujours le sens suivant :
 | Cas | Statut | Comportement revendiqué | Critère observable |
 |---|---|---|---|
 | HOMONYME | **DÉCISION — REVENDIQUÉ** | Résolution explicite ; candidats distincts ou clarification ; aucune fusion silencieuse. | Aucun fait d’un candidat ne peut être attribué à un autre ; le choix ou le refus est expliqué. |
-| CONFLIT | **DÉCISION — REVENDIQUÉ** | Plusieurs versions conservées ; période, unité et portée normalisées avant classement ; contradiction réelle visible. | Deux versions et leurs preuves concurrentes restent accessibles ; aucune valeur n’est perdue. |
+| CONFLIT | **DÉCISION — REVENDIQUÉ, PÉRIMÈTRE BORNÉ** | Plusieurs versions conservées ; qualification quantitative limitée aux niveaux de `revenue` ou `workforce` sur une année unique explicitement civile ou fiscale, avec sujet, valeur exacte, base d’observation, unité, devise reconnue et portée explicite compatibles ; contradiction réelle visible. | Deux versions et leurs preuves concurrentes restent accessibles ; aucune valeur n’est perdue. Dimension non liée dans la même proposition, année nue, approximation, intervalle, taux, sous-période, portée/base/population absente ou hors grammaire, définition hors allowlist ou devise différente : `indetermination`. |
 | SILENCE | **DÉCISION — REVENDIQUÉ** | Aucun contenu plausible ajouté ; résultat vide ou partiel assumé ; formulation bornée au périmètre exploré. | Aucune affirmation affichable ; périmètre, arrêt et possibilité de nouvelle tentative sont conservés. |
 | PÉREMPTION | **DÉCISION — TRANSVERSAL** | Date de source et date/période du fait ; état actuel, historique ou indéterminé ; ancienneté visible. | Une source ancienne ne devient jamais, seule, un état présent. |
 
@@ -56,16 +56,11 @@ Les termes ont toujours le sens suivant :
 
 ## 4. Contrat d’entrée
 
-**DÉCISION** — La demande contient :
+**DÉCISION — ENTRÉE HTTP EXÉCUTABLE** — La route accepte exclusivement un objet JSON avec `name` obligatoire de 2 à 120 caractères après normalisation, `entityType` égal à `auto`, `person` ou `company`, et `context` optionnel de 300 caractères au plus. Le corps complet est limité à 1 024 octets et tout champ inconnu est rejeté.
 
-- `name` obligatoire : texte Unicode non vide après suppression des espaces périphériques, de 1 à 200 caractères ;
-- `suggested_type` obligatoire : `person`, `company` ou `unknown` ; il oriente la résolution sans la prouver ;
-- contexte professionnel optionnel : `city`, `country`, `industry`, `employer`, `official_site`, `discriminating_hint` ;
-- chaque champ de contexte textuel : 1 à 200 caractères, sauf `discriminating_hint` limité à 500 caractères ;
-- `official_site` : URL HTTP(S) de 2 048 caractères au plus ;
-- demande complète : 2 000 caractères au plus, hors identifiants et horodatages techniques.
+**DÉCISION — OBJET CANONIQUE DE SORTIE** — Le dossier conserve ensuite un objet `request` normalisé : identifiant, horodatage, nom, `suggested_type`, contexte public structuré effectivement retenu et nombre total de caractères. Cet objet de traçabilité n’est pas le corps HTTP brut et n’élargit pas ce que la route accepte.
 
-**DÉCISION** — Le contexte doit rester professionnel, public, pertinent et discriminant. Sont refusés : données sensibles, données privées, secrets, contenu binaire, fichiers, instructions d’exécution et données sans lien avec la résolution.
+**DÉCISION — POLITIQUE D’USAGE** — Le contexte doit rester professionnel, public, pertinent et discriminant. L’interface demande explicitement de ne saisir aucune donnée privée, sensible ou secrète. La route applique les contraintes structurelles et de longueur ci-dessus ; elle ne prétend pas détecter automatiquement la sensibilité ou la pertinence sémantique d’un texte valide.
 
 **DÉCISION** — Un nom seul est une hypothèse d’identité, jamais une identité résolue.
 
@@ -87,10 +82,10 @@ Les termes ont toujours le sens suivant :
 **DÉCISION** — L’ordre canonique et son utilité métier sont :
 
 1. **Identité retenue ou ambiguïté** — éviter que le commercial prépare le mauvais interlocuteur ; exposer le contexte et la justification.
-2. **Résumé opérationnel** — donner une lecture rapide ; il ne référence que des affirmations ou inférences déjà enregistrées, sans nouveau fait libre.
-3. **Faits clés** — concentrer les informations directement utiles et permettre leur vérification immédiate.
-4. **Signaux récents** — isoler les événements temporels utiles au premier contact et éviter leur confusion avec des états permanents.
-5. **Contradictions** — empêcher un chiffre unique trompeur et montrer les versions, périmètres et preuves concurrents.
+2. **Contradictions** — empêcher un chiffre unique trompeur et montrer immédiatement les versions, périodes, périmètres et preuves concurrentes.
+3. **Résumé opérationnel** — donner une lecture rapide ; il ne référence que des affirmations non contestées déjà enregistrées, sans nouveau fait libre.
+4. **Faits clés** — concentrer les informations directement utiles et permettre leur vérification immédiate.
+5. **Signaux récents** — isoler les événements temporels utiles au premier contact et éviter leur confusion avec des états permanents.
 6. **Inconnues et limites** — rendre visible ce qui manque, ce qui est hors périmètre et ce qui demanderait du contexte.
 7. **Sources** — permettre l’audit consolidé de l’éditeur, de la date, de l’accès et du rattachement aux faits.
 8. **Reçu d’exécution** — défendre le périmètre réellement exploré, la durée, les appels, l’usage, le coût, les erreurs et les reprises.
@@ -141,7 +136,7 @@ Sont interdits : pourcentage fictif, étape décorative, étape annoncée mais n
 - méthode de collecte et statut d’accessibilité ;
 - entité supposée et périmètre supposé.
 
-Les trois URL sont conservées séparément. Une URL de redirection Gemini non résolue peut orienter ou permettre de découvrir une source ; seule, elle ne peut pas devenir la citation finale d’un fait. Une citation finale exige une source identifiable et un contenu vérifiable via `resolved_url` ou `canonical_url`.
+Les trois URL sont conservées séparément. Une URL de redirection fournisseur non résolue peut orienter ou permettre de découvrir une source ; seule, elle ne peut pas devenir la citation finale d’un fait. Une citation finale exige une source identifiable et un contenu vérifiable via `resolved_url` ou `canonical_url`.
 
 ### 9.2 Preuve
 
@@ -185,7 +180,7 @@ Une affirmation ne regroupe jamais plusieurs faits vérifiables indépendamment.
 | `ambiguous` | Rattachement, sens, période ou périmètre insuffisamment déterminé. | Uniquement dans une zone d’ambiguïté, jamais comme fait. |
 | `rejected` | Preuve absente/insuffisante, entité inadéquate, périmètre incohérent ou formulation trop large. | Jamais comme fait. Motif conservé pour l’audit. |
 
-Seules les affirmations `supported`, `contested` et `historical`, avec preuves finales valides, peuvent alimenter « résumé opérationnel », « faits clés » ou « signaux récents ».
+Seules les affirmations `supported` et `historical`, avec preuves finales valides, peuvent alimenter « résumé opérationnel », « faits clés » ou « signaux récents ». Une affirmation `contested` reste exclusivement dans le composant de conflit avec toutes ses versions ; elle ne peut pas devenir un résumé implicite.
 
 ### 9.5 Inférence
 
@@ -230,16 +225,18 @@ Ordre de préférence général, à type de fait comparable : registre/source in
 
 Une source officielle établit ce que l’organisation publie ; elle n’est pas automatiquement suffisante pour prouver une affirmation promotionnelle, comparative, causale ou auto-évaluative. Ces affirmations exigent une définition contrôlable et, selon leur portée, une corroboration indépendante.
 
-**EXIGENCE EXPLICITE** — Aucune collecte contournant délibérément les conditions d’utilisation d’un service ne peut être retenue. Une méthode dont la conformité n’est pas établie ne produit pas de preuve finale.
+**EXIGENCE EXPLICITE** — Aucune collecte contournant délibérément les conditions d’utilisation d’un service ne peut être retenue.
+
+**LIMITE VALIDÉE** — L’accès technique à une page publique ne constitue pas une validation juridique de ses conditions d’utilisation. Le runtime marque donc les sources live `collection_compliance: not_verified` et ne revendique aucune conformité de collecte site par site. Ce statut n’autorise aucun contournement ; il distingue la vérification technique de l’extrait de l’analyse juridique, hors périmètre de l’épreuve.
 
 ## 11. Politique de conflit
 
-**DÉCISION** — Avant classement, comparer et normaliser sans écraser les originaux : unité, devise et date du taux éventuel, période, date de clôture, définition de la métrique, groupe/filiale/autre portée, caractère publié ou estimé.
+**DÉCISION** — Avant classement, comparer et normaliser sans écraser les originaux : échelle de l’unité, devise reconnue (`EUR`, `USD`, `GBP`, `CHF`, `CAD`, `AUD`, `JPY`, `CNY`), année explicitement civile ou fiscale, définition de la métrique, groupe consolidé/filiale/maison-mère/entité, base moyenne ou fin d’année de l’effectif, caractère publié ou estimé. La release ne convertit aucune devise et ne transforme jamais une approximation, un intervalle, un taux ou une variation en niveau exact. Pour un conflit quantitatif visible, `revenue` ou `workforce`, le sujet attendu, la métrique, la valeur et l’unité ou la devise doivent être reliés dans la même proposition ; chaque dimension doit être redérivable de chacun des extraits exacts vérifiés. Les champs structurés proposés par le modèle ne sont pas une preuve suffisante. Les définitions distinctes non prises en charge — notamment ARR, run-rate, operating, subscription, deferred ou segment revenue — restent `indetermination` au lieu d’être assimilées au chiffre d’affaires standard ; il en va de même des populations d’effectif non allowlistées.
 
 Relations finales :
 
 - `confirmation` : valeurs et définitions compatibles ;
-- `explainable_difference` : écart expliqué par période, unité, devise, définition, portée ou méthode ;
+- `explainable_difference` : écart expliqué par période, définition, portée ou méthode, après normalisation éventuelle de l’échelle dans une même unité et une même devise ;
 - `contradiction` : versions réellement incompatibles après normalisation ;
 - `indetermination` : données insuffisantes pour conclure.
 
@@ -257,7 +254,7 @@ Un silence conserve : périmètre exploré, catégories de sources, raison d’a
 
 ## 13. Vie privée et conservation
 
-**DÉCISION — RELEASE INITIALE** — Absence de compte et d’authentification utilisateur ; absence de persistance métier par défaut ; seules les données professionnelles publiques pertinentes sont admises ; données sensibles et privées interdites.
+**DÉCISION — RELEASE INITIALE** — Absence de compte et d’authentification utilisateur ; absence de persistance métier par défaut. La politique d’usage limite la saisie aux données professionnelles publiques pertinentes et l’interface avertit contre les données privées, sensibles ou secrètes ; cette politique n’est pas présentée comme un filtre sémantique automatique côté serveur.
 
 **DÉCISION** — Aucun prompt ni dossier complet n’est journalisé. Seules des métriques techniques minimales et expurgées peuvent exister : identifiants non signifiants, statut, compteurs, durée, coût, code d’erreur et étape. Elles ne sont conservées que pendant le besoin de l’exercice.
 
@@ -282,12 +279,12 @@ La détection qu’une inférence introduit un nouveau fait exige en plus une co
 | `BRIEF-TRACEABILITY` | Toute affirmation factuelle rattachable à sa source jusqu’à l’écran | Sections 9 et 14 | Références claim→evidence→source et mutations négatives |
 | `BRIEF-LONG-WAIT` | Attente réellement conçue | Section 8 | `execution_steps` et reçu, sans pourcentage |
 | `BRIEF-HOMONYM` | Reconnaître/traiter l’homonyme | Sections 3 et 5 | Fixture `homonym_clarification` |
-| `BRIEF-CONFLICT` | Ne pas masquer deux chiffres | Sections 3 et 11 | Fixture `conflict_two_versions` |
+| `BRIEF-CONFLICT` | Ne pas masquer deux chiffres | Sections 3 et 11 | Fixture `conflict_two_versions`, invariants runtime, tests d’intégration et E2E, captures déterministes 1 440/390 px |
 | `BRIEF-SILENCE` | Ne pas combler l’absence par du plausible | Sections 3 et 12 | Fixture `honest_silence` |
 | `BRIEF-STALE` | Dater au lieu de présenter l’ancien comme actuel | Sections 3 et 9.6 | Fixture `historical_information` |
 | `BRIEF-SCOPE` | Peu de cas solides, cas différés assumés | Section 3 | Note d’arbitrage et bench final |
 | `BRIEF-NO-PRESET` | Aucun résultat préparé pour la démonstration | Section 14 | Métadonnées synthétiques obligatoires des fixtures |
-| `BRIEF-TERMS` | Aucun contournement des conditions d’utilisation | Section 10 | Champ de conformité et vérification finale |
+| `BRIEF-TERMS` | Aucun contournement des conditions d’utilisation | Section 10 | Accès public direct, absence de mécanisme de contournement, statut `not_verified` sans sur-promesse juridique |
 | `BRIEF-PRIVACY` | Pas de conservation excessive | Section 13 | Décision de non-persistance |
 | `BRIEF-COST` | Dire ce que coûte une fiche | Sections 6 et 14 | Reçu usage/coût/latence non négatif |
 | `BRIEF-ONLINE` | Application accessible en ligne | URL Production publiée | Validation Production finale |

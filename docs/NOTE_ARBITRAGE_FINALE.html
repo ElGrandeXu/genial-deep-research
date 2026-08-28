@@ -36,13 +36,13 @@
   <section class="page">
     <div class="bar"></div>
     <h1>GENIAL Deep Research</h1>
-    <div class="kicker">Note d’arbitrage finale · 28 août 2026 · runtime 8e91ed0</div>
-    <p><span class="status">Release technique finalisée — limite budgétaire interne déclarée</span></p>
+    <div class="kicker">Note d’arbitrage finale · 28 août 2026 · release candidate premium</div>
+    <p><span class="status">Validation finale du 28 août 2026</span></p>
     <p class="lead">Construire un dossier commercial défendable, pas une synthèse vraisemblable. La release accepte de perdre du rappel pour préserver identité, portée et preuve.</p>
 
     <h2>Décision produit</h2>
     <p>Une identité non démontrée demande du contexte. Un fait dont l’extrait n’est pas retrouvé disparaît. Une recherche pauvre produit un silence borné. Une panne technique ne devient jamais un dossier partiel.</p>
-    <p>Quatre sorties restent lisibles : complet dans le périmètre, partiel, clarification et données publiques insuffisantes. Chaque fait visible garde sa preuve adjacente, sa source ouvrable, sa période et sa fraîcheur. Le résumé est extractif : il n’ajoute aucune reformulation factuelle libre.</p>
+    <p>Quatre issues de dossier restent lisibles : complet dans le périmètre, partiel, clarification et données publiques insuffisantes, plus un terminal d’erreur technique distinct. Chaque fait visible garde sa preuve adjacente. Le résumé extractif exclut les versions contestées.</p>
 
     <div class="principle">Le fournisseur propose, le serveur décide.</div>
 
@@ -55,7 +55,7 @@
     </div>
 
     <h2>Choix de périmètre</h2>
-    <p>Le monolithe Next.js n’utilise ni base de données, ni compte, ni persistance de dossier. Gemini est absente du runtime candidat : aucun gain mesuré ne justifie une seconde clé, un second contrat et de nouveaux modes de panne.</p>
+    <p>Le monolithe Next.js n’utilise ni base, ni compte, ni persistance de dossier. OpenAI sert une verticale unique et maîtrisée. Le probe historique OpenAI/Gemini n’était pas un benchmark métier annoté. Ajouter Gemini sans gain démontré augmenterait variabilité, coût, latence, réconciliation et modes de panne ; l’accord entre deux modèles ne vaut pas preuve indépendante. Gemini reste candidate à un benchmark ou fallback calibré, sans revendication de supériorité universelle d’OpenAI.</p>
 
     <div class="footer"><span><a href="https://genial-deep-research.vercel.app">Production</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research">Dépôt</a></span><span>1 / 3</span></div>
   </section>
@@ -70,14 +70,14 @@
     <p>Pour chaque fait, l’égalité de type ne suffit pas. Sujet, portée — personne, société, groupe, filiale ou marque —, libellé et présence de l’entité sur la page doivent converger.</p>
 
     <h2>Complétude et temporalité</h2>
-    <p>Un dossier complet exige trois à six faits métier uniques, deux catégories, deux pages et deux familles d’éditeurs, sans contradiction, violation de portée ni manque critique. GENIAL n’obtient que deux faits d’une même famille : le statut <code>partial</code> est la décision correcte.</p>
+    <p>Un dossier complet exige trois à six faits métier uniques, deux catégories, deux pages et deux familles d’éditeurs, sans contradiction, violation de portée ni manque critique. GENIAL n’obtient qu’une preuve d’identité et un fait métier, d’une même famille : le statut <code>partial</code> est correct.</p>
     <p>Une année ou une date récente ne suffit jamais à produire <code>current</code>. Il faut une formulation actuelle explicite et une date exacte correspondant à l’observation.</p>
 
     <h2>Bench live préenregistré</h2>
     <table>
       <thead><tr><th>Cas</th><th>Décision observable</th><th class="num">Coût</th></tr></thead>
       <tbody>
-        <tr><td>GENIAL</td><td>Identité résolue, 2 faits, 2 pages, <code>partial</code>.</td><td class="num">0,0141440 USD</td></tr>
+        <tr><td>GENIAL</td><td>Identité résolue, 1 preuve d’identité, 1 fait métier, 2 pages, <code>partial</code>.</td><td class="num">0,0141440 USD</td></tr>
         <tr><td>Thomas Martin</td><td>Aucun fait attribué ; silence sûr.</td><td class="num">0,0455815 USD</td></tr>
         <tr><td>Airbus SAS</td><td>Entité légale prouvée ; aucune métrique Airbus SE ; clarification.</td><td class="num">0,0249935 USD</td></tr>
         <tr><td>SILENCE</td><td>0 fait, 0 source ; absence documentaire distincte d’une panne.</td><td class="num">0,0111351 USD</td></tr>
@@ -85,10 +85,13 @@
       </tbody>
     </table>
     <p class="small">Une seule exécution par cas, dans l’ordre gelé ; aucun rerun, aucune sélection du meilleur résultat et aucun patch nominal pour le holdout. Airbus et le holdout montrent une résolution parfois plus prudente qu’utile.</p>
-    <p>MARQUE, CONFLIT et PÉREMPTION ne sont pas revendiqués en live final. Certains cas supplémentaires n’ont pas été lancés.</p>
+    <p>MARQUE, CONFLIT et PÉREMPTION ne sont pas revendiqués dans ce bench live historique.</p>
+
+    <h2>CONFLIT déterministe</h2>
+    <p>Deux chiffres d’affaires synthétiques en EUR conservent même entité, métrique, période et périmètre, deux chemins de page, deux empreintes de document et deux preuves, sans gagnant. Les tests serveur, client et Playwright régressent si une version, une source, une empreinte ou une dimension disparaît ; deux variantes de requête d’une même page sont refusées. Captures 1 440/390 px étiquetées ; aucun appel fournisseur et coût nul.</p>
 
     <h2>Attente et résultat</h2>
-    <p>Le SSE expose admission, résolution ou recherche, vérification, construction et contrôle final, sans pourcentage fictif. Huit parcours navigateur couvrent sorties, panne, SSE fragmenté, annulation et incohérence masquée. Aucun overflow à 390 ou 1 440 px. Lighthouse : 100/100/100/100 sur desktop et 99/100/100/100 sur mobile.</p>
+    <p>Le SSE expose des étapes réelles sans pourcentage fictif. Le terminal réel prime sur la dernière étape ; le focus rejoint résultat ou erreur. Onze parcours couvrent sorties, conflit, panne, clavier, mouvement réduit et 390/768/1 440 px. Aucun overflow horizontal. Scores observés : 100/100/100/100 desktop et 99/100/100/100 mobile ; seuils automatiques : 95/100/100/95.</p>
 
     <div class="footer"><span><a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md">Bench, reçus et captures</a></span><span>2 / 3</span></div>
   </section>
@@ -100,17 +103,17 @@
 
     <h2>Coût exact</h2>
     <p>Les cinq exécutions finales préenregistrées ont coûté <strong>0,1205530 USD</strong> au total. Cette somme dépasse de <strong>0,0005530 USD</strong> l’enveloppe interne stricte de validation fixée à <strong>0,12 USD</strong>. Tous les coûts individuels restent inférieurs à <strong>0,10 USD</strong>. Les appels ont été arrêtés immédiatement après le cinquième reçu et aucun résultat n’a été sélectionné a posteriori.</p>
-    <p>Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Aucun reçu, coût ou résultat brut n’a été modifié. La release technique et les livrables sont finalisés avec cette limite déclarée.</p>
+    <p>Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Aucun reçu, coût ou résultat brut n’a été modifié. La limite reste déclarée sans requalifier le résultat historique.</p>
 
     <h2>Protection proportionnée des clés</h2>
     <ul>
-      <li>Seule la clé OpenAI est utilisée ; elle reste serveur et variable Vercel <code>Sensitive</code> en Preview et Production.</li>
-      <li>Gemini est absente ; aucune variable fournisseur <code>NEXT_PUBLIC_*</code>.</li>
+      <li>Seule <code>OPENAI_API_KEY</code> est utilisée ; métadonnées Vercel <code>Sensitive</code> Preview/Production, sans valeur lue.</li>
+      <li>Gemini et toute variable fournisseur <code>NEXT_PUBLIC_*</code> sont absentes.</li>
       <li>Secrets exclus de Git, bundle client, captures, PDF et logs ; aucune valeur ou empreinte publiée.</li>
-      <li><code>store: false</code> ; aucune journalisation ou persistance d’entrée, contexte, prompt, extrait ou dossier.</li>
+      <li><code>store: false</code> ; aucune persistance applicative, sans revendiquer une rétention fournisseur universellement nulle.</li>
       <li>WAF : 8 requêtes / 600 s / IP sur <code>/api/research</code>.</li>
-      <li>Garde locale d’admission et 2 recherches simultanées ; plafond par fiche inférieur à <code>0,10 USD</code>.</li>
-      <li>Sans authentification, ces protections limitent l’abus sans l’éliminer. Les clés devront être révoquées ou tournées après l’évaluation.</li>
+      <li>Garde locale d’admission et 2 recherches simultanées ; plafond par fiche de <code>0,10 USD</code>.</li>
+      <li>Risque résiduel : consommation indirecte via l’endpoint, distincte d’une fuite. Rotation/révocation recommandée après l’évaluation.</li>
     </ul>
 
     <h2>Limites assumées</h2>
@@ -122,7 +125,7 @@
     </div>
 
     <h2>Preuves</h2>
-    <p><a href="https://genial-deep-research.vercel.app">Application</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research">Code</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md">Bench final</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/WAF_VALIDATION.md">WAF</a></p>
+    <p><a href="https://genial-deep-research.vercel.app">Application</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research">Code</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md">Bench live historique</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/CONFLICT_DETERMINISTIC.md">CONFLIT</a> · <a href="https://github.com/ElGrandeXu/genial-deep-research/blob/main/docs/evidence/final-2026-08-28/WAF_VALIDATION.md">WAF</a></p>
 
     <div class="footer"><span>GENIAL Deep Research · note finale</span><span>3 / 3</span></div>
   </section>

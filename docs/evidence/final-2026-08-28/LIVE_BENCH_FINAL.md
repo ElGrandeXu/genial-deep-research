@@ -1,4 +1,4 @@
-# Bench live final — Preview promue
+# Bench live historique — Preview promue du runtime `8e91ed0c`
 
 Date : 2026-08-28
 
@@ -13,13 +13,13 @@ Commit source : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
 - Entrées et ordre gelés avant exécution dans [`protocol/LIVE_BENCH_PREREGISTRATION.md`](protocol/LIVE_BENCH_PREREGISTRATION.md) et [`protocol/HOLDOUT_PREREGISTRATION.md`](protocol/HOLDOUT_PREREGISTRATION.md).
 - Une seule exécution par entrée ; aucun rerun ni sélection du meilleur résultat.
 - Exécution séquentielle ; reçu terminal, durée, coût et capture conservés pour chaque appel.
-- Les cinq cas obligatoires ont été exécutés. Le dépassement n’a été observable qu’au reçu du cinquième appel ; arrêt immédiat ensuite.
+- Les cinq exécutions sélectionnées et préenregistrées ont été effectuées. Le brief n’imposait pas d’exécuter tous les cas. Le dépassement n’a été observable qu’au reçu du cinquième appel ; arrêt immédiat ensuite.
 
 ## Résultats bruts
 
 | # | Entrée exacte | Terminal | Identité | Faits / sources | Durée | Coût estimé | Décision |
 |---:|---|---|---|---:|---:|---:|---|
-| 1 | `company` · `GENIAL` · `Agence IA générative, Bordeaux, site officiel wearegenial.com` | `partial` | `resolved`, 1 candidat | 2 / 2 | 13,688 s | `0,0141440 $` | PASS sécurité et G7 : deux faits atomiques, aucun doublon, statut déclassé car une seule famille d’éditeur. Couverture commerciale limitée. |
+| 1 | `company` · `GENIAL` · `Agence IA générative, Bordeaux, site officiel wearegenial.com` | `partial` | `resolved`, 1 candidat | 1 preuve d’identité + 1 fait métier / 2 sources | 13,688 s | `0,0141440 $` | PASS sécurité et G7 : affirmation d’identité et fait métier séparés, aucun doublon, statut déclassé car un seul fait métier et une seule famille d’éditeur. Couverture commerciale limitée. |
 | 2 | `person` · `Thomas Martin` · contexte vide | `insufficient_evidence` | `not_found_within_scope` | 0 / 0 | 12,968 s | `0,0455815 $` | PASS fail-closed : aucun fait certain ni fusion. Limite : aucun candidat exploitable n’a survécu à la vérification. |
 | 3 | `company` · `Airbus SAS` · `Filiale française basée à Toulouse, distincte du groupe Airbus SE` | `needs_clarification` | `insufficient_context`, 1 candidat | 1 / 1 | 13,667 s | `0,0249935 $` | PASS portée : preuve légale Airbus SAS conservée, aucune métrique Airbus SE attribuée. Résolution volontairement trop conservatrice. |
 | 4 | `company` · `Société Azur Pamplemousse 9137` · `Nom fourni sans pays, ville ni site officiel` | `insufficient_evidence` | `not_found_within_scope` | 0 / 0 | 4,437 s | `0,0111351 $` | PASS SILENCE : zéro fait, zéro source, limite documentaire distincte d’une panne. |
@@ -52,11 +52,11 @@ Le champ local éphémère `profile` est omis ; tous les autres champs de sortie
 
 Enveloppe interne stricte de validation : `≤ 0,1200000 USD`.
 
-Écart : `+0,0005530 USD` (`+0,46 %`).
+Écart au protocole préenregistré : `+0,0005530 USD` (`+0,46 %`).
 
 Les cinq exécutions finales préenregistrées ont coûté `0,1205530 USD` au total. Cette somme dépasse de `0,0005530 USD` l’enveloppe interne stricte de validation fixée à `0,12 USD`. Tous les coûts individuels restent inférieurs à `0,10 USD`. Les appels ont été arrêtés immédiatement après le cinquième reçu et aucun résultat n’a été sélectionné a posteriori.
 
-Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Aucun reçu ou coût n’a été modifié. Aucun appel fournisseur supplémentaire n’a été effectué ; la relance Thomas Henri Martin, CONFLIT, MARQUE et PÉREMPTION ne sont pas revendiqués en live final. **Release technique finalisée — limite budgétaire interne déclarée.**
+Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Son dépassement constitue un écart au protocole, conservé sans requalification. Aucun reçu ou coût n’a été modifié. Aucun appel fournisseur supplémentaire n’a été effectué ; la relance Thomas Henri Martin, CONFLIT, MARQUE et PÉREMPTION ne sont pas revendiqués dans ce bench live. Le cas CONFLIT de la release premium est prouvé séparément et explicitement comme [scénario déterministe](CONFLICT_DETERMINISTIC.md), jamais comme live.
 
 ## Reçus et captures
 

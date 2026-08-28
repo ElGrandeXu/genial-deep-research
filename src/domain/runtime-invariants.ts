@@ -1,12 +1,24 @@
 import { validateResearchDossier } from "./contract-validator";
+import {
+  canonicalConflictText,
+  conflictLocatorDocumentIdentity,
+  conflictMetricObservation,
+  conflictMetricPredicate,
+  conflictPeriodKey,
+  conflictPeriodSupportsKey,
+  conflictScopeKey,
+  conflictScopeMatchesExcerpt,
+  conflictSourcePageKey,
+  conflictUnitCurrencyKey,
+  conflictValueKey,
+  conflictVersionUnitMatchesExcerpt,
+} from "./conflict-comparison";
 import { publisherDomainForUrl } from "./publisher-domain";
 import type { ResearchDossier } from "./research-dossier";
 
 type Claim = ResearchDossier["claims"][number];
 type Evidence = ResearchDossier["evidence"][number];
 type Source = ResearchDossier["sources"][number];
-type Contradiction = ResearchDossier["contradictions"][number];
-
 export type RuntimeDossierValidationResult =
   | { ok: true }
   | { ok: false; errors: string[] };
@@ -50,10 +62,6 @@ function hasDatedFactPeriod(claim: Claim): boolean {
   );
 }
 
-function versionValueKey(version: Contradiction["versions"][number]): string {
-  return `${typeof version.normalized_value}:${JSON.stringify(version.normalized_value)}`;
-}
-
 function claimCategory(claim: Claim): string {
   return claim.predicate.split(".", 1)[0] ?? "";
 }
@@ -94,6 +102,7 @@ export function validateRuntimeDossier(
     value.evidence.map((item) => [item.evidence_id, item]),
   );
   const claims = new Map(value.claims.map((claim) => [claim.claim_id, claim]));
+  const selectedCandidate = candidates.get(value.identity.selected_subject_id ?? "");
   const contradictions = new Map(
     value.contradictions.map((item) => [item.contradiction_id, item]),
   );
@@ -370,17 +379,43 @@ export function validateRuntimeDossier(
     if (item.classification !== "contradiction") {
       errors.push(`visible_contradiction_wrong_classification:${item.contradiction_id}`);
     }
+    if (!item.published_or_estimated_checked) {
+      errors.push(`visible_contradiction_requires_value_nature_check:${item.contradiction_id}`);
+    }
     if (item.versions.length < 2) {
       errors.push(`visible_contradiction_needs_two_versions:${item.contradiction_id}`);
     }
     if (new Set(versionClaimIds).size < 2) {
       errors.push(`visible_contradiction_needs_distinct_claims:${item.contradiction_id}`);
     }
-    if (new Set(item.versions.map(versionValueKey)).size < 2) {
+    if (
+      item.versions.some(({ normalized_value }) =>
+        typeof normalized_value !== "number" || !Number.isFinite(normalized_value))
+    ) {
+      errors.push(`visible_contradiction_requires_finite_numeric_values:${item.contradiction_id}`);
+    }
+    if (new Set(item.versions.map(({ normalized_value }) => conflictValueKey(normalized_value))).size < 2) {
       errors.push(`visible_contradiction_needs_distinct_values:${item.contradiction_id}`);
     }
+    if (
+      new Set(
+        item.versions.map(({ unit, currency }) => conflictUnitCurrencyKey(unit, currency)),
+      ).size !== 1
+    ) {
+      errors.push(`visible_contradiction_requires_same_unit_currency:${item.contradiction_id}`);
+    }
+    const contradictionSourceIds = new Set<string>();
+    const contradictionPages = new Set<string>();
+    const contradictionDocumentDigests = new Set<string>();
+    const versionDocumentIdentities: Array<Set<string>> = [];
+    const contradictionSubjects = new Set<string>();
+    const contradictionMetricSignatures = new Set<string>();
+    const contradictionPeriodEvidence = new Set<string>();
+    const contradictionValueNatures = new Set<string>();
     for (const version of item.versions) {
       const claim = claims.get(version.claim_id);
+      const versionQualifyingPages = new Set<string>();
+      const versionQualifyingDocuments = new Set<string>();
       if (
         claim === undefined ||
         claim.claim_state !== "contested" ||
@@ -390,6 +425,74 @@ export function validateRuntimeDossier(
         errors.push(
           `visible_contradiction_requires_contested_claim:${item.contradiction_id}:${version.claim_id}`,
         );
+      }
+      if (claim !== undefined) {
+        const metricSignature =
+          claim.scope.label !== null &&
+          selectedCandidate !== undefined &&
+          canonicalConflictText(claim.scope.label) === canonicalConflictText(selectedCandidate.display_name)
+            ? conflictMetricObservation(claim.statement, selectedCandidate.display_name)
+            : null;
+        const periodEvidence = metricSignature?.periodKey ?? null;
+        const valueNature = metricSignature?.valueNature ?? "unknown";
+        contradictionSubjects.add(claim.subject_id);
+        if (canonicalConflictText(claim.predicate) !== canonicalConflictText(item.predicate)) {
+          errors.push(`visible_contradiction_predicate_mismatch:${item.contradiction_id}:${version.claim_id}`);
+        }
+        if (conflictPeriodKey(claim.fact_period) !== conflictPeriodKey(item.period)) {
+          errors.push(`visible_contradiction_period_mismatch:${item.contradiction_id}:${version.claim_id}`);
+        }
+        if (conflictScopeKey(claim.scope) !== conflictScopeKey(item.scope)) {
+          errors.push(`visible_contradiction_scope_mismatch:${item.contradiction_id}:${version.claim_id}`);
+        }
+        if (canonicalConflictText(claim.unit) !== canonicalConflictText(version.unit)) {
+          errors.push(`visible_contradiction_unit_mismatch:${item.contradiction_id}:${version.claim_id}`);
+        }
+        if (
+          metricSignature === null ||
+          conflictMetricPredicate(claim.predicate) !== metricSignature.metric ||
+          canonicalConflictText(version.currency) !== canonicalConflictText(metricSignature.currency) ||
+          !conflictVersionUnitMatchesExcerpt(version.unit, metricSignature) ||
+          !conflictScopeMatchesExcerpt(claim.scope, metricSignature) ||
+          !conflictScopeMatchesExcerpt(item.scope, metricSignature)
+        ) {
+          errors.push(`visible_contradiction_metric_not_grounded:${item.contradiction_id}:${version.claim_id}`);
+        } else {
+          contradictionMetricSignatures.add(JSON.stringify([
+            metricSignature.metric,
+            metricSignature.definition,
+            metricSignature.semanticUnit,
+            metricSignature.currency,
+            metricSignature.scopeKind,
+          ]));
+        }
+        if (
+          periodEvidence === null ||
+          !conflictPeriodSupportsKey(item.period, periodEvidence)
+        ) {
+          errors.push(`visible_contradiction_period_not_grounded:${item.contradiction_id}:${version.claim_id}`);
+        } else {
+          contradictionPeriodEvidence.add(periodEvidence);
+        }
+        if (valueNature === "unknown") {
+          errors.push(`visible_contradiction_value_nature_not_grounded:${item.contradiction_id}:${version.claim_id}`);
+        } else {
+          contradictionValueNatures.add(valueNature);
+        }
+        if (
+          typeof version.normalized_value !== "number" ||
+          !Number.isFinite(version.normalized_value) ||
+          metricSignature === null ||
+          metricSignature.value !== version.normalized_value
+        ) {
+          errors.push(`visible_contradiction_value_not_grounded:${item.contradiction_id}:${version.claim_id}`);
+        }
+        if (
+          claim.structured_value === null ||
+          conflictValueKey(claim.structured_value.value) !== conflictValueKey(version.normalized_value)
+        ) {
+          errors.push(`visible_contradiction_value_mismatch:${item.contradiction_id}:${version.claim_id}`);
+        }
       }
       for (const evidenceId of version.evidence_ids) {
         const itemEvidence = evidence.get(evidenceId);
@@ -403,7 +506,84 @@ export function validateRuntimeDossier(
             `visible_contradiction_invalid_evidence:${item.contradiction_id}:${evidenceId}`,
           );
         }
+        if (itemEvidence !== undefined) {
+          if (conflictPeriodKey(itemEvidence.fact_period) !== conflictPeriodKey(item.period)) {
+            errors.push(`visible_contradiction_evidence_period_mismatch:${item.contradiction_id}:${evidenceId}`);
+          }
+          if (conflictScopeKey(itemEvidence.scope) !== conflictScopeKey(item.scope)) {
+            errors.push(`visible_contradiction_evidence_scope_mismatch:${item.contradiction_id}:${evidenceId}`);
+          }
+          const source = sources.get(itemEvidence.source_id);
+          if (source !== undefined) {
+            if (conflictScopeKey(source.assumed_scope) !== conflictScopeKey(item.scope)) {
+              errors.push(`visible_contradiction_source_scope_mismatch:${item.contradiction_id}:${source.source_id}`);
+            }
+            if (
+              claim !== undefined &&
+              claim.evidence_ids.includes(evidenceId) &&
+              source.accessibility_status === "accessible" &&
+              itemEvidence.relation === "supports" &&
+              itemEvidence.verification_method === "source_content" &&
+              itemEvidence.entity_id === claim.subject_id &&
+              source.assumed_entity_id === claim.subject_id &&
+              normalizeText(itemEvidence.excerpt) === normalizeText(claim.statement) &&
+              conflictScopeKey(source.assumed_scope) === conflictScopeKey(item.scope)
+            ) {
+              const sourcePageKey = conflictSourcePageKey(sourcePage(source));
+              const locatorIdentity = conflictLocatorDocumentIdentity(itemEvidence.locator);
+              if (
+                sourcePageKey !== null &&
+                locatorIdentity !== null &&
+                locatorIdentity.pageKey === sourcePageKey
+              ) {
+                contradictionSourceIds.add(source.source_id);
+                contradictionPages.add(sourcePageKey);
+                contradictionDocumentDigests.add(locatorIdentity.digest);
+                versionQualifyingPages.add(sourcePageKey);
+                versionQualifyingDocuments.add(
+                  JSON.stringify([sourcePageKey, locatorIdentity.digest]),
+                );
+              }
+            }
+          }
+        }
       }
+      if (versionQualifyingPages.size === 0) {
+        errors.push(`visible_contradiction_version_requires_qualifying_page:${item.contradiction_id}:${version.claim_id}`);
+      }
+      versionDocumentIdentities.push(versionQualifyingDocuments);
+    }
+    if (
+      contradictionSubjects.size !== 1 ||
+      !contradictionSubjects.has(value.identity.selected_subject_id ?? "")
+    ) {
+      errors.push(`visible_contradiction_requires_same_resolved_subject:${item.contradiction_id}`);
+    }
+    if (contradictionSourceIds.size < 2 || contradictionPages.size < 2) {
+      errors.push(`visible_contradiction_requires_two_source_pages:${item.contradiction_id}`);
+    }
+    const hasIndependentVersionPair = versionDocumentIdentities.some((left, index) =>
+      versionDocumentIdentities.slice(index + 1).some((right) =>
+        [...left].some((leftIdentity) => {
+          const [leftPage, leftDigest] = JSON.parse(leftIdentity) as [string, string];
+          return [...right].some((rightIdentity) => {
+            const [rightPage, rightDigest] = JSON.parse(rightIdentity) as [string, string];
+            return leftPage !== rightPage && leftDigest !== rightDigest;
+          });
+        }),
+      ),
+    );
+    if (contradictionDocumentDigests.size < 2 || !hasIndependentVersionPair) {
+      errors.push(`visible_contradiction_requires_two_source_documents:${item.contradiction_id}`);
+    }
+    if (contradictionMetricSignatures.size !== 1) {
+      errors.push(`visible_contradiction_requires_same_grounded_metric:${item.contradiction_id}`);
+    }
+    if (contradictionPeriodEvidence.size !== 1) {
+      errors.push(`visible_contradiction_requires_same_grounded_period:${item.contradiction_id}`);
+    }
+    if (contradictionValueNatures.size !== 1) {
+      errors.push(`visible_contradiction_requires_same_grounded_value_nature:${item.contradiction_id}`);
     }
   }
 
@@ -416,6 +596,12 @@ export function validateRuntimeDossier(
     ) {
       errors.push(`presentation_invalid_key_fact:${claimId}`);
     }
+    if (
+      claim?.claim_state === "contested" ||
+      claim?.reconciliation_state === "indetermination"
+    ) {
+      errors.push(`presentation_key_fact_forbids_unresolved:${claimId}`);
+    }
   }
   for (const claimId of value.presentation.recent_signal_claim_ids) {
     const claim = claims.get(claimId);
@@ -425,6 +611,12 @@ export function validateRuntimeDossier(
       claim.presentation_decision !== "display_fact"
     ) {
       errors.push(`presentation_invalid_recent_signal:${claimId}`);
+    }
+    if (
+      claim?.claim_state === "contested" ||
+      claim?.reconciliation_state === "indetermination"
+    ) {
+      errors.push(`presentation_recent_signal_forbids_unresolved:${claimId}`);
     }
   }
   for (const claimId of value.presentation.ambiguity_claim_ids) {
@@ -448,6 +640,12 @@ export function validateRuntimeDossier(
     }
     if (claim !== undefined && !isBusinessClaim(claim)) {
       errors.push(`summary_requires_business_fact:${item.kind}:${item.ref_id}`);
+    }
+    if (
+      claim?.claim_state === "contested" ||
+      claim?.reconciliation_state === "indetermination"
+    ) {
+      errors.push(`summary_forbids_unresolved_fact:${item.kind}:${item.ref_id}`);
     }
   }
   if (value.presentation.summary_items.length > 3) {

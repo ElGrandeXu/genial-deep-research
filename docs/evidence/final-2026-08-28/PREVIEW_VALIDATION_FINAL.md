@@ -1,4 +1,6 @@
-# Preview finale — validation gratuite
+# Preview historique — validation du runtime `8e91ed0c`
+
+Cette preuve décrit le déploiement antérieur à la finition premium. La validation de la nouvelle Preview est ajoutée dans la section « Preview premium » après publication ; les observations ci-dessous restent historiques et ne sont pas réécrites.
 
 Date : 2026-08-28  
 Commit déployé : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`  

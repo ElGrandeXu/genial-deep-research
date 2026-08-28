@@ -1,4 +1,6 @@
-# Validation finale du dépôt candidat et du clone propre
+# Validation historique du dépôt candidat et du clone propre
+
+Les valeurs ci-dessous décrivent la branche `fix/audit-01-truth-gates` avant la finition premium. Elles sont conservées comme preuve datée ; une section de validation premium est ajoutée après le clone anonyme de la nouvelle branche candidate.
 
 Date : 2026-08-28
 
@@ -19,7 +21,9 @@ corepack pnpm verify
 
 Le vérificateur cumulatif contrôle aussi les liens Markdown, la structure du PDF, l’intégrité SHA-256 des cinq reçus live finaux, l’absence de chemin absolu, la frontière du dépôt candidat et le manifeste Vercel simulé.
 
-## Résultats candidats
+## Résultats historiques
+
+Mesure enregistrée par le commit `359f0061283524919a49610d52f82f8cac326c0a` ; elle n’est pas une description du manifeste courant.
 
 ```text
 Fichiers candidats : 108

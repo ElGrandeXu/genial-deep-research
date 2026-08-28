@@ -317,7 +317,7 @@
     {
       "fixture_id": "fixture-conflict-two-versions",
       "scenario": "conflict_two_versions",
-      "description": "Deux valeurs synthétiques incompatibles sont conservées avec leurs preuves concurrentes.",
+      "description": "Deux chiffres d’affaires synthétiques incompatibles sont conservés avec leurs preuves concurrentes.",
       "dossier": {
         "schema_version": "1.0.0",
         "dossier_id": "dossier-conflict-001",
@@ -395,8 +395,8 @@
             "evidence_id": "evidence-conflict-value-a",
             "source_id": "source-conflict-official",
             "claim_id": "claim-conflict-value-a",
-            "excerpt": "La valeur synthétique publiée pour l’exercice 2025 est 10 millions d’unités.",
-            "locator": "tableau synthétique, ligne A",
+            "excerpt": "Entreprise Synthétique Borée publie un chiffre d’affaires de 10 millions d’euros pour l’exercice 2025.",
+            "locator": "{\"finalUrl\":\"https://official.example.invalid/boree-2025\",\"normalizedTextSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
             "entity_id": "subject-conflict-boree",
             "fact_period": {
               "status": "stated",
@@ -417,8 +417,8 @@
             "evidence_id": "evidence-conflict-value-b",
             "source_id": "source-conflict-specialized",
             "claim_id": "claim-conflict-value-b",
-            "excerpt": "La valeur synthétique publiée pour l’exercice 2025 est 12 millions d’unités.",
-            "locator": "tableau synthétique, ligne B",
+            "excerpt": "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.",
+            "locator": "{\"finalUrl\":\"https://specialized.example.invalid/boree-2025\",\"normalizedTextSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
             "entity_id": "subject-conflict-boree",
             "fact_period": {
               "status": "stated",
@@ -440,13 +440,13 @@
           {
             "claim_id": "claim-conflict-value-a",
             "subject_id": "subject-conflict-boree",
-            "statement": "La valeur synthétique de Borée pour 2025 est 10 millions d’unités.",
-            "predicate": "synthetic_financial_metric",
+            "statement": "Entreprise Synthétique Borée publie un chiffre d’affaires de 10 millions d’euros pour l’exercice 2025.",
+            "predicate": "metric.revenue",
             "structured_value": {
-              "value": 10,
+              "value": 10000000,
               "value_type": "number"
             },
-            "unit": "million synthetic units",
+            "unit": "million",
             "fact_period": {
               "status": "stated",
               "start": "2025-01-01T00:00:00Z",
@@ -470,13 +470,13 @@
           {
             "claim_id": "claim-conflict-value-b",
             "subject_id": "subject-conflict-boree",
-            "statement": "La valeur synthétique de Borée pour 2025 est 12 millions d’unités.",
-            "predicate": "synthetic_financial_metric",
+            "statement": "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.",
+            "predicate": "metric.revenue",
             "structured_value": {
-              "value": 12,
+              "value": 12000000,
               "value_type": "number"
             },
-            "unit": "million synthetic units",
+            "unit": "million",
             "fact_period": {
               "status": "stated",
               "start": "2025-01-01T00:00:00Z",
@@ -502,7 +502,7 @@
         "contradictions": [
           {
             "contradiction_id": "contradiction-conflict-metric",
-            "predicate": "synthetic_financial_metric",
+            "predicate": "metric.revenue",
             "period": {
               "status": "stated",
               "start": "2025-01-01T00:00:00Z",
@@ -514,7 +514,7 @@
               "type": "company",
               "label": "Entreprise Synthétique Borée"
             },
-            "metric_definition": "Même métrique synthétique, unité et périmètre après contrôle.",
+            "metric_definition": "Chiffre d’affaires publié en EUR",
             "published_or_estimated_checked": true,
             "classification": "contradiction",
             "versions": [
@@ -523,18 +523,18 @@
                 "evidence_ids": [
                   "evidence-conflict-value-a"
                 ],
-                "normalized_value": 10,
-                "unit": "million synthetic units",
-                "currency": null
+                "normalized_value": 10000000,
+                "unit": "million",
+                "currency": "EUR"
               },
               {
                 "claim_id": "claim-conflict-value-b",
                 "evidence_ids": [
                   "evidence-conflict-value-b"
                 ],
-                "normalized_value": 12,
-                "unit": "million synthetic units",
-                "currency": null
+                "normalized_value": 12000000,
+                "unit": "million",
+                "currency": "EUR"
               }
             ],
             "explanation": "Les deux valeurs restent incompatibles après contrôle de l’unité, période, clôture, définition, périmètre et nature publiée.",
@@ -558,10 +558,7 @@
         ],
         "presentation": {
           "summary_items": [],
-          "key_fact_claim_ids": [
-            "claim-conflict-value-a",
-            "claim-conflict-value-b"
-          ],
+          "key_fact_claim_ids": [],
           "recent_signal_claim_ids": [],
           "ambiguity_claim_ids": [],
           "contradiction_ids": [

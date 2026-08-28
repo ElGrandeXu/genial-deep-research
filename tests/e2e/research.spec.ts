@@ -7,8 +7,10 @@ import {
   ambiguousDossier,
   completeDossier,
   completedSse,
+  conflictDossier,
   failureSse,
   partialDossier,
+  singleCandidateDossier,
   silenceDossier,
 } from "./research-fixtures";
 
@@ -16,6 +18,13 @@ const evidenceDirectory = join(
   process.cwd(),
   "test-results",
   "e2e-screenshots",
+);
+const deterministicEvidenceDirectory = join(
+  process.cwd(),
+  "docs",
+  "captures",
+  "final-2026-08-28",
+  "deterministic",
 );
 const updateReleaseEvidence = process.env.UPDATE_RELEASE_EVIDENCE === "1";
 
@@ -30,10 +39,14 @@ async function mockSse(page: Page, body: string): Promise<void> {
   });
 }
 
-async function submit(page: Page, name = "Acme Group"): Promise<void> {
+async function submit(
+  page: Page,
+  name = "Acme Group",
+  context = "Source officielle https://official.public.org",
+): Promise<void> {
   await page.getByLabel("Nom").fill(name);
   await page.getByLabel("Type d’entité").selectOption(name === "Thomas Martin" ? "person" : "company");
-  await page.getByLabel(/Contexte/).fill("Source officielle https://official.public.org");
+  await page.getByLabel(/Contexte/).fill(context);
   await page.getByRole("button", { name: "Construire le dossier" }).click();
 }
 
@@ -80,7 +93,12 @@ async function installStreamingFetch(
 }
 
 test.beforeAll(async () => {
-  if (updateReleaseEvidence) await mkdir(evidenceDirectory, { recursive: true });
+  if (updateReleaseEvidence) {
+    await Promise.all([
+      mkdir(evidenceDirectory, { recursive: true }),
+      mkdir(deterministicEvidenceDirectory, { recursive: true }),
+    ]);
+  }
 });
 
 test("complete dossier renders extractive summary, adjacent sources and final focus", async ({ page }) => {
@@ -110,7 +128,10 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
     "https://official.public.org/acme",
   );
   await expect(page.getByText("Portée : Acme Group — groupe")).toBeVisible();
+  await expect(page.getByText("Identité résolue")).toBeVisible();
+  await expect(page.getByText("3 faits étayés")).toBeVisible();
   await expect(page.locator(".result-focus")).toBeFocused();
+  expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   if (updateReleaseEvidence) {
     await page.screenshot({ path: join(evidenceDirectory, "complete-1440.png"), fullPage: true });
@@ -130,9 +151,56 @@ test("partial dossier stays explicit and the 390 px layout does not overflow", a
   await page.getByText("Détails d’exécution").click();
   await expect(page.getByText(/faits uniques: 2\/3 minimum/u)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const liveTop = await page.locator(".live-panel").evaluate((node) => node.getBoundingClientRect().top + window.scrollY);
+  const methodTop = await page.locator(".method-note").evaluate((node) => node.getBoundingClientRect().top + window.scrollY);
+  expect(liveTop).toBeLessThan(methodTop);
   if (updateReleaseEvidence) {
     await page.screenshot({ path: join(evidenceDirectory, "partial-390.png"), fullPage: true });
   }
+});
+
+test("768 px layout, keyboard order and reduced motion remain usable", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installStreamingFetch(page, [
+    'event: accepted\ndata: {"state":"accepted","executionId":"run-reduced","elapsedMs":1}\n\n',
+    'event: researching_and_resolving\ndata: {"state":"researching_and_resolving","executionId":"run-reduced","elapsedMs":5}\n\n',
+  ], true);
+  await page.goto("/");
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Type d’entité")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Nom")).toBeFocused();
+  const focusOutline = await page.getByLabel("Nom").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { style: style.outlineStyle, width: style.outlineWidth };
+  });
+  expect(focusOutline.style).not.toBe("none");
+  expect(Number.parseFloat(focusOutline.width)).toBeGreaterThanOrEqual(3);
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel(/Contexte/u)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Construire le dossier" })).toBeFocused();
+
+  await submit(page);
+  await expect(page.getByRole("heading", { name: "Recherche Web et résolution" })).toBeVisible();
+
+  const formBottom = await page.locator(".search-form").evaluate((node) => node.getBoundingClientRect().bottom + window.scrollY);
+  const liveBox = await page.locator(".live-panel").evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return { top: box.top + window.scrollY, bottom: box.bottom + window.scrollY };
+  });
+  const methodTop = await page.locator(".method-note").evaluate((node) => node.getBoundingClientRect().top + window.scrollY);
+  expect(liveBox.top).toBeGreaterThanOrEqual(formBottom);
+  expect(liveBox.bottom).toBeLessThanOrEqual(methodTop);
+  const reducedDuration = await page.locator(".status-dot").evaluate((node) => {
+    const value = getComputedStyle(node).animationDuration;
+    return value.endsWith("ms") ? Number.parseFloat(value) / 1_000 : Number.parseFloat(value);
+  });
+  expect(reducedDuration).toBeLessThanOrEqual(0.00001);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await page.getByRole("button", { name: "Annuler" }).click();
 });
 
 test("ambiguity keeps candidates separate and clarification only prefills", async ({ page }) => {
@@ -142,11 +210,88 @@ test("ambiguity keeps candidates separate and clarification only prefills", asyn
   await expect(page.getByRole("heading", { name: "Plusieurs candidats restent possibles" })).toBeVisible();
   await expect(page.getByText("Candidat possible 1")).toBeVisible();
   await expect(page.getByText("Candidat possible 2")).toBeVisible();
-  await page.getByRole("button", { name: "Préremplir avec ce candidat" }).first().click();
+  await page.getByRole("button", { name: /Préremplir avec Thomas Martin/u }).first().click();
   await expect(page.getByLabel("Nom")).toHaveValue("Thomas Martin");
   await expect(page.getByLabel(/Contexte/)).toHaveValue(/studio\.public\.org/u);
   await expect(page.getByRole("status")).toContainText("relancez manuellement");
   await expect(page.getByLabel("Nom")).toBeFocused();
+});
+
+test("a single plausible candidate uses a singular clarification label", async ({ page }) => {
+  await mockSse(page, completedSse(singleCandidateDossier()));
+  await page.goto("/");
+  await submit(page, "Thomas Martin");
+  await expect(page.getByRole("heading", { name: "Un candidat reste à confirmer" })).toBeVisible();
+  await expect(page.getByText("Candidat à confirmer")).toBeVisible();
+  await expect(page.getByText("Plusieurs candidats", { exact: false })).toHaveCount(0);
+});
+
+test("deterministic conflict keeps both sourced versions on desktop and mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await mockSse(page, completedSse(conflictDossier()));
+  await page.goto("/");
+  await submit(
+    page,
+    "Entreprise Synthétique Borée",
+    "Scénario déterministe — sources synthétiques .invalid",
+  );
+
+  await expect(page.getByRole("heading", { name: "Chiffre d’affaires publié en EUR" })).toBeVisible();
+  await expect(page.getByText("Conflit confirmé")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "10 millions EUR" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "12 millions EUR" })).toBeVisible();
+  await expect(page.locator(".conflict-dimensions").getByText("exercice 2025", { exact: true })).toBeVisible();
+  await expect(page.locator(".conflict-dimensions").getByText("Entreprise Synthétique Borée — société", { exact: true })).toBeVisible();
+  await expect(page.getByText("Décision de sécurité")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Rapport synthétique Borée 2025/u })).toHaveAttribute(
+    "href",
+    "https://official.example.invalid/boree-2025",
+  );
+  await expect(page.getByRole("link", { name: /Analyse synthétique Borée 2025/u })).toHaveAttribute(
+    "href",
+    "https://specialized.example.invalid/boree-2025",
+  );
+  await expect(page.locator(".version-card")).toHaveCount(2);
+  await expect(page.locator(".facts-section")).toHaveCount(0);
+  await expect(page.getByText(/Scénario de test déterministe/u)).toBeVisible();
+  await expect(page.locator(".result-focus")).toBeFocused();
+  expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  if (updateReleaseEvidence) {
+    await page.screenshot({ path: join(deterministicEvidenceDirectory, "conflict-1440.png"), fullPage: true });
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await submit(
+    page,
+    "Entreprise Synthétique Borée",
+    "Scénario déterministe — sources synthétiques .invalid",
+  );
+  await expect(page.getByRole("heading", { name: "10 millions EUR" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "12 millions EUR" })).toBeVisible();
+  await expect(page.locator(".conflict-dimensions").getByText("exercice 2025", { exact: true })).toBeVisible();
+  await expect(page.locator(".conflict-dimensions").getByText("Entreprise Synthétique Borée — société", { exact: true })).toBeVisible();
+  await expect(page.getByText("Décision de sécurité")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Rapport synthétique Borée 2025/u })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Analyse synthétique Borée 2025/u })).toBeVisible();
+  await expect(page.locator(".version-card")).toHaveCount(2);
+  await expect(page.locator(".facts-section")).toHaveCount(0);
+  const dimensionBoxes = await page.locator(".conflict-dimensions > div").evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const box = node.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom };
+    }),
+  );
+  expect(dimensionBoxes[1]!.top - dimensionBoxes[0]!.bottom).toBeLessThanOrEqual(12);
+  const sourceLinkHeights = await page.locator(".version-card .source-link").evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().height),
+  );
+  expect(Math.max(...sourceLinkHeights)).toBeLessThan(120);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  if (updateReleaseEvidence) {
+    await page.screenshot({ path: join(deterministicEvidenceDirectory, "conflict-390.png"), fullPage: true });
+  }
 });
 
 test("honest silence and technical failure remain distinct", async ({ page }) => {
@@ -161,6 +306,7 @@ test("honest silence and technical failure remain distinct", async ({ page }) =>
   await submit(page, "Erreur technique");
   await expect(page.getByRole("heading", { name: "Aucun dossier produit" })).toBeVisible();
   await expect(page.getByText(/temporairement indisponible/u)).toBeVisible();
+  await expect(page.locator(".live-heading h2")).toHaveText("Recherche interrompue");
 });
 
 test("fragmented SSE reaches completion without accepting obsolete phases", async ({ page }) => {
@@ -192,7 +338,8 @@ test("cancellation aborts an in-flight stream and emits no dossier", async ({ pa
   await submit(page);
   await expect(page.getByRole("heading", { name: "Recherche Web et résolution" })).toBeVisible();
   await page.getByRole("button", { name: "Annuler" }).click();
-  await expect(page.getByRole("heading", { name: "Recherche annulée" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recherche annulée", level: 3 })).toBeVisible();
+  await expect(page.locator(".live-heading h2")).toHaveText("Recherche annulée");
   await expect(page.locator(".result-card")).toHaveCount(0);
 });
 

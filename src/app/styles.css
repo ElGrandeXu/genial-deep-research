@@ -223,23 +223,21 @@ h4 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  grid-template-areas:
+    "form live"
+    "method live"
+    "result result";
   align-items: start;
   gap: 1rem;
 }
 
 .workspace > *,
-.search-column,
 .result-card,
 .claim-card,
 .evidence-card,
 .candidate-card,
 .version-card {
   min-width: 0;
-}
-
-.search-column {
-  display: grid;
-  gap: 1rem;
 }
 
 .search-form,
@@ -252,6 +250,7 @@ h4 {
 }
 
 .search-form {
+  grid-area: form;
   background: rgb(255 254 250 / 92%);
   padding: clamp(1.35rem, 3vw, 2.2rem);
 }
@@ -323,7 +322,6 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--ink);
-  outline: none;
   box-shadow: 0 0 0 3px rgb(202 255 69 / 60%);
 }
 
@@ -418,6 +416,7 @@ button.secondary:hover {
 }
 
 .method-note {
+  grid-area: method;
   background: var(--acid);
   padding: 1.35rem;
 }
@@ -439,6 +438,7 @@ button.secondary:hover {
 }
 
 .live-panel {
+  grid-area: live;
   position: sticky;
   top: 1rem;
   min-height: 32rem;
@@ -610,9 +610,10 @@ button.secondary:hover {
 }
 
 .result-focus {
-  grid-column: 1 / -1;
+  grid-area: result;
   margin-top: 1rem;
   border-radius: 1.35rem;
+  scroll-margin-top: 1rem;
 }
 
 .result-focus:focus {
@@ -647,6 +648,25 @@ button.secondary:hover {
   margin: 0.85rem 0 0;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.result-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-overview li {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-soft);
+  padding: 0.38rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 780;
 }
 
 .result-status {
@@ -1085,9 +1105,9 @@ button.secondary:hover {
 }
 
 .contradiction-card {
-  border: 1px solid #c78348;
+  border: 1px solid #b97538;
   border-radius: 1rem;
-  background: #fff7ed;
+  background: linear-gradient(135deg, #fff8ef, #fffdf8);
   padding: clamp(1rem, 3vw, 1.5rem);
 }
 
@@ -1102,10 +1122,44 @@ button.secondary:hover {
   gap: 1rem;
 }
 
-.contradiction-heading > span {
-  color: #7c5c3e;
-  font-size: 0.75rem;
-  font-weight: 700;
+.conflict-state {
+  margin: 0 0 0.45rem;
+  color: #87501f;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.conflict-dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 0 1 28rem;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.conflict-dimensions div {
+  border: 1px solid #dcc0a5;
+  border-radius: 0.7rem;
+  background: rgb(255 255 255 / 72%);
+  padding: 0.65rem 0.75rem;
+}
+
+.conflict-dimensions dt {
+  color: #80572f;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.conflict-dimensions dd {
+  margin: 0.28rem 0 0;
+  color: #493a2c;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.35;
 }
 
 .version-grid {
@@ -1318,6 +1372,11 @@ button.secondary:hover {
 
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "form"
+      "live"
+      "method"
+      "result";
   }
 
   .live-panel {
@@ -1326,9 +1385,6 @@ button.secondary:hover {
     min-height: 25rem;
   }
 
-  .result-focus {
-    grid-column: 1;
-  }
 }
 
 @media (max-width: 680px) {
@@ -1365,6 +1421,15 @@ button.secondary:hover {
     align-items: flex-start;
     flex-direction: column-reverse;
     gap: 1rem;
+  }
+
+  .contradiction-heading {
+    flex-direction: column;
+  }
+
+  .conflict-dimensions {
+    flex: none;
+    width: 100%;
   }
 
   .candidate-grid,
@@ -1452,6 +1517,10 @@ button.secondary:hover {
 
   .contradiction-heading {
     flex-direction: column;
+  }
+
+  .conflict-dimensions {
+    grid-template-columns: 1fr;
   }
 }
 

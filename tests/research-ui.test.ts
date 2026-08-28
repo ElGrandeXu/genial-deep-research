@@ -8,7 +8,15 @@ import {
   shouldDisplayEvidenceExcerpt,
 } from "../src/app/research-form";
 import type { ResearchDossier } from "../src/domain/research-dossier";
-import { partialDossier } from "./e2e/research-fixtures";
+import { validateRuntimeDossier } from "../src/domain/runtime-invariants";
+import {
+  ambiguousDossier,
+  completeDossier,
+  conflictDossier,
+  partialDossier,
+  silenceDossier,
+  singleCandidateDossier,
+} from "./e2e/research-fixtures";
 
 function claim(predicate: string): ResearchDossier["claims"][number] {
   return {
@@ -93,5 +101,134 @@ describe("research UI truth mapping", () => {
     expect(dossierDisplayIssue(dossier)).toBe(
       "Une preuve ne mène pas vers une page source ouvrable.",
     );
+  });
+
+  it("accepts the complete deterministic conflict chain", () => {
+    expect(dossierDisplayIssue(conflictDossier())).toBeUndefined();
+  });
+
+  it.each([
+    ["complete", completeDossier],
+    ["partial", partialDossier],
+    ["ambiguity", ambiguousDossier],
+    ["single candidate", singleCandidateDossier],
+    ["conflict", conflictDossier],
+    ["silence", silenceDossier],
+  ] as const)("keeps the %s browser fixture valid at the runtime boundary", (_label, factory) => {
+    expect(validateRuntimeDossier(factory())).toEqual({ ok: true });
+  });
+
+  it("accepts harmless casing variants across conflict dimensions", () => {
+    const dossier = conflictDossier();
+    const conflict = dossier.contradictions[0]!;
+    conflict.predicate = "METRIC.REVENUE";
+    conflict.period.label = "EXERCICE 2025";
+    conflict.scope.label = "ENTREPRISE SYNTHÉTIQUE BORÉE";
+    for (const version of conflict.versions) {
+      version.unit = "MILLION";
+      version.currency = "eur";
+    }
+    expect(dossierDisplayIssue(dossier)).toBeUndefined();
+    expect(validateRuntimeDossier(dossier)).toEqual({ ok: true });
+  });
+
+  it("accepts non-visible non-conflict classifications at the transport boundary", () => {
+    const dossier = conflictDossier();
+    dossier.contradictions[0]!.visible = false;
+    dossier.contradictions[0]!.classification = "indetermination";
+    dossier.presentation.contradiction_ids = [];
+    for (const claim of dossier.claims.filter(({ claim_state }) => claim_state === "contested")) {
+      claim.presentation_decision = "reject";
+    }
+    expect(() => decodeSseBlock([
+      "event: completed",
+      `data: ${JSON.stringify({
+        state: "completed",
+        executionId: "run-ui",
+        elapsedMs: 12,
+        dossier,
+        receipt: {},
+      })}`,
+    ].join("\n"))).not.toThrow();
+  });
+
+  it("masks a conflict if a version or its source disappears", () => {
+    const missingVersion = conflictDossier();
+    const conflict = missingVersion.contradictions[0]!;
+    (conflict as unknown as { versions: typeof conflict.versions[number][] }).versions = [
+      conflict.versions[0]!,
+    ];
+    expect(dossierDisplayIssue(missingVersion)).toContain("deux versions comparables");
+
+    const missingSource = conflictDossier();
+    missingSource.sources = missingSource.sources.filter(
+      ({ source_id }) => source_id !== "source-conflict-specialized",
+    );
+    expect(dossierDisplayIssue(missingSource)).toContain("page source ouvrable");
+
+    const mismatchedScope = conflictDossier();
+    mismatchedScope.sources[1]!.assumed_scope = { type: "subsidiary", label: "Borée France" };
+    expect(dossierDisplayIssue(mismatchedScope)).toContain("périmètre affiché");
+
+    const nonQualifyingEvidence = conflictDossier();
+    nonQualifyingEvidence.evidence[1]!.relation = "context_only";
+    expect(dossierDisplayIssue(nonQualifyingEvidence)).toContain("preuve qui l’étaye");
+
+    const implicitKeyFact = conflictDossier();
+    implicitKeyFact.presentation.key_fact_claim_ids.push("claim-conflict-value-a");
+    expect(dossierDisplayIssue(implicitKeyFact)).toContain("fait clé");
+
+    const stringValue = conflictDossier();
+    stringValue.contradictions[0]!.versions[1]!.normalized_value = "12000000";
+    expect(dossierDisplayIssue(stringValue)).toContain("deux versions comparables");
+
+    const ungroundedMetric = conflictDossier();
+    const workforceStatement = "Entreprise Synthétique Borée publie un effectif de 12 salariés pour l’exercice 2025.";
+    ungroundedMetric.claims[2]!.statement = workforceStatement;
+    ungroundedMetric.claims[2]!.structured_value = { value: 12, value_type: "number" };
+    ungroundedMetric.evidence[2]!.excerpt = workforceStatement;
+    ungroundedMetric.contradictions[0]!.versions[1]!.normalized_value = 12;
+    expect(dossierDisplayIssue(ungroundedMetric)).toContain("métrique");
+
+    const wrongSubject = conflictDossier();
+    const wrongSubjectStatement = "Entreprise Synthétique Borée acquiert Beta. Beta publie un chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.";
+    wrongSubject.claims[2]!.statement = wrongSubjectStatement;
+    wrongSubject.evidence[2]!.excerpt = wrongSubjectStatement;
+    expect(dossierDisplayIssue(wrongSubject)).toContain("métrique");
+  });
+
+  it("masks a conflict backed by URL aliases or one fetched document", () => {
+    const aliasedPage = conflictDossier();
+    const firstSource = aliasedPage.sources.find(({ source_id }) =>
+      source_id === "source-conflict-official"
+    )!;
+    const secondSource = aliasedPage.sources.find(({ source_id }) =>
+      source_id === "source-conflict-specialized"
+    )!;
+    const firstPage = firstSource.canonical_url ?? firstSource.resolved_url ?? firstSource.provider_url;
+    const alias = `${firstPage}?view=second`;
+    secondSource.provider_url = alias;
+    secondSource.resolved_url = alias;
+    secondSource.canonical_url = alias;
+    const secondEvidence = aliasedPage.evidence.find(({ evidence_id }) =>
+      evidence_id === "evidence-conflict-value-b"
+    )!;
+    const aliasLocator = JSON.parse(secondEvidence.locator) as Record<string, unknown>;
+    aliasLocator.finalUrl = alias;
+    secondEvidence.locator = JSON.stringify(aliasLocator);
+    expect(dossierDisplayIssue(aliasedPage)).toContain("deux documents sources distincts");
+
+    const duplicateDocument = conflictDossier();
+    const firstEvidence = duplicateDocument.evidence.find(({ evidence_id }) =>
+      evidence_id === "evidence-conflict-value-a"
+    )!;
+    const duplicateSecondEvidence = duplicateDocument.evidence.find(({ evidence_id }) =>
+      evidence_id === "evidence-conflict-value-b"
+    )!;
+    const firstLocator = JSON.parse(firstEvidence.locator) as Record<string, unknown>;
+    const duplicateLocator = JSON.parse(duplicateSecondEvidence.locator) as Record<string, unknown>;
+    duplicateLocator.normalizedTextSha256 = firstLocator.normalizedTextSha256;
+    duplicateSecondEvidence.locator = JSON.stringify(duplicateLocator);
+    expect(dossierDisplayIssue(duplicateDocument)).toContain("deux documents sources distincts");
   });
 });

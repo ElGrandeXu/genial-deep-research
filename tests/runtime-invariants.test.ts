@@ -102,6 +102,16 @@ function makeValidDossier(): ResearchDossier {
   return dossier;
 }
 
+function makeConflictDossier(): ResearchDossier {
+  const fixture = fixtures.fixtures.find(
+    ({ fixture_id }) => fixture_id === "fixture-conflict-two-versions",
+  );
+  if (fixture === undefined) throw new Error("Conflict fixture missing.");
+  const dossier = structuredClone(fixture.dossier) as unknown as ResearchDossier;
+  dossier.origin = "runtime";
+  return dossier;
+}
+
 function expectRuntimeError(dossier: unknown, expected: string): void {
   const result = validateRuntimeDossier(dossier);
   expect(result).toMatchObject({ ok: false });
@@ -113,6 +123,148 @@ function expectRuntimeError(dossier: unknown, expected: string): void {
 describe("runtime dossier invariants", () => {
   it("accepts a normalized, three-fact dossier backed by two accessible sources", () => {
     expect(validateRuntimeDossier(makeValidDossier())).toEqual({ ok: true });
+  });
+
+  it("accepts two incompatible versions only when every conflict dimension is aligned", () => {
+    expect(validateRuntimeDossier(makeConflictDossier())).toEqual({ ok: true });
+  });
+
+  it("compares harmless conflict casing and spacing variants canonically", () => {
+    const dossier = makeConflictDossier();
+    const conflict = dossier.contradictions[0]!;
+    conflict.predicate = "METRIC.REVENUE";
+    conflict.period.label = "EXERCICE   2025";
+    conflict.scope.label = "ENTREPRISE SYNTHÉTIQUE BORÉE";
+    for (const version of conflict.versions) {
+      version.unit = "MILLION";
+      version.currency = "eur";
+    }
+    expect(validateRuntimeDossier(dossier)).toEqual({ ok: true });
+  });
+
+  it.each([
+    ["value nature", (dossier: ResearchDossier) => {
+      dossier.contradictions[0]!.published_or_estimated_checked = false;
+    }, "visible_contradiction_requires_value_nature_check"],
+    ["second version", (dossier: ResearchDossier) => {
+      const conflict = dossier.contradictions[0]!;
+      (conflict as unknown as { versions: typeof conflict.versions[number][] }).versions = [
+        conflict.versions[0]!,
+      ];
+    }, "minItems"],
+    ["predicate", (dossier: ResearchDossier) => {
+      dossier.claims[1]!.predicate = "metric.adjusted_revenue";
+    }, "visible_contradiction_predicate_mismatch"],
+    ["period", (dossier: ResearchDossier) => {
+      dossier.claims[1]!.fact_period.label = "exercice 2024";
+    }, "visible_contradiction_period_mismatch"],
+    ["scope", (dossier: ResearchDossier) => {
+      dossier.claims[1]!.scope = { type: "subsidiary", label: "Borée France" };
+    }, "visible_contradiction_scope_mismatch"],
+    ["source scope", (dossier: ResearchDossier) => {
+      dossier.sources[1]!.assumed_scope = { type: "subsidiary", label: "Borée France" };
+    }, "visible_contradiction_source_scope_mismatch"],
+    ["non-qualifying evidence", (dossier: ResearchDossier) => {
+      dossier.evidence[1]!.relation = "context_only";
+    }, "visible_contradiction_version_requires_qualifying_page"],
+    ["inaccessible source", (dossier: ResearchDossier) => {
+      dossier.sources[1]!.accessibility_status = "inaccessible";
+    }, "visible_contradiction_version_requires_qualifying_page"],
+    ["unit and currency", (dossier: ResearchDossier) => {
+      dossier.contradictions[0]!.versions[1]!.currency = "USD";
+    }, "visible_contradiction_requires_same_unit_currency"],
+    ["finite numeric value", (dossier: ResearchDossier) => {
+      dossier.contradictions[0]!.versions[1]!.normalized_value = "12000000";
+    }, "visible_contradiction_requires_finite_numeric_values"],
+    ["excerpt-grounded metric", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un effectif de 12 salariés pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.claims[1]!.structured_value = { value: 12, value_type: "number" };
+      dossier.evidence[1]!.excerpt = statement;
+      dossier.contradictions[0]!.versions[1]!.normalized_value = 12;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["excerpt-grounded value nature", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée n’a jamais publié de chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_value_nature_not_grounded"],
+    ["same-clause metric/value relation", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie que son chiffre d’affaires reste inconnu. Son amende est de 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["excerpt subject", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée acquiert Beta. Beta publie un chiffre d’affaires de 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["subannual excerpt", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros pour le premier semestre 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_period_not_grounded"],
+    ["guidance qualifier", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires attendu de 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_value_nature_not_grounded"],
+    ["ambiguous scaled decimal", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires de 1.234 million d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+      dossier.claims[1]!.structured_value = { value: 1_234_000_000, value_type: "number" };
+      dossier.contradictions[0]!.versions[1]!.normalized_value = 1_234_000_000;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["bare annual label", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros en 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["unrelated update year", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires de 12 millions d’euros. La page est mise à jour pendant l’année civile 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["unsupported segment definition", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires du segment européen de 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["approximate value", (dossier: ResearchDossier) => {
+      const statement = "Entreprise Synthétique Borée publie un chiffre d’affaires d’environ 12 millions d’euros pour l’exercice 2025.";
+      dossier.claims[1]!.statement = statement;
+      dossier.evidence[1]!.excerpt = statement;
+    }, "visible_contradiction_metric_not_grounded"],
+    ["distinct pages", (dossier: ResearchDossier) => {
+      dossier.evidence[1]!.source_id = dossier.evidence[0]!.source_id;
+    }, "visible_contradiction_requires_two_source_pages"],
+    ["query variants of one page", (dossier: ResearchDossier) => {
+      const firstSource = dossier.sources[0]!;
+      const secondSource = dossier.sources[1]!;
+      const alias = `${firstSource.canonical_url ?? firstSource.resolved_url ?? firstSource.provider_url}?view=second`;
+      secondSource.provider_url = alias;
+      secondSource.resolved_url = alias;
+      secondSource.canonical_url = alias;
+      const locator = JSON.parse(dossier.evidence[1]!.locator) as Record<string, unknown>;
+      locator.finalUrl = alias;
+      dossier.evidence[1]!.locator = JSON.stringify(locator);
+    }, "visible_contradiction_requires_two_source_pages"],
+    ["identical fetched document", (dossier: ResearchDossier) => {
+      const firstLocator = JSON.parse(dossier.evidence[0]!.locator) as Record<string, unknown>;
+      const secondLocator = JSON.parse(dossier.evidence[1]!.locator) as Record<string, unknown>;
+      secondLocator.normalizedTextSha256 = firstLocator.normalizedTextSha256;
+      dossier.evidence[1]!.locator = JSON.stringify(secondLocator);
+    }, "visible_contradiction_requires_two_source_documents"],
+    ["summary exclusion", (dossier: ResearchDossier) => {
+      dossier.presentation.summary_items = [{ kind: "claim", ref_id: dossier.claims[0]!.claim_id }];
+    }, "summary_forbids_unresolved_fact"],
+    ["key-fact exclusion", (dossier: ResearchDossier) => {
+      dossier.presentation.key_fact_claim_ids.push(dossier.claims[0]!.claim_id);
+    }, "presentation_key_fact_forbids_unresolved"],
+  ] as const)("rejects a conflict with a mismatched %s", (_label, mutate, expected) => {
+    const dossier = makeConflictDossier();
+    mutate(dossier);
+    expectRuntimeError(dossier, expected);
   });
 
   it("rejects an orphaned evidence reference", () => {

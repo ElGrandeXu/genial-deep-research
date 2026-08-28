@@ -106,6 +106,17 @@ try {
 if ($null -eq $manifest -or $manifest -is [array]) {
     Stop-VercelContextVerification 'manifest JSON root must be an object'
 }
+$portableRootProperties = @('framework', 'fileCount', 'totalSize', 'files')
+if ($manifestSource -eq 'recorded') {
+    $unexpectedRootProperties = @(
+        $manifest.PSObject.Properties.Name |
+            Where-Object { $portableRootProperties -notcontains $_ } |
+            Sort-Object
+    )
+    if ($unexpectedRootProperties.Count -gt 0) {
+        Stop-VercelContextVerification "recorded manifest contains non-portable properties: $($unexpectedRootProperties -join ', ')"
+    }
+}
 foreach ($property in @('framework', 'fileCount', 'totalSize', 'files')) {
     if ($manifest.PSObject.Properties.Name -notcontains $property) {
         Stop-VercelContextVerification "manifest property missing: $property"
@@ -135,14 +146,25 @@ foreach ($entry in $manifestEntries) {
     if ($null -eq $entry -or $entry.PSObject.Properties.Name -notcontains 'path' -or $entry.PSObject.Properties.Name -notcontains 'mode') {
         Stop-VercelContextVerification 'manifest file entry lacks path or mode'
     }
-    $relativePath = ([string]$entry.path).Replace('\', '/')
+    $rawPath = [string]$entry.path
+    if ($manifestSource -eq 'recorded' -and $rawPath.Contains('\', [StringComparison]::Ordinal)) {
+        Stop-VercelContextVerification "recorded manifest path must use forward slashes: $rawPath"
+    }
+    $relativePath = $rawPath.Replace('\', '/')
     while ($relativePath.StartsWith('./', [StringComparison]::Ordinal)) {
         $relativePath = $relativePath.Substring(2)
+    }
+    $pathSegments = $relativePath.Split('/')
+    if (
+        $manifestSource -eq 'recorded' -and
+        ($rawPath -cne $relativePath -or $pathSegments -contains '.' -or $pathSegments -contains '')
+    ) {
+        Stop-VercelContextVerification "recorded manifest path is not canonical: $rawPath"
     }
     if ([string]::IsNullOrWhiteSpace($relativePath) -or
         $relativePath.StartsWith('/', [StringComparison]::Ordinal) -or
         $relativePath -match '^[A-Za-z]:' -or
-        ($relativePath -split '/') -contains '..') {
+        $pathSegments -contains '..') {
         Stop-VercelContextVerification "invalid manifest path: $relativePath"
     }
     try {
@@ -150,7 +172,12 @@ foreach ($entry in $manifestEntries) {
     } catch {
         Stop-VercelContextVerification "invalid manifest mode: $relativePath"
     }
-    if (($mode -band 0xF000) -ne 0x8000) { continue }
+    if (($mode -band 0xF000) -ne 0x8000) {
+        if ($manifestSource -eq 'recorded') {
+            Stop-VercelContextVerification "recorded manifest contains non-regular entry: $relativePath"
+        }
+        continue
+    }
     if ($entry.PSObject.Properties.Name -notcontains 'size') {
         Stop-VercelContextVerification "regular file lacks size: $relativePath"
     }

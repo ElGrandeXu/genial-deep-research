@@ -1,4 +1,6 @@
-# Frontière runtime / dépôt candidat
+# Frontière runtime / dépôt candidat — preuve historique
+
+Le résultat ci-dessous était exact au moment de la promotion `8e91ed0c`. Il ne décrit pas la finition premium : le nouveau diff runtime et sa reconstruction exacte sont enregistrés plus bas après validation.
 
 Runtime Production promu : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
 
@@ -26,7 +28,7 @@ $runtime = '8e91ed0c66765d5cab3bb8a8364cea04eaeda2af'
 git diff --name-status $runtime -- src docs/contracts/research-dossier.schema.json package.json pnpm-lock.yaml pnpm-workspace.yaml next.config.ts tsconfig.json tools/run-next.mjs
 ```
 
-Résultat :
+Résultat historique :
 
 ```text
 RUNTIME_DIFF = EMPTY

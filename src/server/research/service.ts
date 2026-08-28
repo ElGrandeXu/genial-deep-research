@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import { validateResearchDossier } from "../../domain/contract-validator";
+import {
+  canonicalConflictText,
+  conflictPeriodKey,
+  conflictScopeKey,
+  conflictSourcePageKey,
+  type ConflictMetricObservation,
+} from "../../domain/conflict-comparison";
 import type { ResearchDossier } from "../../domain/research-dossier";
 import { validateRuntimeInvariants } from "../../domain/runtime-invariants";
 import { PRIMARY_RESEARCH_MODEL } from "../ai/providers";
@@ -21,7 +28,12 @@ import {
   publicFailureMessage,
 } from "./failure-receipt";
 import { bindProviderSource } from "./provider-metadata";
-import { classifyNumericClaims, parseMetricValue } from "./numeric-normalization";
+import {
+  classifyNumericClaims,
+  metricComparisonSignature,
+  parseMetricValue,
+  type NumericRelationship,
+} from "./numeric-normalization";
 import { evaluateFactAttribution } from "./scope-policy";
 import { serializeSourceLocator } from "./source-content";
 import { classifyTemporalStatus, deriveFactPeriod } from "./temporal-policy";
@@ -60,7 +72,6 @@ const FACT_CATEGORY_LABELS: Readonly<Record<FactCategory, string>> = {
   recent_signal: "signaux récents",
   other: "autres informations",
 };
-
 type DossierClaim = ResearchDossier["claims"][number];
 type DossierFactPeriod = DossierClaim["fact_period"];
 type DossierScope = DossierClaim["scope"];
@@ -221,6 +232,34 @@ function scopeFor(candidate: ProviderFactCandidate): DossierScope {
   return { type: candidate.scopeType, label: candidate.scopeLabel };
 }
 
+function metricDefinitionFor(
+  signature: ConflictMetricObservation,
+): string {
+  const known = signature.metric === "revenue" ? "Chiffre d’affaires" : "Effectif";
+  const nature = signature.valueNature === "estimated" ? "estimée" : "publiée";
+  const qualifier = signature.definition === "adjusted"
+    ? " ajusté"
+    : signature.definition === "organic"
+      ? " organique"
+      : signature.definition === "gross"
+        ? " brut"
+        : signature.definition === "net"
+          ? " net"
+          : signature.definition === "fte"
+            ? " ETP"
+            : signature.definition === "headcount_year_end"
+              ? " de fin d’année"
+              : signature.definition === "headcount_average"
+                ? " moyen"
+                : signature.definition === "fte_year_end"
+                  ? " ETP de fin d’année"
+                  : signature.definition === "fte_average"
+                    ? " ETP moyen"
+            : "";
+  const adjective = nature === "estimée" ? "estimé" : "publié";
+  return `${known}${qualifier} ${adjective}`;
+}
+
 function publicDiscriminators(
   values: Partial<ProviderIdentityCandidate["discriminators"]>,
 ): ResearchDossier["identity"]["candidates"][number]["discriminators"] {
@@ -352,7 +391,7 @@ function buildDossier(options: {
   }
 
   function ensureSource(subjectId: string, scope: DossierScope, proof: VerifiedSourceProof): string {
-    const key = `${subjectId}|${proof.finalUrl}`;
+    const key = `${subjectId}|${conflictScopeKey(scope)}|${proof.finalUrl}`;
     const existing = sourceBySubjectAndUrl.get(key);
     if (existing !== undefined) return existing;
     const sourceId = `source-${randomUUID()}`;
@@ -424,19 +463,88 @@ function buildDossier(options: {
   }
 
   const conflictGroups = new Map<string, DeduplicatedBusinessFact[]>();
+  const conflictUnitByFact = new Map<DeduplicatedBusinessFact, string | null>();
+  const conflictSignatureByFact = new Map<DeduplicatedBusinessFact, ConflictMetricObservation>();
+  const reconciliationByFact = new Map<DeduplicatedBusinessFact, NumericRelationship>();
+  const reconciliationRank: Readonly<Record<NumericRelationship, number>> = {
+    confirmation: 0,
+    explainable_difference: 1,
+    indetermination: 2,
+    contradiction: 3,
+  };
+  function recordReconciliation(
+    fact: DeduplicatedBusinessFact,
+    relationship: NumericRelationship,
+  ): void {
+    const previous = reconciliationByFact.get(fact) ?? "confirmation";
+    if (reconciliationRank[relationship] > reconciliationRank[previous]) {
+      reconciliationByFact.set(fact, relationship);
+    }
+  }
+  function hasIndependentConflictProofs(
+    left: DeduplicatedBusinessFact,
+    right: DeduplicatedBusinessFact,
+  ): boolean {
+    return left.proofs.some((leftProof) => {
+      const leftPage = conflictSourcePageKey(leftProof.finalUrl);
+      const leftDigest = leftProof.locator.normalizedTextSha256.toLowerCase();
+      if (leftPage === null || !/^[0-9a-f]{64}$/u.test(leftDigest)) return false;
+      return right.proofs.some((rightProof) => {
+        const rightPage = conflictSourcePageKey(rightProof.finalUrl);
+        const rightDigest = rightProof.locator.normalizedTextSha256.toLowerCase();
+        return rightPage !== null &&
+          /^[0-9a-f]{64}$/u.test(rightDigest) &&
+          leftPage !== rightPage &&
+          leftDigest !== rightDigest;
+      });
+    });
+  }
   if (resolved) {
+    const metrics = businessFacts.filter(({ candidate }) => candidate.category === "metric");
+    for (const [index, left] of metrics.entries()) {
+      for (const right of metrics.slice(index + 1)) {
+        const leftSignature = metricComparisonSignature(left.candidate);
+        const rightSignature = metricComparisonSignature(right.candidate);
+        const leftDefinition = canonicalConflictText(left.candidate.contradictionKey);
+        const rightDefinition = canonicalConflictText(right.candidate.contradictionKey);
+        const sameDerivedMetric = leftSignature !== null &&
+          rightSignature !== null &&
+          leftSignature.metric === rightSignature.metric;
+        const sameDeclaredMetric = canonicalConflictText(left.candidate.predicate) ===
+            canonicalConflictText(right.candidate.predicate) &&
+          leftDefinition.length > 0 &&
+          leftDefinition === rightDefinition;
+        if (
+          canonicalConflictText(left.candidate.subjectKey) !==
+            canonicalConflictText(right.candidate.subjectKey) ||
+          (!sameDerivedMetric && !sameDeclaredMetric)
+        ) {
+          continue;
+        }
+        const classifiedRelationship = classifyNumericClaims(left.candidate, right.candidate);
+        const relationship = classifiedRelationship === "contradiction" &&
+            !hasIndependentConflictProofs(left, right)
+          ? "indetermination"
+          : classifiedRelationship;
+        recordReconciliation(left, relationship);
+        recordReconciliation(right, relationship);
+      }
+    }
     for (const fact of businessFacts) {
       if (fact.candidate.category !== "metric") continue;
-      const normalizedField = (value: string | null): string =>
-        (value ?? "").normalize("NFKC").toLocaleLowerCase("fr").trim();
+      const signature = metricComparisonSignature(fact.candidate);
+      if (signature === null) continue;
       const key = [
-        normalizedField(fact.candidate.predicate),
-        fact.candidate.scopeType,
-        normalizedField(fact.candidate.scopeLabel),
-        normalizedField(fact.candidate.factDate ?? fact.candidate.factPeriodLabel),
-        normalizedField(fact.candidate.unit),
-        normalizedField(fact.candidate.currency),
-        normalizedField(fact.candidate.contradictionKey),
+        signature.metric,
+        signature.definition,
+        signature.semanticUnit,
+        signature.currency ?? "",
+        signature.scopeKind,
+        conflictScopeKey(scopeFor(fact.candidate)),
+        conflictPeriodKey(deriveFactPeriod(fact.candidate)),
+        signature.periodKey,
+        canonicalConflictText(fact.candidate.contradictionKey),
+        signature.valueNature,
       ].join("|");
       const group = conflictGroups.get(key) ?? [];
       group.push(fact);
@@ -444,16 +552,54 @@ function buildDossier(options: {
     }
     for (const [key, group] of conflictGroups) {
       const values = new Set(group.flatMap(({ candidate }) => {
-        const value = parseMetricValue(candidate.excerpt);
-        return value === null ? [] : [value];
+        const signature = metricComparisonSignature(candidate);
+        return signature === null ? [] : [signature.value];
       }));
-      const pages = new Set(group.flatMap(({ proofs }) => proofs.map(({ finalUrl }) => finalUrl)));
+      const pages = new Set(group.flatMap(({ proofs }) => proofs.flatMap(({ finalUrl }) => {
+        const page = conflictSourcePageKey(finalUrl);
+        return page === null ? [] : [page];
+      })));
+      const documentDigests = new Set(group.flatMap(({ proofs }) => proofs.flatMap(({ locator }) => {
+        const digest = locator.normalizedTextSha256.toLowerCase();
+        return /^[0-9a-f]{64}$/u.test(digest) ? [digest] : [];
+      })));
       const hasContradiction = group.some((left, index) =>
         group.slice(index + 1).some((right) =>
-          classifyNumericClaims(left.candidate, right.candidate) === "contradiction",
+          classifyNumericClaims(left.candidate, right.candidate) === "contradiction" &&
+          hasIndependentConflictProofs(left, right),
         ),
       );
-      if (values.size < 2 || pages.size < 2 || !hasContradiction) conflictGroups.delete(key);
+      if (
+        values.size < 2 ||
+        pages.size < 2 ||
+        documentDigests.size < 2 ||
+        !hasContradiction
+      ) {
+        conflictGroups.delete(key);
+        continue;
+      }
+      const signatures = group.flatMap(({ candidate }) => {
+        const signature = metricComparisonSignature(candidate);
+        return signature === null ? [] : [signature];
+      });
+      if (signatures.length !== group.length) {
+        conflictGroups.delete(key);
+        continue;
+      }
+      const firstSignature = signatures[0];
+      if (firstSignature === undefined) {
+        conflictGroups.delete(key);
+        continue;
+      }
+      const scales = new Set(signatures.map(({ scaleUnit }) => scaleUnit));
+      const displayUnit = firstSignature.semanticUnit === "employees"
+        ? firstSignature.definition.startsWith("fte_") ? "FTE" : "employees"
+        : scales.size === 1 ? firstSignature.scaleUnit : null;
+      group.forEach((fact, index) => {
+        conflictUnitByFact.set(fact, displayUnit);
+        const signature = signatures[index];
+        if (signature !== undefined) conflictSignatureByFact.set(fact, signature);
+      });
     }
   }
   const conflictingFacts = new Set([...conflictGroups.values()].flat());
@@ -469,6 +615,12 @@ function buildDossier(options: {
         observedAt: options.completedAt,
       });
       const contested = conflictingFacts.has(item);
+      const conflictSignature = contested ? conflictSignatureByFact.get(item) : undefined;
+      const claimUnit = contested ? conflictUnitByFact.get(item) ?? null : item.candidate.unit;
+      const reconciliationState = contested
+        ? "contradiction"
+        : reconciliationByFact.get(item) ?? "confirmation";
+      const indeterminate = reconciliationState === "indetermination";
       const evidenceIds = item.proofs.map((proof) => {
         const evidenceId = `evidence-${randomUUID()}`;
         const sourceId = ensureSource(resolvedSubjectId, scope, proof);
@@ -488,32 +640,38 @@ function buildDossier(options: {
         return evidenceId;
       });
       const normalizedValue = item.candidate.category === "metric"
-        ? parseMetricValue(item.candidate.excerpt)
+        ? conflictSignature?.value ?? parseMetricValue(item.candidate.excerpt)
         : item.candidate.normalizedValue;
       claims.push({
         claim_id: claimId,
         subject_id: resolvedSubjectId,
         statement: item.candidate.excerpt,
-        predicate: `${item.candidate.category}.${item.candidate.predicate}`,
+        predicate: conflictSignature === undefined
+          ? `${item.candidate.category}.${item.candidate.predicate}`
+          : `metric.${conflictSignature.metric}`,
         structured_value: normalizedValue === null
           ? null
           : {
               value: normalizedValue,
               value_type: typeof normalizedValue === "number" ? "number" : "text",
             },
-        unit: item.candidate.unit,
+        unit: claimUnit,
         fact_period: period,
         scope,
         temporal_status: temporalStatus,
         evidence_ids: evidenceIds,
-        claim_state: contested
+        claim_state: indeterminate
+          ? "rejected"
+          : contested
           ? "contested"
           : temporalStatus === "historical"
             ? "historical"
             : "supported",
-        reconciliation_state: contested ? "contradiction" : "confirmation",
-        presentation_decision: "display_fact",
-        presentation_reason: "Le texte affiché est l’extrait exact retrouvé dans la page source consultée.",
+        reconciliation_state: reconciliationState,
+        presentation_decision: indeterminate ? "reject" : "display_fact",
+        presentation_reason: indeterminate
+          ? "La valeur reste conservée dans le dossier mais n’est pas affichée comme un fait faute de dimensions de comparaison suffisantes."
+          : "Le texte affiché est l’extrait exact retrouvé dans la page source consultée.",
       });
       factRecordByFact.set(item, { claimId, evidenceIds, period, normalizedValue });
     }
@@ -571,22 +729,38 @@ function buildDossier(options: {
     for (const group of conflictGroups.values()) {
       const records = group.flatMap((fact) => {
         const record = factRecordByFact.get(fact);
-        return record === undefined || record.normalizedValue === null
+        const signature = conflictSignatureByFact.get(fact);
+        return record === undefined || record.normalizedValue === null || signature === undefined
           ? []
-          : [{ candidate: fact.candidate, ...record }];
+          : [{
+              candidate: fact.candidate,
+              signature,
+              conflictUnit: conflictUnitByFact.get(fact) ?? null,
+              ...record,
+            }];
       });
       if (records.length < 2) continue;
       const first = records[0];
       if (first === undefined) continue;
-      const versions = records.flatMap(({ candidate, claimId, evidenceIds, normalizedValue }) => {
+      const versions = records.flatMap(({
+        signature,
+        conflictUnit,
+        claimId,
+        evidenceIds,
+        normalizedValue,
+      }) => {
         const firstEvidenceId = evidenceIds[0];
-        if (firstEvidenceId === undefined || normalizedValue === null) return [];
+        if (
+          firstEvidenceId === undefined ||
+          typeof normalizedValue !== "number" ||
+          !Number.isFinite(normalizedValue)
+        ) return [];
         return [{
           claim_id: claimId,
           evidence_ids: [firstEvidenceId, ...evidenceIds.slice(1)] as [string, ...string[]],
           normalized_value: normalizedValue,
-          unit: candidate.unit,
-          currency: candidate.currency,
+          unit: conflictUnit,
+          currency: signature.currency,
         }];
       });
       const firstVersion = versions[0];
@@ -594,11 +768,11 @@ function buildDossier(options: {
       if (firstVersion === undefined || secondVersion === undefined) continue;
       contradictions.push({
         contradiction_id: `contradiction-${randomUUID()}`,
-        predicate: `${first.candidate.category}.${first.candidate.predicate}`,
+        predicate: `metric.${first.signature.metric}`,
         period: first.period,
         scope: scopeFor(first.candidate),
-        metric_definition: first.candidate.contradictionKey ?? first.candidate.predicate,
-        published_or_estimated_checked: false,
+        metric_definition: metricDefinitionFor(first.signature),
+        published_or_estimated_checked: true,
         classification: "contradiction",
         versions: [firstVersion, secondVersion, ...versions.slice(2)],
         explanation: "Les pages vérifiées donnent des valeurs incompatibles ; aucune version n’est choisie silencieusement.",
@@ -656,6 +830,16 @@ function buildDossier(options: {
       "Un fait métier doit être autonome, lié au sujet et contenir sa période, sa valeur et sa portée lorsqu’elles sont requises.",
     );
   }
+  const indeterminateMetricCount = [...reconciliationByFact.values()].filter(
+    (relationship) => relationship === "indetermination",
+  ).length;
+  if (indeterminateMetricCount > 0) {
+    addUnknown(
+      "not_verified",
+      `${indeterminateMetricCount} valeur(s) quantitative(s) restent non comparables sans arbitrage.`,
+      "La nature publiée ou estimée, la devise ou une autre dimension de comparaison n’est pas établie de façon suffisante.",
+    );
+  }
 
   const completeness = evaluateCompleteness({
     identityResolved: resolved,
@@ -665,7 +849,7 @@ function buildDossier(options: {
     })),
     visibleContradictionCount: contradictions.filter(({ visible }) => visible).length,
     subjectScopeViolationCount: 0,
-    criticalUnknownCount: 0,
+    criticalUnknownCount: indeterminateMetricCount,
   });
 
   let identityStatus: ResearchDossier["identity"]["status"];
@@ -706,28 +890,32 @@ function buildDossier(options: {
     ({ presentation_decision, predicate }) =>
       presentation_decision === "display_fact" && !predicate.startsWith("identity."),
   );
+  const reconciledBusinessClaims = visibleBusinessClaims.filter(
+    ({ claim_state, reconciliation_state }) =>
+      claim_state !== "contested" && reconciliation_state !== "indetermination",
+  );
   const ambiguityClaims = claims.filter(
     ({ presentation_decision }) => presentation_decision === "display_ambiguity",
   );
-  const recentClaimIds = visibleBusinessClaims.filter(({ predicate }) =>
+  const recentClaimIds = reconciledBusinessClaims.filter(({ predicate }) =>
     predicate.startsWith("recent_signal.") || predicate.startsWith("event."),
   ).map(({ claim_id }) => claim_id);
   const keyClaimIds = [
     ...(identityClaimId === null ? [] : [identityClaimId]),
-    ...visibleBusinessClaims.filter(
+    ...reconciledBusinessClaims.filter(
     ({ claim_id }) => !recentClaimIds.includes(claim_id),
     ).map(({ claim_id }) => claim_id),
   ];
   const summaryClaims: DossierClaim[] = [];
   const summaryCategories = new Set<string>();
-  for (const claim of visibleBusinessClaims) {
+  for (const claim of reconciledBusinessClaims) {
     const category = claim.predicate.split(".", 1)[0] ?? "other";
     if (summaryCategories.has(category)) continue;
     summaryClaims.push(claim);
     summaryCategories.add(category);
     if (summaryClaims.length === 3) break;
   }
-  for (const claim of visibleBusinessClaims) {
+  for (const claim of reconciledBusinessClaims) {
     if (summaryClaims.length === 3) break;
     if (!summaryClaims.includes(claim)) summaryClaims.push(claim);
   }

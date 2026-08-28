@@ -1,4 +1,6 @@
-# Validation Production finale
+# Validation Production historique — runtime `8e91ed0c`
+
+Cette preuve décrit la Production saine observée avant la finition premium. Elle est conservée pour la traçabilité et le rollback ; la validation du nouveau runtime est ajoutée dans la section « Production premium » après promotion.
 
 Date : 2026-08-28
 

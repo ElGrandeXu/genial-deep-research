@@ -84,10 +84,46 @@ try {
     $extraDocumentationPath = Join-Path $script:tempRoot 'extra-documentation.json'
     Write-Manifest -Manifest $extraDocumentationManifest -Path $extraDocumentationPath
     Assert-VercelManifestRejected -Path $extraDocumentationPath -ExpectedDiagnostic "VERCEL_CONTEXT_VERIFY_FAILED: unexpected paths: $documentationPath"
+
+    $absoluteBaseManifest = $referenceJson | ConvertFrom-Json -Depth 100
+    $syntheticAbsoluteBase = 'C:' + [IO.Path]::DirectorySeparatorChar + 'Users\candidate\project'
+    $absoluteBaseManifest | Add-Member -NotePropertyName basePath -NotePropertyValue $syntheticAbsoluteBase
+    $absoluteBasePath = Join-Path $script:tempRoot 'absolute-base.json'
+    Write-Manifest -Manifest $absoluteBaseManifest -Path $absoluteBasePath
+    Assert-VercelManifestRejected -Path $absoluteBasePath -ExpectedDiagnostic 'VERCEL_CONTEXT_VERIFY_FAILED: recorded manifest contains non-portable properties: basePath'
+
+    $directoryManifest = $referenceJson | ConvertFrom-Json -Depth 100
+    $directoryManifest.files = @($directoryManifest.files) + [pscustomobject]@{
+        path = 'src'
+        size = 0
+        mode = 16822
+    }
+    $directoryManifest.fileCount = @($directoryManifest.files).Count
+    $directoryPath = Join-Path $script:tempRoot 'directory-entry.json'
+    Write-Manifest -Manifest $directoryManifest -Path $directoryPath
+    Assert-VercelManifestRejected -Path $directoryPath -ExpectedDiagnostic 'VERCEL_CONTEXT_VERIFY_FAILED: recorded manifest contains non-regular entry: src'
+
+    $backslashManifest = $referenceJson | ConvertFrom-Json -Depth 100
+    $backslashManifest.files[0].path = ([string]$backslashManifest.files[0].path).Replace('/', '\')
+    $backslashPath = Join-Path $script:tempRoot 'backslash-path.json'
+    Write-Manifest -Manifest $backslashManifest -Path $backslashPath
+    Assert-VercelManifestRejected -Path $backslashPath -ExpectedDiagnostic 'VERCEL_CONTEXT_VERIFY_FAILED: recorded manifest path must use forward slashes'
+
+    $dotPrefixManifest = $referenceJson | ConvertFrom-Json -Depth 100
+    $dotPrefixManifest.files[0].path = './' + [string]$dotPrefixManifest.files[0].path
+    $dotPrefixPath = Join-Path $script:tempRoot 'dot-prefix-path.json'
+    Write-Manifest -Manifest $dotPrefixManifest -Path $dotPrefixPath
+    Assert-VercelManifestRejected -Path $dotPrefixPath -ExpectedDiagnostic 'VERCEL_CONTEXT_VERIFY_FAILED: recorded manifest path is not canonical'
+
+    $doubleSlashManifest = $referenceJson | ConvertFrom-Json -Depth 100
+    $doubleSlashManifest.files[0].path = ([string]$doubleSlashManifest.files[0].path).Replace('/', '//')
+    $doubleSlashPath = Join-Path $script:tempRoot 'double-slash-path.json'
+    Write-Manifest -Manifest $doubleSlashManifest -Path $doubleSlashPath
+    Assert-VercelManifestRejected -Path $doubleSlashPath -ExpectedDiagnostic 'VERCEL_CONTEXT_VERIFY_FAILED: recorded manifest path is not canonical'
 } finally {
     if (Test-Path -LiteralPath $script:tempRoot -PathType Container) {
         Remove-Item -LiteralPath $script:tempRoot -Recurse -Force
     }
 }
 
-Write-Output 'VERIFIER_NEGATIVE_PATHS_OK: injected_secret, invalid_fixture, fact_without_proof, missing_schema, extra_documentation'
+Write-Output 'VERIFIER_NEGATIVE_PATHS_OK: injected_secret, invalid_fixture, fact_without_proof, missing_schema, extra_documentation, absolute_base, directory_entry, backslash_path, dot_prefix, double_slash'

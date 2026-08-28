@@ -2,6 +2,20 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import {
+  canonicalConflictText,
+  conflictLocatorDocumentIdentity,
+  conflictMetricObservation,
+  conflictMetricPredicate,
+  conflictPeriodKey,
+  conflictPeriodSupportsKey,
+  conflictScopeKey,
+  conflictScopeMatchesExcerpt,
+  conflictSourcePageKey,
+  conflictUnitCurrencyKey,
+  conflictValueKey,
+  conflictVersionUnitMatchesExcerpt,
+} from "../domain/conflict-comparison";
 import { publisherDomainForUrl } from "../domain/publisher-domain";
 import type { ResearchDossier } from "../domain/research-dossier";
 
@@ -123,6 +137,13 @@ function isFactPeriod(value: unknown): boolean {
     isNullableString(value.as_of) &&
     isNullableString(value.label)
   );
+}
+
+function isContradictionClassification(value: unknown): boolean {
+  return value === "confirmation" ||
+    value === "explainable_difference" ||
+    value === "contradiction" ||
+    value === "indetermination";
 }
 
 function sourceAttribution(source: DossierSource): string {
@@ -255,10 +276,16 @@ function isDossier(value: unknown): value is ResearchDossier {
       (contradiction) =>
         isRecord(contradiction) &&
         typeof contradiction.contradiction_id === "string" &&
+        typeof contradiction.predicate === "string" &&
         typeof contradiction.metric_definition === "string" &&
         typeof contradiction.explanation === "string" &&
+        typeof contradiction.published_or_estimated_checked === "boolean" &&
+        isContradictionClassification(contradiction.classification) &&
         typeof contradiction.visible === "boolean" &&
         isFactPeriod(contradiction.period) &&
+        isRecord(contradiction.scope) &&
+        typeof contradiction.scope.type === "string" &&
+        isNullableString(contradiction.scope.label) &&
         Array.isArray(contradiction.versions) &&
         contradiction.versions.every(
           (version) =>
@@ -421,7 +448,7 @@ function readFiniteNumber(record: Readonly<Record<string, unknown>>, key: string
 }
 
 function sourceUrl(source: DossierSource): string | undefined {
-  const candidate = source.resolved_url ?? source.canonical_url ?? source.provider_url;
+  const candidate = source.canonical_url ?? source.resolved_url ?? source.provider_url;
   try {
     const url = new URL(candidate);
     return url.protocol === "https:" ? url.href : undefined;
@@ -466,6 +493,42 @@ const SCOPE_TYPE_LABELS: Readonly<Record<DossierClaim["scope"]["type"], string>>
 function formatScope(scope: DossierClaim["scope"]): string {
   const type = SCOPE_TYPE_LABELS[scope.type];
   return scope.label === null ? type : `${scope.label} — ${type}`;
+}
+
+function formatContradictionValue(
+  version: ResearchDossier["contradictions"][number]["versions"][number],
+): string {
+  const unit = version.unit?.trim() ?? "";
+  const currency = version.currency?.trim() ?? "";
+  if (typeof version.normalized_value === "number") {
+    const explicitScale = /^(?:k|thousand(?:s)?|millier(?:s)?)$/iu.test(unit)
+      ? { divisor: 1_000, label: "millier" }
+      : /^million(?:s)?$/iu.test(unit)
+        ? { divisor: 1_000_000, label: "million" }
+        : /^(?:milliard(?:s)?|billion(?:s)?|bn)$/iu.test(unit)
+          ? { divisor: 1_000_000_000, label: "milliard" }
+          : null;
+    const automaticScale = unit.length === 0 && currency.length > 0
+      ? Math.abs(version.normalized_value) >= 1_000_000_000
+        ? { divisor: 1_000_000_000, label: "milliard" }
+        : Math.abs(version.normalized_value) >= 1_000_000
+          ? { divisor: 1_000_000, label: "million" }
+          : null
+      : null;
+    const scale = explicitScale ?? automaticScale;
+    if (scale !== null) {
+      const scaled = version.normalized_value / scale.divisor;
+      const numeric = new Intl.NumberFormat("fr-FR", { maximumSignificantDigits: 21 }).format(scaled);
+      const plural = Math.abs(scaled) === 1 ? "" : "s";
+      return `${numeric} ${scale.label}${plural}${currency ? ` ${currency}` : ""}`;
+    }
+  }
+  const numeric = typeof version.normalized_value === "number"
+    ? new Intl.NumberFormat("fr-FR", { maximumSignificantDigits: 21 }).format(
+        version.normalized_value,
+      )
+    : version.normalized_value;
+  return [numeric, unit, currency].filter((item) => item.length > 0).join(" ");
 }
 
 function requiresVisibleScope(claim: DossierClaim): boolean {
@@ -530,6 +593,9 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
     (claim) => claim.presentation_decision === "display_fact",
   );
   const businessFacts = displayFacts.filter((claim) => !claim.predicate.startsWith("identity."));
+  const selectedCandidate = dossier.identity.candidates.find(
+    ({ subject_id }) => subject_id === dossier.identity.selected_subject_id,
+  );
 
   if (dossier.identity.status !== "resolved" && displayFacts.length > 0) {
     return "Des faits ont été attribués alors que l’identité n’est pas résolue.";
@@ -570,6 +636,26 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
       claim.predicate.startsWith("identity.")
     ) {
       return "La lecture rapide pointe vers un fait métier non vérifiable.";
+    }
+    if (
+      claim.claim_state === "contested" ||
+      claim.reconciliation_state === "indetermination"
+    ) {
+      return "Une version non réconciliée ne peut pas devenir un résumé implicite.";
+    }
+  }
+  for (const claimId of [
+    ...dossier.presentation.key_fact_claim_ids,
+    ...dossier.presentation.recent_signal_claim_ids,
+  ]) {
+    const claim = claimById.get(claimId);
+    if (
+      claim === undefined ||
+      claim.presentation_decision !== "display_fact" ||
+      claim.claim_state === "contested" ||
+      claim.reconciliation_state === "indetermination"
+    ) {
+      return "Une version non réconciliée est annoncée comme fait clé.";
     }
   }
 
@@ -622,11 +708,96 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
   }
 
   for (const contradiction of dossier.contradictions.filter((item) => item.visible)) {
+    if (
+      contradiction.classification !== "contradiction" ||
+      !contradiction.published_or_estimated_checked ||
+      !dossier.presentation.contradiction_ids.includes(contradiction.contradiction_id) ||
+      contradiction.versions.length < 2 ||
+      new Set(contradiction.versions.map(({ claim_id }) => claim_id)).size < 2 ||
+      contradiction.versions.some(({ normalized_value }) =>
+        typeof normalized_value !== "number" || !Number.isFinite(normalized_value)) ||
+      new Set(
+        contradiction.versions.map(({ normalized_value }) => conflictValueKey(normalized_value)),
+      ).size < 2 ||
+      new Set(
+        contradiction.versions.map(({ unit, currency }) =>
+          conflictUnitCurrencyKey(unit, currency)
+        ),
+      ).size !== 1
+    ) {
+      return "Un conflit affiché ne conserve pas deux versions comparables et contrôlées.";
+    }
+    const conflictSubjects = new Set<string>();
+    const conflictSourceIds = new Set<string>();
+    const conflictPages = new Set<string>();
+    const conflictDocumentDigests = new Set<string>();
+    const versionDocumentIdentities: Array<Set<string>> = [];
+    const conflictMetricSignatures = new Set<string>();
+    const conflictPeriods = new Set<string>();
+    const conflictValueNatures = new Set<string>();
     for (const version of contradiction.versions) {
       const claim = claimById.get(version.claim_id);
-      if (claim === undefined || version.evidence_ids.length === 0) {
+      const versionQualifyingPages = new Set<string>();
+      const versionQualifyingDocuments = new Set<string>();
+      if (
+        claim === undefined ||
+        claim.claim_state !== "contested" ||
+        claim.reconciliation_state !== "contradiction" ||
+        canonicalConflictText(claim.predicate) !== canonicalConflictText(contradiction.predicate) ||
+        canonicalConflictText(claim.unit) !== canonicalConflictText(version.unit) ||
+        claim.structured_value === null ||
+        conflictValueKey(claim.structured_value.value) !== conflictValueKey(version.normalized_value) ||
+        conflictPeriodKey(claim.fact_period) !== conflictPeriodKey(contradiction.period) ||
+        conflictScopeKey(claim.scope) !== conflictScopeKey(contradiction.scope) ||
+        version.evidence_ids.length === 0
+      ) {
         return "Une version contradictoire ne possède pas de preuve exploitable.";
       }
+      const metricSignature =
+        claim.scope.label !== null &&
+        selectedCandidate !== undefined &&
+        canonicalConflictText(claim.scope.label) === canonicalConflictText(selectedCandidate.display_name)
+          ? conflictMetricObservation(claim.statement, selectedCandidate.display_name)
+          : null;
+      const periodEvidence = metricSignature?.periodKey ?? null;
+      const valueNature = metricSignature?.valueNature ?? "unknown";
+      if (
+        metricSignature === null ||
+        conflictMetricPredicate(claim.predicate) !== metricSignature.metric ||
+        canonicalConflictText(version.currency) !== canonicalConflictText(metricSignature.currency) ||
+        !conflictVersionUnitMatchesExcerpt(version.unit, metricSignature) ||
+        !conflictScopeMatchesExcerpt(claim.scope, metricSignature) ||
+        !conflictScopeMatchesExcerpt(contradiction.scope, metricSignature)
+      ) {
+        return "La métrique, l’unité ou la devise d’un conflit n’est pas établie par son extrait.";
+      }
+      if (
+        periodEvidence === null ||
+        !conflictPeriodSupportsKey(contradiction.period, periodEvidence)
+      ) {
+        return "La période d’un conflit n’est pas établie par son extrait.";
+      }
+      if (valueNature === "unknown") {
+        return "La nature publiée ou estimée d’un conflit n’est pas établie par son extrait.";
+      }
+      if (
+        typeof version.normalized_value !== "number" ||
+        !Number.isFinite(version.normalized_value) ||
+        metricSignature === null ||
+        metricSignature.value !== version.normalized_value
+      ) {
+        return "La valeur normalisée d’un conflit ne correspond pas à son extrait.";
+      }
+      conflictMetricSignatures.add(JSON.stringify([
+        metricSignature.metric,
+        metricSignature.definition,
+        metricSignature.semanticUnit,
+        metricSignature.currency,
+        metricSignature.scopeKind,
+      ]));
+      conflictPeriods.add(periodEvidence);
+      conflictValueNatures.add(valueNature);
+      conflictSubjects.add(claim.subject_id);
       for (const evidenceId of version.evidence_ids) {
         const evidence = evidenceById.get(evidenceId);
         if (
@@ -636,8 +807,74 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
         ) {
           return "Une version contradictoire pointe vers une preuve mal attribuée.";
         }
+        if (
+          conflictPeriodKey(evidence.fact_period) !== conflictPeriodKey(contradiction.period) ||
+          conflictScopeKey(evidence.scope) !== conflictScopeKey(contradiction.scope)
+        ) {
+          return "Une version contradictoire mélange des périodes ou des périmètres différents.";
+        }
+        const source = sourceById.get(evidence.source_id);
+        const page = source === undefined ? undefined : sourceUrl(source);
+        if (source === undefined || page === undefined) {
+          return "Une version contradictoire ne mène pas vers une page source ouvrable.";
+        }
+        if (conflictScopeKey(source.assumed_scope) !== conflictScopeKey(contradiction.scope)) {
+          return "Une source contradictoire ne porte pas sur le périmètre affiché.";
+        }
+        if (
+          source.accessibility_status !== "accessible" ||
+          evidence.relation !== "supports" ||
+          evidence.verification_method !== "source_content" ||
+          evidence.entity_id !== claim.subject_id ||
+          source.assumed_entity_id !== claim.subject_id ||
+          normalizedProofText(evidence.excerpt) !== normalizedProofText(claim.statement)
+        ) {
+          return "Une version contradictoire ne possède pas de page source qualifiante.";
+        }
+        const pageKey = conflictSourcePageKey(page);
+        const locatorIdentity = conflictLocatorDocumentIdentity(evidence.locator);
+        if (
+          pageKey === null ||
+          locatorIdentity === null ||
+          locatorIdentity.pageKey !== pageKey
+        ) {
+          return "Une version contradictoire ne possède pas une identité de document vérifiable.";
+        }
+        conflictSourceIds.add(source.source_id);
+        conflictPages.add(pageKey);
+        conflictDocumentDigests.add(locatorIdentity.digest);
+        versionQualifyingPages.add(pageKey);
+        versionQualifyingDocuments.add(JSON.stringify([pageKey, locatorIdentity.digest]));
         evidenceIds.add(evidenceId);
       }
+      if (versionQualifyingPages.size === 0) {
+        return "Une version contradictoire ne possède pas de page source qualifiante.";
+      }
+      versionDocumentIdentities.push(versionQualifyingDocuments);
+    }
+    const hasIndependentVersionPair = versionDocumentIdentities.some((left, index) =>
+      versionDocumentIdentities.slice(index + 1).some((right) =>
+        [...left].some((leftIdentity) => {
+          const [leftPage, leftDigest] = JSON.parse(leftIdentity) as [string, string];
+          return [...right].some((rightIdentity) => {
+            const [rightPage, rightDigest] = JSON.parse(rightIdentity) as [string, string];
+            return leftPage !== rightPage && leftDigest !== rightDigest;
+          });
+        }),
+      ),
+    );
+    if (
+      conflictSubjects.size !== 1 ||
+      !conflictSubjects.has(dossier.identity.selected_subject_id ?? "") ||
+      conflictSourceIds.size < 2 ||
+      conflictPages.size < 2 ||
+      conflictDocumentDigests.size < 2 ||
+      !hasIndependentVersionPair ||
+      conflictMetricSignatures.size !== 1 ||
+      conflictPeriods.size !== 1 ||
+      conflictValueNatures.size !== 1
+    ) {
+      return "Un conflit affiché ne porte pas sur la même entité avec deux documents sources distincts.";
     }
   }
 
@@ -858,18 +1095,25 @@ function AmbiguityPanel({
   );
   const assignedClaimIds = new Set<string>();
   const hasCandidates = dossier.identity.candidates.length > 0;
+  const hasSingleCandidate = dossier.identity.candidates.length === 1;
 
   return (
     <section className="ambiguity-panel" aria-labelledby="ambiguity-title">
       <div className="section-intro">
         <p className="section-kicker">Identité non résolue</p>
         <h3 id="ambiguity-title">
-          {hasCandidates ? "Plusieurs candidats restent possibles" : "Le contexte ne suffit pas"}
+          {hasSingleCandidate
+            ? "Un candidat reste à confirmer"
+            : hasCandidates
+              ? "Plusieurs candidats restent possibles"
+              : "Le contexte ne suffit pas"}
         </h3>
         <p>
-          {hasCandidates
-            ? "Aucun candidat n’est retenu comme la bonne personne ou entreprise. Les éléments ci-dessous restent des hypothèses distinctes."
-            : "Aucune identité ne peut être retenue de façon sûre avec les indices fournis."}
+          {hasSingleCandidate
+            ? "Ce candidat est plausible, mais un indice distinctif manque encore pour lui attribuer un dossier confiant."
+            : hasCandidates
+              ? "Aucun candidat n’est retenu comme la bonne personne ou entreprise. Les éléments ci-dessous restent des hypothèses distinctes."
+              : "Aucune identité ne peut être retenue de façon sûre avec les indices fournis."}
         </p>
       </div>
 
@@ -893,7 +1137,9 @@ function AmbiguityPanel({
 
           return (
             <article className="candidate-card" key={candidate.subject_id}>
-              <p className="candidate-index">Candidat possible {index + 1}</p>
+              <p className="candidate-index">
+                {hasSingleCandidate ? "Candidat à confirmer" : `Candidat possible ${index + 1}`}
+              </p>
               <h4>{candidate.display_name}</h4>
               {discriminators.length > 0 ? (
                 <dl className="candidate-hints">
@@ -921,6 +1167,7 @@ function AmbiguityPanel({
                 <button
                   type="button"
                   className="candidate-action"
+                  aria-label={`Préremplir avec ${candidate.display_name}, candidat ${index + 1}`}
                   onClick={() => onClarify({
                     name: candidate.display_name,
                     entityType: candidate.entity_type,
@@ -973,40 +1220,55 @@ function Contradictions({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
         <p className="section-kicker">Désaccords entre sources</p>
         <h3 id="contradictions-title">Versions conservées sans choix silencieux</h3>
       </div>
-      {visible.map((contradiction) => (
-        <article className="contradiction-card" key={contradiction.contradiction_id}>
-          <div className="contradiction-heading">
-            <h4>{contradiction.metric_definition}</h4>
-            <span>{formatPeriod(contradiction.period)}</span>
-          </div>
-          <div className="version-grid">
-            {contradiction.versions.map((version, index) => {
-              const claim = claimById.get(version.claim_id);
-              if (claim === undefined) return null;
-              return (
-                <section className="version-card" key={`${version.claim_id}-${index}`}>
-                  <p className="version-label">Version {index + 1}</p>
-                  <p className="version-value">
-                    {String(version.normalized_value)}
-                    {version.unit === null ? "" : ` ${version.unit}`}
-                    {version.currency === null ? "" : ` ${version.currency}`}
-                  </p>
-                  <p className="version-statement">{claim.statement}</p>
-                  <EvidenceList
-                    dossier={dossier}
-                    evidenceIds={version.evidence_ids}
-                    statement={claim.statement}
-                  />
-                </section>
-              );
-            })}
-          </div>
-          <div className="arbitration-note">
-            <strong>Arbitrage</strong>
-            <p>{contradiction.explanation}</p>
-          </div>
-        </article>
-      ))}
+      {visible.map((contradiction, contradictionIndex) => {
+        const titleId = `contradiction-title-${contradictionIndex}`;
+        return (
+          <article
+            className="contradiction-card"
+            key={contradiction.contradiction_id}
+            aria-labelledby={titleId}
+          >
+            <div className="contradiction-heading">
+              <div>
+                <p className="conflict-state">Conflit confirmé</p>
+                <h4 id={titleId}>{contradiction.metric_definition}</h4>
+              </div>
+              <dl className="conflict-dimensions" aria-label="Dimensions comparées">
+                <div><dt>Période</dt><dd>{formatPeriod(contradiction.period)}</dd></div>
+                <div><dt>Périmètre</dt><dd>{formatScope(contradiction.scope)}</dd></div>
+              </dl>
+            </div>
+            <div className="version-grid">
+              {contradiction.versions.map((version, index) => {
+                const claim = claimById.get(version.claim_id);
+                if (claim === undefined) return null;
+                return (
+                  <section
+                    className="version-card"
+                    key={`${version.claim_id}-${index}`}
+                    aria-labelledby={`${titleId}-version-${index}`}
+                  >
+                    <p className="version-label">Version {index + 1}</p>
+                    <h5 className="version-value" id={`${titleId}-version-${index}`}>
+                      {formatContradictionValue(version)}
+                    </h5>
+                    <p className="version-statement">{claim.statement}</p>
+                    <EvidenceList
+                      dossier={dossier}
+                      evidenceIds={version.evidence_ids}
+                      statement={claim.statement}
+                    />
+                  </section>
+                );
+              })}
+            </div>
+            <div className="arbitration-note">
+              <strong>Décision de sécurité</strong>
+              <p>{contradiction.explanation}</p>
+            </div>
+          </article>
+        );
+      })}
     </section>
   );
 }
@@ -1114,8 +1376,10 @@ function DossierResult({
   const displayFacts = dossier.claims.filter(
     (claim) =>
       claim.presentation_decision === "display_fact" &&
+      claim.claim_state !== "contested" &&
       !claim.predicate.startsWith("identity."),
   );
+  const visibleConflictCount = dossier.contradictions.filter(({ visible }) => visible).length;
   const groupedFacts = new Map<string, DossierClaim[]>();
   for (const category of CATEGORY_ORDER) groupedFacts.set(category, []);
   for (const claim of displayFacts) groupedFacts.get(categoryForClaim(claim))?.push(claim);
@@ -1178,6 +1442,23 @@ function DossierResult({
           <p className="section-kicker">Résultat pour {dossier.request.name}</p>
           <h2 id="result-title">{statusTitle}</h2>
           <p>{statusDescription}</p>
+          {issue === undefined ? (
+            <ul className="result-overview" aria-label="Vue d’ensemble du dossier">
+              <li>{dossier.identity.status === "resolved" ? "Identité résolue" : "Identité non résolue"}</li>
+              <li>
+                {displayFacts.length}{" "}
+                {visibleConflictCount > 0
+                  ? displayFacts.length === 1
+                    ? "fait non contesté"
+                    : "faits non contestés"
+                  : displayFacts.length === 1
+                    ? "fait étayé"
+                    : "faits étayés"}
+              </li>
+              <li>{dossier.sources.length} {dossier.sources.length === 1 ? "page source" : "pages sources"}</li>
+              <li>{visibleConflictCount} {visibleConflictCount === 1 ? "conflit ouvert" : "conflits ouverts"}</li>
+            </ul>
+          ) : null}
         </div>
         <span className={`result-status status-${statusTone}`}>{statusLabel}</span>
       </header>
@@ -1212,6 +1493,8 @@ function DossierResult({
             <IdentityPanel dossier={dossier} />
           ) : null}
 
+          {!isTechnical ? <Contradictions dossier={dossier} /> : null}
+
           {!isAmbiguous && !isTechnical ? <QuickRead dossier={dossier} /> : null}
 
           {!isAmbiguous && !isTechnical && displayFacts.length > 0 ? (
@@ -1237,7 +1520,6 @@ function DossierResult({
             </section>
           ) : null}
 
-          {!isTechnical ? <Contradictions dossier={dossier} /> : null}
           <UnknownsAndLimits dossier={dossier} />
         </>
       )}
@@ -1277,20 +1559,25 @@ export function ResearchForm() {
   useEffect(() => () => controllerRef.current?.abort(), []);
 
   useEffect(() => {
-    if (status === "completed") resultRef.current?.focus();
-    else if (status === "failed" || status === "cancelled") errorRef.current?.focus();
+    if (status === "completed") {
+      resultRef.current?.focus({ preventScroll: true });
+      resultRef.current?.scrollIntoView({ block: "start" });
+    } else if (status === "failed" || status === "cancelled") {
+      errorRef.current?.focus({ preventScroll: true });
+      errorRef.current?.scrollIntoView({ block: "center" });
+    }
   }, [status]);
 
   const latestEvent = events.at(-1);
   const currentStep =
-    latestEvent !== undefined
-      ? STEP_LABELS[latestEvent.state]
-      : status === "running"
-        ? "Connexion au service de recherche"
-        : status === "cancelled"
-          ? "Recherche annulée"
-          : status === "failed"
-            ? "Recherche interrompue"
+    status === "cancelled"
+      ? "Recherche annulée"
+      : status === "failed"
+        ? "Recherche interrompue"
+        : latestEvent !== undefined
+          ? STEP_LABELS[latestEvent.state]
+          : status === "running"
+            ? "Connexion au service de recherche"
             : "Prêt à rechercher";
 
   function handleEvent(event: ResearchEvent) {
@@ -1436,7 +1723,8 @@ export function ResearchForm() {
       `Formulaire prérempli pour ${selection.name}. Vérifiez le contexte puis relancez manuellement la recherche.`,
     );
     window.requestAnimationFrame(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      formRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
       nameInputRef.current?.focus();
     });
   }
@@ -1448,14 +1736,13 @@ export function ResearchForm() {
 
   return (
     <section className="workspace" aria-labelledby="research-title">
-      <div className="search-column">
-        <form
-          ref={formRef}
-          onSubmit={submit}
-          className="search-form"
-          aria-busy={status === "running"}
-          noValidate
-        >
+      <form
+        ref={formRef}
+        onSubmit={submit}
+        className="search-form"
+        aria-busy={status === "running"}
+        noValidate
+      >
           <div className="section-heading">
             <p className="section-kicker">Nouvelle recherche</p>
             <h2 id="research-title">Qui voulez-vous examiner&nbsp;?</h2>
@@ -1528,17 +1815,7 @@ export function ResearchForm() {
               <button type="button" className="secondary" onClick={cancel}>Annuler</button>
             ) : null}
           </div>
-        </form>
-
-        <section className="method-note" aria-labelledby="method-title">
-          <p className="section-kicker">Règle d’affichage</p>
-          <h3 id="method-title">La preuve reste à côté du fait.</h3>
-          <p>
-            Si l’identité, la source ou la fraîcheur ne peuvent pas être établies,
-            le dossier le dit au lieu de compléter les blancs.
-          </p>
-        </section>
-      </div>
+      </form>
 
       <section className={`live-panel live-panel-${status}`} aria-live="polite">
         <div className="live-heading">
@@ -1582,8 +1859,23 @@ export function ResearchForm() {
         ) : null}
       </section>
 
+      <section className="method-note" aria-labelledby="method-title">
+        <p className="section-kicker">Règle d’affichage</p>
+        <h3 id="method-title">La preuve reste à côté du fait.</h3>
+        <p>
+          Si l’identité, la source ou la fraîcheur ne peuvent pas être établies,
+          le dossier le dit au lieu de compléter les blancs.
+        </p>
+      </section>
+
       {completed !== undefined ? (
-        <div className="result-focus" ref={resultRef} tabIndex={-1}>
+        <div
+          className="result-focus"
+          ref={resultRef}
+          tabIndex={-1}
+          role="region"
+          aria-labelledby="result-title"
+        >
           <DossierResult completed={completed} onClarify={prepareClarification} />
         </div>
       ) : null}
