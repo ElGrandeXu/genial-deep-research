@@ -87,6 +87,8 @@ Le bench live historique a exécuté une seule fois, dans l’ordre préenregist
 
 Les cinq exécutions finales préenregistrées ont coûté 0,1205530 USD au total. Cette somme dépasse de 0,0005530 USD l’enveloppe interne stricte de validation fixée à 0,12 USD. Tous les coûts individuels restent inférieurs à 0,10 USD. Les appels ont été arrêtés immédiatement après le cinquième reçu et aucun résultat n’a été sélectionné a posteriori.
 
+Un [smoke Production post-release](docs/evidence/final-2026-08-28/POST_RELEASE_LIVE_SMOKE.md) distinct a été exécuté sur `f53b7aed` : terminal serveur `completed`, coût `0,0142808 USD`, mais verdict `FAIL` faute de preuve conservée du SSE et du rendu final. Il ne valide donc pas la chaîne technique end-to-end, ne remplace pas le benchmark historique et n’en modifie ni les résultats ni le coût.
+
 Cette enveloppe cumulée était un contrôle interne, pas une exigence du brief. Aucun reçu, coût ou résultat brut n’a été modifié. Certains cas supplémentaires n’ont pas été lancés : CONFLIT, MARQUE et PÉREMPTION ne sont pas revendiqués dans ce bench live historique.
 
 Le cas CONFLIT est démontré séparément de manière déterministe, sans appel fournisseur et sans coût : deux chiffres d’affaires synthétiques en EUR, pour la même société, la même métrique, la même période et le même périmètre, restent liés à deux documents distincts par leur chemin et leur empreinte de contenu. Les deux versions sont visibles sur [desktop et mobile](docs/evidence/final-2026-08-28/CONFLICT_DETERMINISTIC.md). Aucun candidat live suffisamment stable n’a justifié un appel supplémentaire après le dépassement du budget préenregistré ; aucune validation live dédiée n’est revendiquée.

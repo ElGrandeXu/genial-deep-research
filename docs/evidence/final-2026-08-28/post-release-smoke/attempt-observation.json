@@ -1,0 +1,47 @@
+{
+  "evidence_version": "1.0.0",
+  "observed_at": "2026-08-28T16:07:01.104Z",
+  "production_url": "https://genial-deep-research.vercel.app",
+  "deployment_id": "dpl_4AaBdE1cQhuocuGnaiDDAaYKqJpz",
+  "runtime_commit": "f53b7aed0d25e45aed26dfe96a0ed8c271365218",
+  "preview_source_deployment_id": "dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "input": {
+    "name": "GENIAL",
+    "entityType": "company",
+    "context": "Agence IA générative, Bordeaux, site officiel wearegenial.com"
+  },
+  "semantic_attempts": 1,
+  "production_research_posts": 1,
+  "provider_http_calls": 1,
+  "http": {
+    "method": "POST",
+    "path": "/api/research",
+    "status": 200
+  },
+  "server_terminal": "completed",
+  "server_stage_durations_ms": {
+    "accepted": 4,
+    "researching_and_resolving": 15228,
+    "source_verifying": 719,
+    "building": 13,
+    "validating": 18,
+    "total": 15980
+  },
+  "source_count": 1,
+  "estimated_cost_usd": 0.0142808,
+  "browser_capture": {
+    "sse_body_preserved": false,
+    "terminal_dossier_preserved": false,
+    "final_ui_screenshot_preserved": false,
+    "console_and_request_diagnostics_complete": false,
+    "error": "Playwright could not retrieve the completed streamed response body after the request; the evidence runner stopped without resubmission."
+  },
+  "retry": {
+    "performed": false,
+    "reason": "A provider call and non-zero usage were proven; retry was forbidden."
+  }
+}

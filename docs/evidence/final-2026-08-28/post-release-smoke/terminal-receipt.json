@@ -1,0 +1,31 @@
+{
+  "event": "research_receipt",
+  "executionId": "254c8822-1145-45cc-9f51-aece2dbcda89",
+  "provider": "OpenAI",
+  "model": "gpt-5.6-luna",
+  "purpose": "verified_public_dossier",
+  "providerHttpCalls": 1,
+  "toolCalls": 1,
+  "webSearchQueryCount": 1,
+  "webSearchInspectionCount": 0,
+  "usage": {
+    "inputTokens": 14318,
+    "cachedInputTokens": 0,
+    "outputTokens": 1181,
+    "reasoningTokens": 331,
+    "totalTokens": 15499
+  },
+  "sourceCount": 1,
+  "sourceFetchCount": 5,
+  "durations": {
+    "acceptedMs": 4,
+    "searchingMs": 15228,
+    "sourceVerifyingMs": 719,
+    "buildingMs": 13,
+    "validatingMs": 18,
+    "totalMs": 15980
+  },
+  "timedOutOrCancelled": false,
+  "finalStatus": "completed",
+  "estimatedCostUsd": 0.0142808
+}
