@@ -19,8 +19,8 @@ import {
 import { evaluateCompleteness } from "./completeness";
 import { ResearchPipelineError } from "./errors";
 import {
+  assembleVerifiedIdentityCandidates,
   resolveIdentity,
-  type VerifiedIdentityCandidate,
 } from "./identity-resolution";
 import {
   buildFailureReceipt,
@@ -283,11 +283,18 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
   readonly result: ProviderResearchResult;
   readonly sourceVerifier: SourceVerifier;
   readonly signal: AbortSignal;
+  readonly attributedDisplayNames?: (candidate: T) => readonly string[] | undefined;
 }): Promise<VerificationBatch<T>> {
   const settled = await Promise.allSettled(
     options.candidates.map(async (candidate) => {
       const citation = bindProviderSource(options.result, candidate);
-      const proof = await options.sourceVerifier.verify({ candidate, citation, signal: options.signal });
+      const attributedDisplayNames = options.attributedDisplayNames?.(candidate);
+      const proof = await options.sourceVerifier.verify({
+        candidate,
+        ...(attributedDisplayNames === undefined ? {} : { attributedDisplayNames }),
+        citation,
+        signal: options.signal,
+      });
       return { candidate, proof };
     }),
   );
@@ -328,22 +335,32 @@ function buildDossier(options: {
   readonly estimatedCostUsd: number;
 }): ResearchDossier {
   const requestedType = options.input.entityType ?? "auto";
+  const verifiedIdentityCandidates = assembleVerifiedIdentityCandidates({
+    candidates: options.result.document.candidates,
+    verifiedCandidates: options.verifiedIdentityCandidates,
+    verifiedFacts: options.verifiedFacts,
+  });
   const identityDecision = resolveIdentity({
     input: options.input,
     providerStatus: options.result.document.identityStatus,
-    candidates: options.verifiedIdentityCandidates as readonly VerifiedIdentityCandidate[],
+    candidates: verifiedIdentityCandidates,
   });
   const selected = identityDecision.selected;
+  const identitySupportingFacts = selected?.proofBasis === "verified_facts"
+    ? new Set(selected.corroboratingFacts ?? [])
+    : null;
   const attributionDecisions = selected === null
     ? []
     : options.verifiedFacts.map((fact) => ({
         fact,
-        decision: evaluateFactAttribution({
-          selected,
-          fact,
-          requestedName: options.input.name,
-          verifiedOfficialSite: identityDecision.verifiedDiscriminators.officialSite,
-        }),
+        decision: identitySupportingFacts !== null && !identitySupportingFacts.has(fact)
+          ? { accepted: false as const, reasonCode: "identity_evidence_mismatch" as const }
+          : evaluateFactAttribution({
+              selected,
+              fact,
+              requestedName: options.input.name,
+              verifiedOfficialSite: identityDecision.verifiedDiscriminators.officialSite,
+            }),
       }));
   const eligibleFacts = attributionDecisions.flatMap(({ fact, decision }) =>
     decision.accepted ? [fact] : [],
@@ -417,13 +434,12 @@ function buildDossier(options: {
 
   let identityClaimId: string | null = null;
   if (resolved && selected !== null) {
-    identityClaimId = `claim-${randomUUID()}`;
-    const identityEvidenceId = `evidence-${randomUUID()}`;
+    const resolvedIdentityClaimId = `claim-${randomUUID()}`;
+    identityClaimId = resolvedIdentityClaimId;
     const identityScope: DossierScope = {
       type: selected.candidate.entityScope,
       label: selected.candidate.displayName,
     };
-    const identitySourceId = ensureSource(resolvedSubjectId, identityScope, selected.proof);
     const unknownPeriod: DossierFactPeriod = {
       status: "unknown",
       start: null,
@@ -431,21 +447,27 @@ function buildDossier(options: {
       as_of: null,
       label: null,
     };
-    evidence.push({
-      evidence_id: identityEvidenceId,
-      source_id: identitySourceId,
-      claim_id: identityClaimId,
-      excerpt: selected.proof.verifiedExcerpt,
-      locator: serializeSourceLocator(selected.proof.locator),
-      entity_id: resolvedSubjectId,
-      fact_period: unknownPeriod,
-      scope: identityScope,
-      relation: "supports",
-      verification_method: "source_content",
-      verified_at: selected.proof.locator.retrievedAt,
+    const identityProofs = [selected.proof, ...(selected.corroboratingProofs ?? [])];
+    const identityEvidenceIds = identityProofs.map((proof, proofIndex) => {
+      const evidenceId = `evidence-${randomUUID()}`;
+      const sourceId = ensureSource(resolvedSubjectId, identityScope, proof);
+      evidence.push({
+        evidence_id: evidenceId,
+        source_id: sourceId,
+        claim_id: resolvedIdentityClaimId,
+        excerpt: proof.verifiedExcerpt,
+        locator: serializeSourceLocator(proof.locator),
+        entity_id: resolvedSubjectId,
+        fact_period: unknownPeriod,
+        scope: identityScope,
+        relation: proofIndex === 0 ? "supports" : "context_only",
+        verification_method: "source_content",
+        verified_at: proof.locator.retrievedAt,
+      });
+      return evidenceId;
     });
     claims.push({
-      claim_id: identityClaimId,
+      claim_id: resolvedIdentityClaimId,
       subject_id: resolvedSubjectId,
       statement: selected.proof.verifiedExcerpt,
       predicate: "identity.proof",
@@ -454,11 +476,11 @@ function buildDossier(options: {
       fact_period: unknownPeriod,
       scope: identityScope,
       temporal_status: "unknown",
-      evidence_ids: [identityEvidenceId],
+      evidence_ids: identityEvidenceIds,
       claim_state: "supported",
       reconciliation_state: "confirmation",
       presentation_decision: "display_fact",
-      presentation_reason: "Preuve d’identité séparée des faits métier ; l’extrait exact retrouvé est conservé.",
+      presentation_reason: "Preuve d’identité séparée des faits métier ; l’extrait exact retrouvé est conservé et les corroborations utilisées restent traçables.",
     });
   }
 
@@ -645,7 +667,7 @@ function buildDossier(options: {
       claims.push({
         claim_id: claimId,
         subject_id: resolvedSubjectId,
-        statement: item.candidate.excerpt,
+        statement: item.proofs[0]?.verifiedExcerpt ?? item.candidate.excerpt,
         predicate: conflictSignature === undefined
           ? `${item.candidate.category}.${item.candidate.predicate}`
           : `metric.${conflictSignature.metric}`,
@@ -813,7 +835,7 @@ function buildDossier(options: {
     addUnknown(
       "source_inaccessible",
       `${options.rejectedProofCount} preuve(s) proposée(s) ont été écartées avant affichage.`,
-      "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+      "URL non reliée, page inaccessible, format refusé ou extrait source vérifiable introuvable.",
     );
   }
   if (attributionRejectedCount > 0) {
@@ -1244,6 +1266,25 @@ export async function executeResearch(options: {
       0,
       Math.round(verificationStart - totalStart),
     );
+    const providerCandidates = result.document.candidates;
+    const displayNamesByCandidateKey = new Map(
+      providerCandidates.map((candidate) => [
+        candidate.candidateKey,
+        providerCandidates.filter(
+          (other) => other.candidateKey === candidate.candidateKey,
+        ).length === 1
+          ? [...new Set([
+              candidate.displayName,
+              ...(candidate.entityType === "company"
+                ? [candidate.displayName.replace(
+                    /\s+(?:AG|Corp(?:oration)?|GmbH|Group|Groupe|Inc|LLC|Ltd|PLC|SA|SAS|SASU|SE)\.?$/iu,
+                    "",
+                  ).trim()]
+                : []),
+            ].filter((label) => label.length > 0))]
+          : undefined,
+      ] as const),
+    );
     const [candidateBatch, factBatch] = await Promise.all([
       verifyBatch({
         candidates: result.document.candidates,
@@ -1256,6 +1297,8 @@ export async function executeResearch(options: {
         result,
         sourceVerifier: options.sourceVerifier,
         signal: options.signal,
+        attributedDisplayNames: (fact) =>
+          displayNamesByCandidateKey.get(fact.subjectKey) ?? [],
       }),
     ]);
     sourceVerifyingMs = Math.max(

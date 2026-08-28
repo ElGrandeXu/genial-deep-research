@@ -183,7 +183,7 @@ export interface ProviderResearchDocument {
 
 export interface SourceLocator {
   readonly exact: string;
-  readonly matchMode?: "exact" | "typographic_equivalence";
+  readonly matchMode?: "exact" | "mechanical_equivalence";
   readonly prefix: string;
   readonly suffix: string;
   readonly occurrenceIndex: number;
@@ -213,6 +213,7 @@ export interface SourceVerifier {
   verify(
     request: {
       readonly candidate: ProviderClaimCandidate;
+      readonly attributedDisplayNames?: readonly string[];
       readonly citation: ProviderSourceBinding;
       readonly signal: AbortSignal;
     },

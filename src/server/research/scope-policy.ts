@@ -1,4 +1,7 @@
-import { normalizeVisibleText } from "./source-content";
+import {
+  containsEntityNameInText,
+  normalizeVisibleText,
+} from "./source-content";
 import type { VerifiedIdentityCandidate } from "./identity-resolution";
 import type {
   EntityScope,
@@ -12,7 +15,8 @@ export type FactAttributionRejectionCode =
   | "scope_incompatible"
   | "scope_label_required"
   | "scope_label_mismatch"
-  | "page_identity_anchor_missing";
+  | "page_identity_anchor_missing"
+  | "identity_evidence_mismatch";
 
 export type FactAttributionDecision =
   | { readonly accepted: true; readonly anchor: "official_domain" | "excerpt" | "title" | "page" }
@@ -20,11 +24,6 @@ export type FactAttributionDecision =
 
 function normalized(value: string): string {
   return normalizeVisibleText(value).toLocaleLowerCase("fr");
-}
-
-function contains(haystack: string, needle: string): boolean {
-  const normalizedNeedle = normalized(needle);
-  return normalizedNeedle.length > 0 && normalized(haystack).includes(normalizedNeedle);
 }
 
 function normalizeDomain(value: string): string | null {
@@ -84,9 +83,11 @@ function pageAnchor(
     sameDomain(officialDomain, factDomain)
   ) return "official_domain";
   const labels = identityLabels(selected.candidate.displayName, requestedName);
-  if (labels.some((label) => contains(proof.verifiedExcerpt, label))) return "excerpt";
-  if (labels.some((label) => contains(proof.title, label))) return "title";
-  if (labels.some((label) => contains(proof.documentText, label))) return "page";
+  const containsSelectedName = (value: string, label: string): boolean =>
+    containsEntityNameInText(value, label, selected.candidate.entityType);
+  if (labels.some((label) => containsSelectedName(proof.verifiedExcerpt, label))) return "excerpt";
+  if (labels.some((label) => containsSelectedName(proof.title, label))) return "title";
+  if (labels.some((label) => containsSelectedName(proof.documentText, label))) return "page";
   return null;
 }
 

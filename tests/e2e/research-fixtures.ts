@@ -44,10 +44,14 @@ function source(
   };
 }
 
-function locator(url: string, excerpt: string): string {
+function locator(
+  url: string,
+  excerpt: string,
+  matchMode: "exact" | "mechanical_equivalence" | null = "exact",
+): string {
   return JSON.stringify({
     exact: excerpt,
-    matchMode: "exact",
+    ...(matchMode === null ? {} : { matchMode }),
     prefix: "",
     suffix: "",
     occurrenceIndex: 0,
@@ -126,7 +130,7 @@ export function completeDossier(): ResearchDossier {
       fact_period: period(),
       scope: scope(),
       temporal_status: "unknown",
-      evidence_ids: ["evidence-identity"],
+      evidence_ids: ["evidence-identity", "evidence-identity-context"],
       claim_state: "supported",
       reconciliation_state: "confirmation",
       presentation_decision: "display_fact",
@@ -182,11 +186,12 @@ export function completeDossier(): ResearchDossier {
     },
   ];
   const evidence: ResearchDossier["evidence"] = [
-    ["evidence-identity", "source-official", "claim-identity", identityText, period()],
-    ["evidence-activity", "source-official", "claim-activity", activityText, period()],
-    ["evidence-geography", "source-registry", "claim-geography", geographyText, period()],
-    ["evidence-event", "source-news", "claim-event", eventText, period("20 août 2026", "2026-08-20T00:00:00.000Z")],
-  ].map(([evidenceId, sourceId, claimId, excerpt, factPeriod]) => {
+    ["evidence-identity", "source-official", "claim-identity", identityText, period(), "supports"],
+    ["evidence-identity-context", "source-registry", "claim-identity", geographyText, period(), "context_only"],
+    ["evidence-activity", "source-official", "claim-activity", activityText, period(), "supports"],
+    ["evidence-geography", "source-registry", "claim-geography", geographyText, period(), "supports"],
+    ["evidence-event", "source-news", "claim-event", eventText, period("20 août 2026", "2026-08-20T00:00:00.000Z"), "supports"],
+  ].map(([evidenceId, sourceId, claimId, excerpt, factPeriod, relation]) => {
     const linkedSource = sources.find((item) => item.source_id === sourceId);
     if (linkedSource === undefined) throw new Error("Synthetic source missing.");
     return {
@@ -194,11 +199,19 @@ export function completeDossier(): ResearchDossier {
       source_id: String(sourceId),
       claim_id: String(claimId),
       excerpt: String(excerpt),
-      locator: locator(linkedSource.provider_url, String(excerpt)),
+      locator: locator(
+        linkedSource.provider_url,
+        String(excerpt),
+        claimId === "claim-activity"
+          ? "mechanical_equivalence"
+          : claimId === "claim-geography"
+            ? null
+            : "exact",
+      ),
       entity_id: subjectId,
       fact_period: factPeriod as ResearchDossier["evidence"][number]["fact_period"],
       scope: scope(),
-      relation: "supports" as const,
+      relation: relation as ResearchDossier["evidence"][number]["relation"],
       verification_method: "source_content" as const,
       verified_at: startedAt,
     };

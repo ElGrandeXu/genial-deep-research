@@ -171,6 +171,42 @@ describe("fact subject and scope policy", () => {
     })).toEqual({ accepted: false, reasonCode: "page_identity_anchor_missing" });
   });
 
+  it.each(["Joann Lee", "Jo Ann Lee", "jo Ann Lee", "Jo-Ann Lee", "jo-Ann Lee"])(
+    "does not use the longer person name %s as the requested-name page anchor",
+    (longerName) => {
+    const annIdentity = {
+      ...identity,
+      candidateKey: "ann-lee",
+      displayName: "Ann Lee",
+      entityType: "person" as const,
+      entityScope: "person" as const,
+      excerpt: "Ann Lee dirige Atelier Nord.",
+      statement: "Ann Lee dirige Atelier Nord.",
+    };
+    const joannFact = fact({
+      subjectKey: "ann-lee",
+      entityType: "person",
+      scopeType: "person",
+      scopeLabel: "Ann Lee",
+      category: "activity",
+      excerpt: `${longerName} conçoit des outils numériques.`,
+      statement: `${longerName} conçoit des outils numériques.`,
+      structuredUrl: "https://registry.example.org/joann-lee",
+    });
+    const joannProof = proof(joannFact, {
+      finalUrl: joannFact.structuredUrl,
+      title: `Profil de ${longerName}`,
+      documentText: `Profil de ${longerName}. ${longerName} conçoit des outils numériques.`,
+    });
+
+    expect(evaluateFactAttribution({
+      selected: { candidate: annIdentity, proof: proof(annIdentity) },
+      fact: { candidate: joannFact, proof: joannProof },
+      requestedName: "Ann Lee",
+    })).toEqual({ accepted: false, reasonCode: "page_identity_anchor_missing" });
+    },
+  );
+
   it("does not trust an official-site discriminator that identity evidence did not prove", () => {
     const unprovedOfficialSite = {
       candidate: identity,

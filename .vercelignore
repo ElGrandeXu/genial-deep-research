@@ -21,6 +21,7 @@ temp/**
 
 # Documentation, tests et outils absents du contexte de déploiement
 docs/ARCHITECTURE.md
+docs/HOTFIX_RECALL_ARBITRATION.md
 docs/NOTE_ARBITRAGE_FINALE.*
 docs/PRODUCT_TRUTH_CONTRACT.md
 docs/captures/**

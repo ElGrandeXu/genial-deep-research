@@ -544,9 +544,13 @@ function formatLocator(value: string): string {
     const occurrenceLabel = typeof occurrence === "number" && Number.isSafeInteger(occurrence)
       ? `occurrence ${occurrence + 1}`
       : "occurrence vérifiée";
-    return parsed.matchMode === "typographic_equivalence"
-      ? `Équivalence typographique · ${occurrenceLabel}`
-      : `Correspondance exacte · ${occurrenceLabel}`;
+    if (parsed.matchMode === "mechanical_equivalence") {
+      return `Équivalence mécanique · ${occurrenceLabel}`;
+    }
+    if (parsed.matchMode === "exact") {
+      return `Correspondance exacte · ${occurrenceLabel}`;
+    }
+    return `Extrait source vérifié · ${occurrenceLabel}`;
   } catch {
     return "Extrait retrouvé dans la page";
   }
