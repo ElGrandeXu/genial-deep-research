@@ -1442,6 +1442,45 @@ export function serializeSourceLocator(locator: SourceLocator): string {
   return JSON.stringify(locator);
 }
 
+export function reverifyExcerptWithinProof(options: {
+  readonly proof: VerifiedSourceProof;
+  readonly candidate: ProviderClaimCandidate;
+  readonly attributedDisplayNames?: readonly string[];
+}): VerifiedSourceProof {
+  const contentType = options.proof.locator.contentType;
+  const mediaType: FetchedSource["mediaType"] = contentType
+    .toLocaleLowerCase("en-US")
+    .startsWith("text/plain")
+    ? "text/plain"
+    : contentType.toLocaleLowerCase("en-US").startsWith("application/xhtml+xml")
+      ? "application/xhtml+xml"
+      : "text/html";
+  const located = locateVerifiedExcerpt({
+    visibleText: options.proof.documentText,
+    candidate: options.candidate,
+    ...(options.attributedDisplayNames === undefined
+      ? {}
+      : { attributedDisplayNames: options.attributedDisplayNames }),
+    fetched: {
+      mediaType,
+      contentType,
+      bytesRead: options.proof.locator.bytesRead,
+      finalUrl: options.proof.finalUrl,
+      citationUrl: options.proof.citationUrl,
+      redirectCount: options.proof.locator.redirectCount,
+      requestCount: options.proof.locator.redirectCount + 1,
+    },
+    retrievedAt: new Date(options.proof.locator.retrievedAt),
+  });
+  return {
+    ...options.proof,
+    verifiedExcerpt: located.excerpt,
+    locator: located.locator,
+    sourceFetchCount: 0,
+    sourceVerificationMs: 0,
+  };
+}
+
 export function createSourceVerifier(options: {
   readonly resolver: DnsResolver;
   readonly transport: SourceTransport;

@@ -1362,6 +1362,32 @@ function roleMatchesOrganizationAnchor(
   return tokenSequenceStarts(role.organizationTail, anchor.terms).includes(0);
 }
 
+export function isTraceableSingleSourcePersonRoleProof(
+  candidate: ProviderIdentityCandidate,
+  proof: VerifiedSourceProof,
+): boolean {
+  if (
+    candidate.entityType !== "person" ||
+    !proofContainsDisplayName(proof, candidate)
+  ) return false;
+  const item: VerifiedIdentityCandidate = {
+    candidate,
+    proof,
+    proofBasis: "verified_facts",
+  };
+  const role = explicitSubjectRole(item, proof);
+  if (role === null) return false;
+  const anchors = [...traceableOrganizationAnchors(item, proof).values()];
+  const maximal = anchors.filter((anchor) =>
+    !anchors.some((other) =>
+      other.terms.length > anchor.terms.length &&
+      tokenSequenceStarts(other.terms, anchor.terms).length > 0
+    )
+  );
+  return maximal.length === 1 &&
+    maximal.some((anchor) => roleMatchesOrganizationAnchor(role, anchor));
+}
+
 function independentRoleAnchor(
   item: VerifiedIdentityCandidate,
   corroboratedContext: CorroboratedContextEvidence,
@@ -1539,6 +1565,20 @@ function factBackedIdentitySupport(
   item: VerifiedIdentityCandidate,
   evaluation: ReturnType<typeof evaluatedEvidenceSet>,
 ): FactBackedIdentitySupport | null {
+  const singleSourceRole = normalizedName(input.name) ===
+      normalizedName(item.candidate.displayName)
+    ? (item.corroboratingFacts ?? []).find(
+      ({ candidate, proof }) =>
+        candidate.category === "role" &&
+        isTraceableSingleSourcePersonRoleProof(item.candidate, proof)
+      )
+    : undefined;
+  const singleSourceSupport = singleSourceRole === undefined
+    ? null
+    : {
+        proofs: [singleSourceRole.proof],
+        facts: [singleSourceRole],
+      } satisfies FactBackedIdentitySupport;
   const corroborated = evaluation.corroboratedContextEvidence;
   if (
     input.context === undefined ||
@@ -1548,7 +1588,7 @@ function factBackedIdentitySupport(
     corroborated === null ||
     !evaluation.contextSignals.some(({ kind }) => kind === "corroborated_context")
   ) {
-    return null;
+    return singleSourceSupport;
   }
 
   const secondContext = evaluation.supportedContextEvidence.find(
@@ -1563,7 +1603,7 @@ function factBackedIdentitySupport(
   const roleAnchor = secondContext === undefined
     ? independentRoleAnchor(item, corroborated)
     : null;
-  if (secondContext === undefined && roleAnchor === null) return null;
+  if (secondContext === undefined && roleAnchor === null) return singleSourceSupport;
 
   const proofs = [...new Map(
     [
@@ -1576,7 +1616,7 @@ function factBackedIdentitySupport(
   const facts = (item.corroboratingFacts ?? []).filter(({ proof }) =>
     proofKeys.has(proofKey(proof))
   );
-  return facts.length === 0 ? null : { proofs, facts };
+  return facts.length === 0 ? singleSourceSupport : { proofs, facts };
 }
 
 function narrowedFactBackedItem(options: {
@@ -1587,7 +1627,13 @@ function narrowedFactBackedItem(options: {
   const dedicatedProof = options.original.proofBasis === "dedicated"
     ? options.original.proof
     : null;
-  const primaryProof = dedicatedProof ?? options.support.proofs[0];
+  const sameDocumentFactProof = dedicatedProof === null
+    ? undefined
+    : options.support.proofs.find((proof) =>
+        proof.finalUrl === dedicatedProof.finalUrl &&
+        proof.locator.normalizedTextSha256 === dedicatedProof.locator.normalizedTextSha256
+      );
+  const primaryProof = sameDocumentFactProof ?? dedicatedProof ?? options.support.proofs[0];
   if (primaryProof === undefined) return options.factItem;
   const primaryProofKey = proofKey(primaryProof);
   const corroboratingProofs = [...new Map(
@@ -1686,7 +1732,12 @@ export function resolveIdentity(options: {
       };
     }
 
-    const factProofs = item.corroboratingProofs ?? [];
+    const factProofs = [...new Map(
+      [
+        ...(item.corroboratingProofs ?? []),
+        ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
+      ].map((proof) => [proofKey(proof), proof] as const),
+    ).values()];
     const primaryFactProof = factProofs[0];
     if (primaryFactProof !== undefined) {
       const factItem: VerifiedIdentityCandidate = {

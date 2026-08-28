@@ -10,6 +10,7 @@ import {
 } from "../../domain/conflict-comparison";
 import type { ResearchDossier } from "../../domain/research-dossier";
 import { validateRuntimeInvariants } from "../../domain/runtime-invariants";
+import { publisherDomainForUrl } from "../../domain/publisher-domain";
 import { PRIMARY_RESEARCH_MODEL } from "../ai/providers";
 import {
   deduplicateVerifiedFacts,
@@ -20,6 +21,7 @@ import { evaluateCompleteness } from "./completeness";
 import { ResearchPipelineError } from "./errors";
 import {
   assembleVerifiedIdentityCandidates,
+  isTraceableSingleSourcePersonRoleProof,
   resolveIdentity,
 } from "./identity-resolution";
 import {
@@ -35,7 +37,11 @@ import {
   type NumericRelationship,
 } from "./numeric-normalization";
 import { evaluateFactAttribution } from "./scope-policy";
-import { serializeSourceLocator } from "./source-content";
+import {
+  normalizeVisibleText,
+  reverifyExcerptWithinProof,
+  serializeSourceLocator,
+} from "./source-content";
 import { classifyTemporalStatus, deriveFactPeriod } from "./temporal-policy";
 import type {
   FactCategory,
@@ -320,6 +326,140 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
   };
 }
 
+function normalizeIdentityLabel(value: string): string {
+  return normalizeVisibleText(value).toLocaleLowerCase("fr");
+}
+
+function withSelectedIdentitySource(
+  result: ProviderResearchResult,
+  input: ResearchInput,
+): ProviderResearchResult {
+  if (
+    input.identitySourceUrl === undefined ||
+    input.entityType === undefined ||
+    input.entityType === "auto"
+  ) return result;
+  const matchingCandidate = result.document.candidates.find((candidate) =>
+    candidate.entityType === input.entityType &&
+    normalizeIdentityLabel(candidate.displayName) === normalizeIdentityLabel(input.name)
+  );
+  const occupiedKeys = new Set(result.document.candidates.map(({ candidateKey }) => candidateKey));
+  let candidateKey = matchingCandidate?.candidateKey ?? "selected-source";
+  let suffix = 2;
+  while (matchingCandidate === undefined && occupiedKeys.has(candidateKey)) {
+    candidateKey = `selected-source-${suffix}`;
+    suffix += 1;
+  }
+  const anchorCandidate: ProviderIdentityCandidate = {
+    candidateKey,
+    displayName: input.name,
+    entityType: input.entityType,
+    entityScope: input.entityType === "person" ? "person" : "company",
+    discriminators: {
+      city: null,
+      country: null,
+      industry: null,
+      employer: null,
+      officialSite: null,
+      legalIdentifier: null,
+      year: null,
+    },
+    statement: input.name,
+    structuredUrl: input.identitySourceUrl,
+    excerpt: input.name,
+    prefix: null,
+    suffix: null,
+  };
+  return {
+    ...result,
+    document: {
+      ...result.document,
+      entityType: input.entityType,
+      candidates: [anchorCandidate],
+      claims: result.document.claims.filter(({ subjectKey }) => subjectKey === candidateKey),
+    },
+  };
+}
+
+function sourceFirstRoleExcerptCandidates(
+  proof: VerifiedSourceProof,
+  displayName: string,
+): readonly string[] {
+  const values = new Set<string>([proof.verifiedExcerpt]);
+  const documentText = proof.documentText;
+  const normalizedDocument = documentText.toLocaleLowerCase("fr");
+  const normalizedName = normalizeVisibleText(displayName).toLocaleLowerCase("fr");
+  let searchFrom = 0;
+  while (searchFrom < normalizedDocument.length) {
+    const nameStart = normalizedDocument.indexOf(normalizedName, searchFrom);
+    if (nameStart < 0) break;
+    const lineStart = documentText.lastIndexOf("\n", nameStart - 1) + 1;
+    const currentBreak = documentText.indexOf("\n", nameStart + normalizedName.length);
+    const lineEnd = currentBreak < 0 ? documentText.length : currentBreak;
+    const currentLine = documentText.slice(lineStart, lineEnd).trim();
+    if (currentLine.length > 0 && Array.from(currentLine).length <= 500) {
+      values.add(currentLine);
+    }
+    if (currentBreak >= 0) {
+      const nextBreak = documentText.indexOf("\n", currentBreak + 1);
+      const combinedEnd = nextBreak < 0 ? documentText.length : nextBreak;
+      const combined = documentText.slice(lineStart, combinedEnd).trim();
+      if (combined.length > 0 && Array.from(combined).length <= 500) {
+        values.add(combined);
+      }
+    }
+    searchFrom = nameStart + normalizedName.length;
+  }
+  return [...values].sort((left, right) => left.length - right.length);
+}
+
+function deriveSourceFirstRoleFacts(
+  candidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[],
+): readonly VerifiedCandidate<ProviderFactCandidate>[] {
+  return candidates.flatMap((item) => {
+    if (item.candidate.entityType !== "person") return [];
+    for (const excerpt of sourceFirstRoleExcerptCandidates(
+      item.proof,
+      item.candidate.displayName,
+    )) {
+      const candidate: ProviderFactCandidate = {
+        subjectKey: item.candidate.candidateKey,
+        entityType: "person",
+        category: "role",
+        predicate: "professional_role",
+        scopeType: "person",
+        scopeLabel: item.candidate.displayName,
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        statement: excerpt,
+        structuredUrl: item.proof.finalUrl,
+        excerpt,
+        prefix: null,
+        suffix: null,
+      };
+      try {
+        const proof = excerpt === item.proof.verifiedExcerpt
+          ? item.proof
+          : reverifyExcerptWithinProof({
+              proof: item.proof,
+              candidate,
+              attributedDisplayNames: [item.candidate.displayName],
+            });
+        if (isTraceableSingleSourcePersonRoleProof(item.candidate, proof)) {
+          return [{ candidate, proof }];
+        }
+      } catch {
+        // A non-atomic or ambiguous nearby block is not source-first evidence.
+      }
+    }
+    return [];
+  });
+}
+
 function buildDossier(options: {
   readonly input: ResearchInput;
   readonly result: ProviderResearchResult;
@@ -349,11 +489,21 @@ function buildDossier(options: {
   const identitySupportingFacts = selected?.proofBasis === "verified_facts"
     ? new Set(selected.corroboratingFacts ?? [])
     : null;
+  const identityPublisherDomains = selected === null
+    ? new Set<string>()
+    : new Set(
+        [selected.proof, ...(selected.corroboratingProofs ?? [])].flatMap((proof) => {
+          const domain = publisherDomainForUrl(proof.finalUrl);
+          return domain === null ? [] : [domain];
+        }),
+      );
   const attributionDecisions = selected === null
     ? []
     : options.verifiedFacts.map((fact) => ({
         fact,
-        decision: identitySupportingFacts !== null && !identitySupportingFacts.has(fact)
+        decision: identitySupportingFacts !== null &&
+            !identitySupportingFacts.has(fact) &&
+            !identityPublisherDomains.has(publisherDomainForUrl(fact.proof.finalUrl) ?? "")
           ? { accepted: false as const, reasonCode: "identity_evidence_mismatch" as const }
           : evaluateFactAttribution({
               selected,
@@ -1256,6 +1406,7 @@ export async function executeResearch(options: {
     failedStage = "metadata_extraction";
     assertProviderAdmission(result);
     const estimatedCostUsd = requireMeasuredCost(result);
+    result = withSelectedIdentitySource(result, options.input);
 
     options.emit({
       state: "source_verifying",
@@ -1303,13 +1454,16 @@ export async function executeResearch(options: {
           displayNamesByCandidateKey.get(fact.subjectKey) ?? [],
       }),
     ]);
+    const sourceFirstFacts = deriveSourceFirstRoleFacts(candidateBatch.verified);
+    const verifiedFacts = [...factBatch.verified, ...sourceFirstFacts];
     sourceVerifyingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
     );
     sourceFetchCount = candidateBatch.sourceFetchCount + factBatch.sourceFetchCount;
     excerptVerificationCount =
-      candidateBatch.excerptVerificationCount + factBatch.excerptVerificationCount;
+      candidateBatch.excerptVerificationCount + factBatch.excerptVerificationCount +
+      sourceFirstFacts.length;
 
     options.emit({
       state: "building",
@@ -1325,7 +1479,7 @@ export async function executeResearch(options: {
       input: options.input,
       result,
       verifiedIdentityCandidates: candidateBatch.verified,
-      verifiedFacts: factBatch.verified,
+      verifiedFacts,
       rejectedProofCount: candidateBatch.rejectedCount + factBatch.rejectedCount,
       executionId,
       startedAt,

@@ -1537,6 +1537,7 @@ export function ResearchForm() {
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("auto");
+  const [identitySourceUrl, setIdentitySourceUrl] = useState<string>();
   const [status, setStatus] = useState<UiStatus>("idle");
   const [events, setEvents] = useState<ResearchEvent[]>([]);
   const [completed, setCompleted] = useState<CompletedEvent>();
@@ -1625,6 +1626,7 @@ export function ResearchForm() {
           name: normalizedName,
           entityType,
           ...(context.trim() ? { context: context.trim() } : {}),
+          ...(identitySourceUrl === undefined ? {} : { identitySourceUrl }),
         }),
         signal: controller.signal,
       });
@@ -1721,7 +1723,7 @@ export function ResearchForm() {
   function prepareClarification(selection: ClarificationSelection) {
     setName(selection.name);
     setEntityType(selection.entityType);
-    setContext(`Source d’identité choisie à revérifier : ${selection.sourceUrl}`);
+    setIdentitySourceUrl(selection.sourceUrl);
     setNameError(undefined);
     setClarificationNotice(
       `Formulaire prérempli pour ${selection.name}. Vérifiez le contexte puis relancez manuellement la recherche.`,
@@ -1758,7 +1760,10 @@ export function ResearchForm() {
             id="entity-type"
             name="entityType"
             value={entityType}
-            onChange={(event) => setEntityType(event.target.value as EntityType)}
+            onChange={(event) => {
+              setEntityType(event.target.value as EntityType);
+              setIdentitySourceUrl(undefined);
+            }}
             disabled={status === "running"}
           >
             <option value="auto">À déterminer</option>
@@ -1777,6 +1782,7 @@ export function ResearchForm() {
             value={name}
             onChange={(event) => {
               setName(event.target.value);
+              setIdentitySourceUrl(undefined);
               if (event.target.value.trim().length >= 2) setNameError(undefined);
             }}
             placeholder="Ex. Thomas Pesquet ou Airbus"

@@ -47,6 +47,30 @@ describe("bounded same-origin research input", () => {
     }))).rejects.toMatchObject({ status: 400, code: "invalid_context_length" });
   });
 
+  it("accepts a structured identity source only with a fixed entity type", async () => {
+    await expect(parseResearchRequest(json({
+      name: "Camille Durand",
+      entityType: "person",
+      context: "Rennes, design",
+      identitySourceUrl: "https://official.public.org/team/camille-durand",
+    }))).resolves.toEqual({
+      name: "Camille Durand",
+      entityType: "person",
+      context: "Rennes, design",
+      identitySourceUrl: "https://official.public.org/team/camille-durand",
+    });
+    await expect(parseResearchRequest(json({
+      name: "Camille Durand",
+      entityType: "auto",
+      identitySourceUrl: "https://official.public.org/team/camille-durand",
+    }))).rejects.toMatchObject({ status: 400, code: "identity_source_type_required" });
+    await expect(parseResearchRequest(json({
+      name: "Camille Durand",
+      entityType: "person",
+      identitySourceUrl: "http://127.0.0.1/private",
+    }))).rejects.toMatchObject({ status: 400, code: "invalid_identity_source_url" });
+  });
+
   it("rejects unknown fields, malformed JSON and a non-JSON MIME type", async () => {
     await expect(parseResearchRequest(json({
       name: "Acme SAS",

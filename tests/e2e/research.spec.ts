@@ -216,6 +216,12 @@ test("768 px layout, keyboard order and reduced motion remain usable", async ({ 
 });
 
 test("ambiguity keeps candidates separate and clarification only prefills", async ({ page }) => {
+  const submittedBodies: Record<string, unknown>[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/research") && request.method() === "POST") {
+      submittedBodies.push(request.postDataJSON() as Record<string, unknown>);
+    }
+  });
   await mockSse(page, completedSse(ambiguousDossier()));
   await page.goto("/");
   await submit(page, "Thomas Martin");
@@ -224,9 +230,20 @@ test("ambiguity keeps candidates separate and clarification only prefills", asyn
   await expect(page.getByText("Candidat possible 2")).toBeVisible();
   await page.getByRole("button", { name: /Préremplir avec Thomas Martin/u }).first().click();
   await expect(page.getByLabel("Nom")).toHaveValue("Thomas Martin");
-  await expect(page.getByLabel(/Contexte/)).toHaveValue(/studio\.public\.org/u);
+  await expect(page.getByLabel(/Contexte/)).toHaveValue(
+    "Source officielle https://official.public.org",
+  );
+  expect(submittedBodies).toHaveLength(1);
   await expect(page.getByRole("status")).toContainText("relancez manuellement");
   await expect(page.getByLabel("Nom")).toBeFocused();
+  await page.getByRole("button", { name: "Construire le dossier" }).click();
+  await expect.poll(() => submittedBodies.length).toBe(2);
+  expect(submittedBodies[1]).toMatchObject({
+    name: "Thomas Martin",
+    entityType: "person",
+    context: "Source officielle https://official.public.org",
+    identitySourceUrl: "https://studio.public.org/thomas-martin",
+  });
 });
 
 test("a single plausible candidate uses a singular clarification label", async ({ page }) => {

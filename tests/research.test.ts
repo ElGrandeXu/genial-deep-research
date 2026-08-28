@@ -438,6 +438,74 @@ describe("research request", () => {
 });
 
 describe("verified dossier service", () => {
+  it("fetches a selected identity source and derives its adjacent atomic role", async () => {
+    const selectedUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const searchUrl = "https://directory.public.net/camille-durand";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Camille Durand",
+      structuredUrl: searchUrl,
+      excerpt: "Camille Durand",
+      prefix: null,
+      suffix: null,
+    };
+    const document: ProviderResearchDocument = {
+      identityStatus: "insufficient_context",
+      entityType: "person",
+      candidates: [candidate],
+      claims: [],
+      missingCategories: ["role"],
+    };
+    const verifiedUrls: string[] = [];
+    const fallbackVerifier = exactSourceVerifier({
+      documentText: "Camille Durand\nDirectrice de l’Atelier Nordique",
+    });
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        verifiedUrls.push(request.candidate.structuredUrl);
+        const proof = await fallbackVerifier.verify(request);
+        return { ...proof, title: "Atelier Nordique | Équipe" };
+      },
+    };
+
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        context: "Rennes, design",
+        identitySourceUrl: selectedUrl,
+      },
+      sourceVerifier,
+    }));
+
+    expect(verifiedUrls).toEqual([selectedUrl]);
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "role.professional_role",
+        statement: "Camille Durand\nDirectrice de l’Atelier Nordique",
+        presentation_decision: "display_fact",
+      }),
+    ]));
+    expect(terminal.dossier.claims.find(({ predicate }) => predicate === "identity.proof")
+      ?.evidence_ids).toHaveLength(1);
+    expect(terminal.dossier.sources).toHaveLength(1);
+    expect(terminal.receipt.sourceFetchCount).toBe(1);
+  });
+
   it("builds a complete dossier with multiple exact facts and distinct pages", async () => {
     const events = await executeWith();
     expect(events.map(({ state }) => state)).toEqual([

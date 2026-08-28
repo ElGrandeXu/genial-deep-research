@@ -5,6 +5,7 @@ export interface ResearchInput {
   readonly name: string;
   readonly context?: string;
   readonly entityType?: "auto" | "person" | "company";
+  readonly identitySourceUrl?: string;
 }
 
 export interface ProviderCitation {

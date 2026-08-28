@@ -136,6 +136,101 @@ function personFact(
 }
 
 describe("server identity resolution", () => {
+  it("resolves a person from one traceable organization page containing the exact name and role", () => {
+    const excerpt = "Camille Durand\nDirectrice de l’Atelier Nordique";
+    const sourceUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const identity = personCandidate({
+      statement: excerpt,
+      structuredUrl: sourceUrl,
+      excerpt,
+    });
+    const role = personFact({
+      statement: excerpt,
+      structuredUrl: sourceUrl,
+      excerpt,
+    });
+    const roleProof = proof(role, { title: "Atelier Nordique | Équipe" });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{ candidate: identity, proof: roleProof }],
+      verifiedFacts: [{ candidate: role, proof: roleProof }],
+    });
+
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
+      providerStatus: "insufficient_context",
+      candidates: assembled,
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("fact_corroborated_identity");
+    expect(decision.selected?.corroboratingFacts).toHaveLength(1);
+  });
+
+  it("rejects a lone role mention when the page title and URL do not ground its organization", () => {
+    const excerpt = "Camille Durand\nDirectrice de l’Atelier Nordique";
+    const sourceUrl = "https://chronique.example/article";
+    const identity = personCandidate({
+      statement: excerpt,
+      structuredUrl: sourceUrl,
+      excerpt,
+    });
+    const role = personFact({
+      statement: excerpt,
+      structuredUrl: sourceUrl,
+      excerpt,
+    });
+    const unrelatedProof = proof(role, {
+      title: "Chronique personnelle de Camille Durand",
+      finalUrl: "https://chronique.example/article",
+      citationUrl: "https://chronique.example/article",
+      locator: {
+        ...proof(role).locator,
+        finalUrl: "https://chronique.example/article",
+        citationUrl: "https://chronique.example/article",
+      },
+    });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{ candidate: identity, proof: unrelatedProof }],
+      verifiedFacts: [{
+        candidate: role,
+        proof: unrelatedProof,
+      }],
+    });
+
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
+      providerStatus: "insufficient_context",
+      candidates: assembled,
+    });
+
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
+  });
+
+  it("rejects a role naming an organization different from the publishing organization", () => {
+    const excerpt = "Camille Durand\nDirectrice de Rival Systems";
+    const sourceUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const identity = personCandidate({ statement: excerpt, structuredUrl: sourceUrl, excerpt });
+    const role = personFact({ statement: excerpt, structuredUrl: sourceUrl, excerpt });
+    const roleProof = proof(role, { title: "Atelier Nordique | Équipe" });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{ candidate: identity, proof: roleProof }],
+      verifiedFacts: [{ candidate: role, proof: roleProof }],
+    });
+
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
+      providerStatus: "insufficient_context",
+      candidates: assembled,
+    });
+
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
+  });
+
   it("resolves an exact-name person from independent facts and two supported context signals", () => {
     const identity = personCandidate();
     const role = personFact({
