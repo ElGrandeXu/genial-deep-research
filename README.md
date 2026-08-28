@@ -93,7 +93,15 @@ corepack pnpm verify
 corepack pnpm audit --prod --audit-level high
 ```
 
-`pnpm verify` couvre la frontière du dépôt candidat, les liens locaux, le contexte Vercel simulé, l’intégrité des cinq reçus finaux, les scans de secrets et leur mutation négative, le contrat et ses mutations négatives, les invariants runtime, lint, TypeScript strict, les tests unitaires et d’intégration, le build, le bundle client, huit parcours Playwright sans appel fournisseur, les seuils Lighthouse et l’audit des dépendances de production.
+`pnpm verify` est la gate publique et portable. Elle couvre la frontière du dépôt candidat, les liens locaux, la cohérence du manifeste Vercel de référence, l’intégrité des cinq reçus finaux, les scans de secrets et leur mutation négative, le contrat et ses mutations négatives, les invariants runtime, lint, TypeScript strict, les tests unitaires et d’intégration, le build, le bundle client, huit parcours Playwright sans appel fournisseur, les seuils Lighthouse et l’audit des dépendances de production. Elle ne nécessite ni Vercel CLI, ni compte Vercel, ni liaison locale `.vercel/`.
+
+Pour une release, exécuter ensuite le contrôle propriétaire :
+
+```powershell
+corepack pnpm verify:vercel
+```
+
+`pnpm verify:vercel` nécessite Vercel CLI et un dépôt lié. Il exécute uniquement le dry-run officiel `vercel deploy --dry --json --no-color`, sans créer de déploiement, puis vérifie le contexte réel. Ce contrôle est autoritatif pour la sémantique de `.vercelignore` ; le manifeste enregistré prouve seulement la cohérence portable du dépôt. La séquence de release obligatoire est donc `pnpm verify`, puis `pnpm verify:vercel`.
 
 ## Les quatre livrables
 

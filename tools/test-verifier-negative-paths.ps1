@@ -3,30 +3,6 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
 Set-Location -LiteralPath $repoRoot
 
-function Get-LiveVercelManifestJson {
-    $vercelCommand = @(
-        Get-Command -Name vercel -CommandType Application -All -ErrorAction SilentlyContinue |
-            Sort-Object { if ($_.Name -eq 'vercel.cmd') { 0 } else { 1 } }
-    ) | Select-Object -First 1
-    if ($null -eq $vercelCommand) {
-        throw 'VERIFIER_NEGATIVE_FAILED: Vercel CLI is unavailable'
-    }
-
-    $stdoutPath = Join-Path $script:tempRoot 'live-manifest.json'
-    $stderrPath = Join-Path $script:tempRoot 'vercel.stderr.txt'
-    & $vercelCommand.Source deploy --dry --json --no-color 1> $stdoutPath 2> $stderrPath
-    $dryRunExit = $LASTEXITCODE
-    $stderr = if (Test-Path -LiteralPath $stderrPath -PathType Leaf) { [IO.File]::ReadAllText($stderrPath).Trim() } else { '' }
-    if ($dryRunExit -ne 0) {
-        throw "VERIFIER_NEGATIVE_FAILED: Vercel dry-run failed (exit=$dryRunExit): $stderr"
-    }
-    $json = if (Test-Path -LiteralPath $stdoutPath -PathType Leaf) { [IO.File]::ReadAllText($stdoutPath) } else { '' }
-    if ([string]::IsNullOrWhiteSpace($json)) {
-        throw 'VERIFIER_NEGATIVE_FAILED: Vercel dry-run returned no JSON'
-    }
-    return $json
-}
-
 function Write-Manifest {
     param(
         [Parameter(Mandatory)][object]$Manifest,
@@ -71,22 +47,23 @@ if (-not $script:tempRoot.StartsWith($tempBase, [StringComparison]::OrdinalIgnor
 }
 [IO.Directory]::CreateDirectory($script:tempRoot) | Out-Null
 try {
-    $liveJson = Get-LiveVercelManifestJson
+    $referenceManifestPath = Join-Path $repoRoot 'tests\fixtures\vercel-context-manifest.json'
     try {
-        $liveManifest = $liveJson | ConvertFrom-Json -Depth 100
+        $referenceJson = [IO.File]::ReadAllText($referenceManifestPath)
+        $referenceManifest = $referenceJson | ConvertFrom-Json -Depth 100
     } catch {
-        throw "VERIFIER_NEGATIVE_FAILED: live Vercel manifest is invalid JSON: $($_.Exception.Message)"
+        throw "VERIFIER_NEGATIVE_FAILED: reference Vercel manifest is unavailable or invalid: $($_.Exception.Message)"
     }
 
     $validManifestPath = Join-Path $script:tempRoot 'valid.json'
-    [IO.File]::WriteAllText($validManifestPath, $liveJson, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($validManifestPath, $referenceJson, [Text.UTF8Encoding]::new($false))
     $validOutput = @(& pwsh -NoProfile -File (Join-Path $PSScriptRoot 'verify-vercel-context.ps1') -ManifestPath $validManifestPath 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw "VERIFIER_NEGATIVE_FAILED: live manifest did not pass recorded verification: $($validOutput -join "`n")"
+        throw "VERIFIER_NEGATIVE_FAILED: reference manifest did not pass recorded verification: $($validOutput -join "`n")"
     }
 
     $schemaPath = 'docs/contracts/research-dossier.schema.json'
-    $missingSchemaManifest = $liveJson | ConvertFrom-Json -Depth 100
+    $missingSchemaManifest = $referenceJson | ConvertFrom-Json -Depth 100
     $missingSchemaManifest.files = @($missingSchemaManifest.files | Where-Object { ([string]$_.path).Replace('\', '/') -ne $schemaPath })
     $missingSchemaManifest.fileCount = @($missingSchemaManifest.files).Count
     $missingSchemaManifest.totalSize = [int64](($missingSchemaManifest.files | Measure-Object -Property size -Sum).Sum)
@@ -96,11 +73,11 @@ try {
 
     $documentationPath = 'docs/ARCHITECTURE.md'
     $documentationFile = Get-Item -LiteralPath (Join-Path $repoRoot $documentationPath)
-    $extraDocumentationManifest = $liveJson | ConvertFrom-Json -Depth 100
+    $extraDocumentationManifest = $referenceJson | ConvertFrom-Json -Depth 100
     $extraDocumentationManifest.files = @($extraDocumentationManifest.files) + [pscustomobject]@{
         path = $documentationPath
         size = [int64]$documentationFile.Length
-        mode = 33206
+        mode = 33188
     }
     $extraDocumentationManifest.fileCount = @($extraDocumentationManifest.files).Count
     $extraDocumentationManifest.totalSize = [int64](($extraDocumentationManifest.files | Measure-Object -Property size -Sum).Sum)

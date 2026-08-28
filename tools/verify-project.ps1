@@ -49,7 +49,7 @@ function Test-SecretScannerNegativeProbe {
 }
 
 # Candidate repository boundary: required product files, final receipts,
-# portable links and the official Vercel dry-run context.
+# portable links and the recorded Vercel reference manifest.
 Invoke-RepositoryScript -Name 'verify-candidate-repository.ps1'
 
 # Scan every relevant Git view explicitly. A clean staged set is still a valid
@@ -99,8 +99,8 @@ if ($Offline) {
     Write-Output 'DEPENDENCY_AUDIT_OK: production dependencies, threshold=high'
 }
 
-# Keep destructive-looking checks synthetic: secret injection, invalid dossier
-# and unsupported fact are rejected without touching product files or evidence.
+# Keep destructive-looking checks synthetic: secret injection, invalid dossier,
+# unsupported fact and Vercel manifest mutations leave product files untouched.
 Invoke-RepositoryScript -Name 'test-verifier-negative-paths.ps1'
 
 Write-Output "PROJECT_VERIFY_OK: build=$(-not $SkipBuild) dependency_audit=$(-not $Offline)"

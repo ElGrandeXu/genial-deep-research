@@ -20,7 +20,8 @@
     "lighthouse:check": "node tools/check-lighthouse.mjs",
     "contract:types": "node tools/contract-types.mjs --write",
     "contract:types:check": "node tools/contract-types.mjs --check",
-    "verify": "pwsh -NoProfile -File tools/verify-project.ps1"
+    "verify": "pwsh -NoProfile -File tools/verify-project.ps1",
+    "verify:vercel": "pwsh -NoProfile -File tools/verify-vercel-context.ps1"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.47",

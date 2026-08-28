@@ -26,7 +26,8 @@ $requiredFiles = @(
     'docs/contracts/research-dossier.schema.json',
     'docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md',
     'docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md',
-    'docs/evidence/final-2026-08-28/WAF_VALIDATION.md'
+    'docs/evidence/final-2026-08-28/WAF_VALIDATION.md',
+    'tests/fixtures/vercel-context-manifest.json'
 )
 foreach ($relativePath in $requiredFiles) {
     Assert-Candidate (Test-Path -LiteralPath (Join-Path $repoRoot $relativePath) -PathType Leaf) "required file missing: $relativePath"
@@ -129,6 +130,7 @@ Write-Output "PDF_STRUCTURE_OK: pages=$pdfPages bytes=$($pdfBytes.Length)"
 
 $vercelVerifier = Join-Path $PSScriptRoot 'verify-vercel-context.ps1'
 Assert-Candidate (Test-Path -LiteralPath $vercelVerifier -PathType Leaf) 'Vercel context verifier missing'
-& pwsh -NoProfile -File $vercelVerifier
+$vercelManifest = Join-Path $repoRoot 'tests\fixtures\vercel-context-manifest.json'
+& pwsh -NoProfile -File $vercelVerifier -ManifestPath $vercelManifest
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Output "CANDIDATE_REPOSITORY_OK: files=$($candidateFiles.Count)"

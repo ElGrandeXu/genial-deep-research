@@ -1,0 +1,204 @@
+{
+  "framework": {
+    "slug": "nextjs"
+  },
+  "fileCount": 39,
+  "totalSize": 597937,
+  "files": [
+    {
+      "path": "docs/contracts/research-dossier.schema.json",
+      "size": 33594,
+      "mode": 33188
+    },
+    {
+      "path": "next-env.d.ts",
+      "size": 288,
+      "mode": 33188
+    },
+    {
+      "path": "next.config.ts",
+      "size": 1154,
+      "mode": 33188
+    },
+    {
+      "path": "package.json",
+      "size": 1515,
+      "mode": 33188
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "size": 188423,
+      "mode": 33188
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "size": 35,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/api/health/route.ts",
+      "size": 217,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/api/research/route.ts",
+      "size": 7376,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/icon.svg",
+      "size": 224,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "size": 610,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/not-found.tsx",
+      "size": 344,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/page.tsx",
+      "size": 1191,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/research-form.tsx",
+      "size": 60132,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/robots.ts",
+      "size": 215,
+      "mode": 33188
+    },
+    {
+      "path": "src/app/styles.css",
+      "size": 24153,
+      "mode": 33188
+    },
+    {
+      "path": "src/domain/contract-validator.ts",
+      "size": 1165,
+      "mode": 33188
+    },
+    {
+      "path": "src/domain/publisher-domain.ts",
+      "size": 648,
+      "mode": 33188
+    },
+    {
+      "path": "src/domain/research-dossier.generated.ts",
+      "size": 7415,
+      "mode": 33188
+    },
+    {
+      "path": "src/domain/research-dossier.ts",
+      "size": 105,
+      "mode": 33188
+    },
+    {
+      "path": "src/domain/runtime-invariants.ts",
+      "size": 20517,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/ai/providers.ts",
+      "size": 25828,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/claim-quality.ts",
+      "size": 8412,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/completeness.ts",
+      "size": 4402,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/errors.ts",
+      "size": 1364,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/failure-receipt.ts",
+      "size": 15660,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/identity-resolution.ts",
+      "size": 12559,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/numeric-normalization.ts",
+      "size": 3935,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/provider-metadata.ts",
+      "size": 27726,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/request-guard.ts",
+      "size": 2979,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/request.ts",
+      "size": 4820,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/scope-policy.ts",
+      "size": 4956,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/service.ts",
+      "size": 46187,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/source-content.ts",
+      "size": 20172,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/source-security.ts",
+      "size": 14515,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/source-transport.ts",
+      "size": 36385,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/temporal-policy.ts",
+      "size": 4843,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/types.ts",
+      "size": 12265,
+      "mode": 33188
+    },
+    {
+      "path": "tools/run-next.mjs",
+      "size": 780,
+      "mode": 33188
+    },
+    {
+      "path": "tsconfig.json",
+      "size": 828,
+      "mode": 33188
+    }
+  ]
+}
