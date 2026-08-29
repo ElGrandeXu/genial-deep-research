@@ -1,6 +1,6 @@
-# Architecture de la release candidate
+# Architecture du hotfix de rappel traçable
 
-État décrit : release candidate premium du 28 août 2026.
+État décrit : runtime du 28 août 2026 après correction des faux négatifs de preuve.
 
 ## Principes
 
@@ -17,7 +17,7 @@ flowchart LR
     O --> A[OpenAI Responses + Web Search]
     A --> M[Normalisation des sorties et métadonnées]
     M --> F[Récupération directe des pages]
-    F --> V[Extrait exact + anti-SSRF]
+    F --> V[Tranche source exacte + anti-SSRF]
     V --> D[Contrat JSON + invariants métier]
     D -->|résultat terminal| U
 ```
@@ -63,16 +63,16 @@ OpenAI est le fournisseur de Production pour une verticale unique, mesurable et 
 3. Résolution DNS avant connexion et fixation de l’adresse validée afin de réduire le DNS rebinding.
 4. Revalidation à chaque redirection, deux redirections au maximum.
 5. Délai global de 20 secondes, corps de 512 Kio maximum, HTML uniquement.
-6. Extraction du texte visible et recherche contiguë de l’extrait exact, borné à 500 caractères.
+6. Extraction du texte visible et recherche contiguë, bornée à 500 caractères : littérale d’abord, puis équivalence mécanique unique ; la tranche source exacte retrouvée est conservée.
 7. Conservation du titre réellement lu, de l’URL finale, de la date de consultation, d’un localisateur et du condensat du texte normalisé.
 
 La citation fournisseur seule est insuffisante. Une page inaccessible, un extrait absent ou une URL non sûre fait disparaître l’affirmation ; le nombre de preuves rejetées devient une inconnue visible. Le runtime ne contourne pas les protections d’accès et marque la conformité de collecte `not_verified` : l’accès public et la preuve technique ne sont pas présentés comme une validation juridique des conditions du site.
 
 ## Résolution d’identité
 
-Le nom seul n’autorise pas une identité résolue. Le type demandé, le contexte libre et au moins une preuve directe doivent converger. Un type contradictoire ou plusieurs candidats crédibles déclenche `ambiguous` ou `insufficient_context`. Dans ce mode, les candidats restent séparés et les affirmations servent uniquement à expliquer l’ambiguïté ; aucun dossier factuel confiant n’est rendu.
+Le nom seul n’autorise pas une identité résolue. Le type demandé, le contexte libre et les preuves récupérées doivent converger. La voie normale conserve une preuve d’identité dédiée. Pour une personne seulement, si elle est indisponible ou insuffisante pour établir le contexte, le serveur peut la compléter avec des faits du candidat déjà admis par l’attribution et la qualité : nom demandé exactement égal au nom complet, clé sujet, type et portée identiques, nom complet présent dans chaque extrait, au moins deux familles d’éditeurs, deux empreintes documentaires et deux empreintes lexicales d’extraits distinctes. Un même indice significatif du contexte doit être explicitement relié au sujet dans au moins deux preuves indépendantes. Il faut en plus soit un second indice significatif distinct relié au sujet dans l’une de ces mêmes preuves, soit une troisième preuve de rôle explicite et indépendante qui partage avec une preuve contextuelle un unique ancrage d’organisation. Cet ancrage est formé de termes distinctifs présents dans les deux titres de documents vérifiés et confirmés par les deux URL finales ; le texte global de page, un titre générique ou une URL isolée ne compte pas. Les preuves principale et corroborantes restent reliées à l’affirmation d’identité, respectivement comme `supports` et `context_only` ; seuls les faits de cet ensemble de résolution restent affichables dans la voie factuelle. Une entreprise conserve la preuve dédiée ; un type contradictoire, un ancrage trop faible ou plusieurs candidats crédibles déclenche `ambiguous` ou `insufficient_context`. Dans ce mode, les candidats restent séparés et les affirmations servent uniquement à expliquer l’ambiguïté ; aucun dossier factuel confiant n’est rendu.
 
-Le silence produit `not_found_within_scope`, zéro fait et zéro source. La panne réseau, l’erreur fournisseur ou une sortie invalide produit `technical_failure`, jamais un faux dossier vide.
+Le silence produit `not_found_within_scope`, zéro fait et zéro source. Une page candidate isolément inaccessible est rejetée sans supprimer les autres preuves valides ; une panne réseau déterminante, une erreur fournisseur ou une sortie invalide produit `technical_failure`, jamais un faux dossier vide.
 
 ## Composition du dossier
 

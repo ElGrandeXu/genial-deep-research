@@ -70,6 +70,21 @@ describe("conservative temporal policy", () => {
     });
   });
 
+  it("does not accept an ISO date embedded inside a larger number", () => {
+    expect(deriveFactPeriod(candidate({
+      factPeriodLabel: "2025-05-12",
+      factDate: "2025-05-12",
+      excerpt: "Acme SAS référence l’identifiant 12025-05-12 dans son registre.",
+      statement: "Acme SAS référence l’identifiant 12025-05-12 dans son registre.",
+    }))).toEqual({
+      status: "unknown",
+      start: null,
+      end: null,
+      as_of: null,
+      label: null,
+    });
+  });
+
   it("rejects an ISO date that disagrees with the literal date label", () => {
     expect(deriveFactPeriod(candidate({
       factPeriodLabel: "13 mai 2025",
@@ -77,6 +92,30 @@ describe("conservative temporal policy", () => {
       excerpt: "Acme SAS a annoncé ce partenariat le 13 mai 2025.",
       statement: "Acme SAS a annoncé ce partenariat le 13 mai 2025.",
     }))).toMatchObject({ status: "unknown", as_of: null });
+  });
+
+  it("rejects a literal year that disagrees with the year in the excerpt", () => {
+    expect(deriveFactPeriod(candidate({
+      factPeriodLabel: "2025",
+      factDate: "2024",
+      excerpt: "Acme SAS a annoncé ce partenariat en 2025.",
+      statement: "Acme SAS a annoncé ce partenariat en 2025.",
+    }))).toEqual({
+      status: "unknown",
+      start: null,
+      end: null,
+      as_of: null,
+      label: null,
+    });
+  });
+
+  it("does not accept a declared year embedded inside a larger number", () => {
+    expect(deriveFactPeriod(candidate({
+      factPeriodLabel: "2025",
+      factDate: "2025",
+      excerpt: "Acme SAS a livré 12025 unités.",
+      statement: "Acme SAS a livré 12025 unités.",
+    }))).toMatchObject({ status: "unknown", start: null, end: null });
   });
 
   it("TM-01 never turns an old appointment into a current role", () => {

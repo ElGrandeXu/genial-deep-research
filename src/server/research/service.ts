@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { validateResearchDossier } from "../../domain/contract-validator";
 import {
@@ -10,6 +10,7 @@ import {
 } from "../../domain/conflict-comparison";
 import type { ResearchDossier } from "../../domain/research-dossier";
 import { validateRuntimeInvariants } from "../../domain/runtime-invariants";
+import { publisherDomainForUrl } from "../../domain/publisher-domain";
 import { PRIMARY_RESEARCH_MODEL } from "../ai/providers";
 import {
   deduplicateVerifiedFacts,
@@ -19,8 +20,9 @@ import {
 import { evaluateCompleteness } from "./completeness";
 import { ResearchPipelineError } from "./errors";
 import {
+  assembleVerifiedIdentityCandidates,
+  isTraceableSingleSourcePersonRoleProof,
   resolveIdentity,
-  type VerifiedIdentityCandidate,
 } from "./identity-resolution";
 import {
   buildFailureReceipt,
@@ -35,7 +37,11 @@ import {
   type NumericRelationship,
 } from "./numeric-normalization";
 import { evaluateFactAttribution } from "./scope-policy";
-import { serializeSourceLocator } from "./source-content";
+import {
+  normalizeVisibleText,
+  reverifyExcerptWithinProof,
+  serializeSourceLocator,
+} from "./source-content";
 import { classifyTemporalStatus, deriveFactPeriod } from "./temporal-policy";
 import type {
   FactCategory,
@@ -45,7 +51,9 @@ import type {
   ProviderFactCandidate,
   ProviderIdentityCandidate,
   ProviderResearchResult,
+  ProviderSourceBinding,
   PublicReceipt,
+  RetrievedSourceDocument,
   ResearchInput,
   ResearchProgressEvent,
   ResearchProvider,
@@ -83,9 +91,86 @@ interface VerifiedCandidate<T extends ProviderClaimCandidate> {
 
 interface VerificationBatch<T extends ProviderClaimCandidate> {
   readonly verified: readonly VerifiedCandidate<T>[];
+  readonly grounded: readonly VerifiedCandidate<T>[];
+  readonly documents: readonly {
+    readonly candidate: T;
+    readonly document: RetrievedSourceDocument;
+  }[];
   readonly rejectedCount: number;
   readonly sourceFetchCount: number;
   readonly excerptVerificationCount: number;
+}
+
+interface DossierBuildDiagnostics {
+  attributionRejections: Record<string, number>;
+  qualityRejections: Record<string, number>;
+  identityStatus: string;
+  identityReasonCodes: readonly string[];
+}
+
+function proofVerificationMethod(
+  proof: VerifiedSourceProof,
+): "source_content" | "provider_annotation" | "search_snippet" {
+  return proof.verificationMethod ?? "source_content";
+}
+
+function canRetainProviderGrounding(
+  citation: ProviderSourceBinding,
+  document: RetrievedSourceDocument | undefined,
+): boolean {
+  return !("bindingType" in citation && citation.bindingType === "structured_output_url") ||
+    document !== undefined;
+}
+
+function providerGroundedProof(options: {
+  readonly result: ProviderResearchResult;
+  readonly candidate: ProviderClaimCandidate;
+  readonly citation: ProviderSourceBinding;
+  readonly document?: RetrievedSourceDocument;
+}): VerifiedSourceProof | null {
+  if (!canRetainProviderGrounding(options.citation, options.document)) return null;
+  const url = options.document?.finalUrl ?? options.citation.url;
+  let title = "Source Web Search";
+  if ("title" in options.citation && typeof options.citation.title === "string") {
+    title = options.citation.title;
+  } else {
+    title = options.result.sources.find(({ url: sourceUrl }) => sourceUrl === options.citation.url)
+      ?.title ?? new URL(url).hostname;
+  }
+  const retrievedAt = options.document?.retrievedAt ?? new Date().toISOString();
+  const fingerprint = createHash("sha256")
+    .update(`provider-grounded\n${url}\n${options.candidate.excerpt}`, "utf8")
+    .digest("hex");
+  const verificationMethod = "bindingType" in options.citation &&
+      (options.citation.bindingType === "web_search_source" ||
+        options.citation.bindingType === "structured_output_url")
+    ? "search_snippet" as const
+    : "provider_annotation" as const;
+  return {
+    citation: options.citation,
+    citationUrl: options.citation.url,
+    finalUrl: url,
+    title,
+    verifiedExcerpt: options.candidate.excerpt,
+    documentText: options.document?.documentText ?? options.candidate.excerpt,
+    locator: {
+      exact: options.candidate.excerpt,
+      prefix: "",
+      suffix: "",
+      occurrenceIndex: 0,
+      finalUrl: url,
+      citationUrl: options.citation.url,
+      retrievedAt,
+      normalizedTextSha256: fingerprint,
+      contentType: options.document?.contentType ?? "application/x-provider-citation",
+      bytesRead: options.document?.bytesRead ?? 0,
+      redirectCount: options.document?.redirectCount ?? 0,
+    },
+    sourceFetchCount: options.document?.sourceFetchCount ?? 0,
+    sourceVerificationMs: options.document?.sourceVerificationMs ?? 0,
+    verificationMethod,
+    retrievalStatus: options.document === undefined ? "unavailable" : "retrieved",
+  };
 }
 
 function numberOrNull(value: number | undefined): number | null {
@@ -191,6 +276,7 @@ function buildReceipt(options: {
   readonly totalMs: number;
   readonly finalStatus: "completed" | "failed";
   readonly timedOutOrCancelled: boolean;
+  readonly pipelineCounts?: PublicReceipt["pipelineCounts"];
 }): PublicReceipt {
   const cost = options.result === null
     ? { amount: null, limitations: ["Aucun usage facturable observé."] }
@@ -225,6 +311,7 @@ function buildReceipt(options: {
     pricing: PRICING,
     estimatedCostUsd: cost.amount,
     costLimitations: cost.limitations,
+    ...(options.pipelineCounts === undefined ? {} : { pipelineCounts: options.pipelineCounts }),
   };
 }
 
@@ -283,34 +370,342 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
   readonly result: ProviderResearchResult;
   readonly sourceVerifier: SourceVerifier;
   readonly signal: AbortSignal;
+  readonly attributedDisplayNames?: (candidate: T) => readonly string[] | undefined;
 }): Promise<VerificationBatch<T>> {
-  const settled = await Promise.allSettled(
+  const settled = await Promise.all(
     options.candidates.map(async (candidate) => {
-      const citation = bindProviderSource(options.result, candidate);
-      const proof = await options.sourceVerifier.verify({ candidate, citation, signal: options.signal });
-      return { candidate, proof };
+      let citation: ProviderSourceBinding;
+      try {
+        citation = bindProviderSource(options.result, candidate);
+      } catch (error) {
+        return { status: "rejected" as const, error, candidate };
+      }
+      const attributedDisplayNames = options.attributedDisplayNames?.(candidate);
+      if (
+        options.sourceVerifier.inspect !== undefined &&
+        options.sourceVerifier.verifyDocument !== undefined
+      ) {
+        let document: RetrievedSourceDocument;
+        try {
+          document = await options.sourceVerifier.inspect({
+            candidate,
+            citation,
+            signal: options.signal,
+          });
+        } catch (error) {
+          return {
+            status: "rejected" as const,
+            error,
+            candidate,
+            grounded: providerGroundedProof({
+              result: options.result,
+              candidate,
+              citation,
+            }),
+          };
+        }
+        try {
+          const proof = await options.sourceVerifier.verifyDocument({
+            document,
+            candidate,
+            ...(attributedDisplayNames === undefined ? {} : { attributedDisplayNames }),
+          });
+          return { status: "verified" as const, candidate, proof, document };
+        } catch (error) {
+          return {
+            status: "rejected" as const,
+            error,
+            candidate,
+            document,
+            grounded: providerGroundedProof({
+              result: options.result,
+              candidate,
+              citation,
+              document,
+            }),
+          };
+        }
+      }
+      try {
+        const proof = await options.sourceVerifier.verify({
+          candidate,
+          ...(attributedDisplayNames === undefined ? {} : { attributedDisplayNames }),
+          citation,
+          signal: options.signal,
+        });
+        return { status: "verified" as const, candidate, proof };
+      } catch (error) {
+        return {
+          status: "rejected" as const,
+          error,
+          candidate,
+          grounded: providerGroundedProof({ result: options.result, candidate, citation }),
+        };
+      }
     }),
   );
   const verified: VerifiedCandidate<T>[] = [];
+  const grounded: VerifiedCandidate<T>[] = [];
+  const documents: Array<{ candidate: T; document: RetrievedSourceDocument }> = [];
   let rejectedCount = 0;
   let sourceFetchCount = 0;
   for (const item of settled) {
-    if (item.status === "fulfilled") {
-      verified.push(item.value);
-      sourceFetchCount += item.value.proof.sourceFetchCount;
+    if (item.status === "verified") {
+      verified.push({ candidate: item.candidate, proof: item.proof });
+      sourceFetchCount += item.proof.sourceFetchCount;
+      if (item.document !== undefined) documents.push({ candidate: item.candidate, document: item.document });
     } else {
       rejectedCount += 1;
-      if (item.reason instanceof ResearchPipelineError) {
-        sourceFetchCount += item.reason.sourceDiagnostics?.sourceFetchCount ?? 0;
+      if (item.error instanceof ResearchPipelineError) {
+        sourceFetchCount += item.error.sourceDiagnostics?.sourceFetchCount ?? 0;
+      }
+      if (item.candidate !== undefined && item.document !== undefined) {
+        documents.push({ candidate: item.candidate, document: item.document });
+        sourceFetchCount += item.document.sourceFetchCount;
+      }
+      if (item.candidate !== undefined && item.grounded !== null && item.grounded !== undefined) {
+        grounded.push({ candidate: item.candidate, proof: item.grounded });
       }
     }
   }
   return {
     verified,
+    grounded,
+    documents,
     rejectedCount,
     sourceFetchCount,
     excerptVerificationCount: options.candidates.length,
   };
+}
+
+function normalizeIdentityLabel(value: string): string {
+  return normalizeVisibleText(value).toLocaleLowerCase("fr");
+}
+
+function withSelectedIdentitySource(
+  result: ProviderResearchResult,
+  input: ResearchInput,
+): ProviderResearchResult {
+  if (
+    input.identitySourceUrl === undefined ||
+    input.entityType === undefined ||
+    input.entityType === "auto"
+  ) return result;
+  const matchingCandidate = result.document.candidates.find((candidate) =>
+    candidate.entityType === input.entityType &&
+    normalizeIdentityLabel(candidate.displayName) === normalizeIdentityLabel(input.name)
+  );
+  const occupiedKeys = new Set(result.document.candidates.map(({ candidateKey }) => candidateKey));
+  let candidateKey = matchingCandidate?.candidateKey ?? "selected-source";
+  let suffix = 2;
+  while (matchingCandidate === undefined && occupiedKeys.has(candidateKey)) {
+    candidateKey = `selected-source-${suffix}`;
+    suffix += 1;
+  }
+  const anchorCandidate: ProviderIdentityCandidate = {
+    candidateKey,
+    displayName: input.name,
+    entityType: input.entityType,
+    entityScope: input.entityType === "person" ? "person" : "company",
+    discriminators: {
+      city: null,
+      country: null,
+      industry: null,
+      employer: null,
+      officialSite: null,
+      legalIdentifier: null,
+      year: null,
+    },
+    statement: input.name,
+    structuredUrl: input.identitySourceUrl,
+    excerpt: input.name,
+    prefix: null,
+    suffix: null,
+  };
+  return {
+    ...result,
+    document: {
+      ...result.document,
+      entityType: input.entityType,
+      candidates: [anchorCandidate],
+      claims: result.document.claims.filter(({ subjectKey }) => subjectKey === candidateKey),
+    },
+  };
+}
+
+function sourceFirstRoleExcerptCandidates(
+  proof: VerifiedSourceProof,
+  displayName: string,
+): readonly string[] {
+  const values = new Set<string>([proof.verifiedExcerpt]);
+  const documentText = proof.documentText;
+  const normalizedDocument = documentText.toLocaleLowerCase("fr");
+  const normalizedName = normalizeVisibleText(displayName).toLocaleLowerCase("fr");
+  let searchFrom = 0;
+  while (searchFrom < normalizedDocument.length) {
+    const nameStart = normalizedDocument.indexOf(normalizedName, searchFrom);
+    if (nameStart < 0) break;
+    const lineStart = documentText.lastIndexOf("\n", nameStart - 1) + 1;
+    const currentBreak = documentText.indexOf("\n", nameStart + normalizedName.length);
+    const lineEnd = currentBreak < 0 ? documentText.length : currentBreak;
+    const currentLine = documentText.slice(lineStart, lineEnd).trim();
+    if (currentLine.length > 0 && Array.from(currentLine).length <= 500) {
+      values.add(currentLine);
+    }
+    if (currentBreak >= 0) {
+      const nextBreak = documentText.indexOf("\n", currentBreak + 1);
+      const combinedEnd = nextBreak < 0 ? documentText.length : nextBreak;
+      const combined = documentText.slice(lineStart, combinedEnd).trim();
+      if (combined.length > 0 && Array.from(combined).length <= 500) {
+        values.add(combined);
+      }
+    }
+    searchFrom = nameStart + normalizedName.length;
+  }
+  return [...values].sort((left, right) => left.length - right.length);
+}
+
+function deriveSourceFirstRoleFacts(
+  candidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[],
+): readonly VerifiedCandidate<ProviderFactCandidate>[] {
+  return candidates.flatMap((item) => {
+    if (item.candidate.entityType !== "person") return [];
+    for (const excerpt of sourceFirstRoleExcerptCandidates(
+      item.proof,
+      item.candidate.displayName,
+    )) {
+      const candidate: ProviderFactCandidate = {
+        subjectKey: item.candidate.candidateKey,
+        entityType: "person",
+        category: "role",
+        predicate: "professional_role",
+        scopeType: "person",
+        scopeLabel: item.candidate.displayName,
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        statement: excerpt,
+        structuredUrl: item.proof.finalUrl,
+        excerpt,
+        prefix: null,
+        suffix: null,
+      };
+      try {
+        const proof = excerpt === item.proof.verifiedExcerpt
+          ? item.proof
+          : reverifyExcerptWithinProof({
+              proof: item.proof,
+              candidate,
+              attributedDisplayNames: [item.candidate.displayName],
+            });
+        if (isTraceableSingleSourcePersonRoleProof(item.candidate, proof)) {
+          return [{ candidate, proof }];
+        }
+      } catch {
+        // A non-atomic or ambiguous nearby block is not source-first evidence.
+      }
+    }
+    const excerpt = item.proof.verifiedExcerpt;
+    const activityCandidate: ProviderFactCandidate = {
+      subjectKey: item.candidate.candidateKey,
+      entityType: "person",
+      category: "activity",
+      predicate: "public_professional_profile",
+      scopeType: "person",
+      scopeLabel: item.candidate.displayName,
+      factPeriodLabel: null,
+      factDate: null,
+      normalizedValue: null,
+      unit: null,
+      currency: null,
+      contradictionKey: null,
+      statement: excerpt,
+      structuredUrl: item.proof.finalUrl,
+      excerpt,
+      prefix: item.proof.locator.prefix,
+      suffix: item.proof.locator.suffix,
+    };
+    if (evaluateClaimQuality({
+      candidate: activityCandidate,
+      proof: item.proof,
+      selectedDisplayName: item.candidate.displayName,
+    }).accepted) {
+      return [{ candidate: activityCandidate, proof: item.proof }];
+    }
+    return [];
+  });
+}
+
+async function reconstructIdentityFromDocuments(options: {
+  readonly documents: readonly {
+    readonly candidate: ProviderIdentityCandidate;
+    readonly document: RetrievedSourceDocument;
+  }[];
+  readonly alreadyVerified: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
+  readonly sourceVerifier: SourceVerifier;
+}): Promise<readonly VerifiedCandidate<ProviderIdentityCandidate>[]> {
+  if (options.sourceVerifier.verifyDocument === undefined) return [];
+  const existing = new Set(options.alreadyVerified.map(({ candidate }) => candidate.candidateKey));
+  const reconstructed: VerifiedCandidate<ProviderIdentityCandidate>[] = [];
+  for (const item of options.documents) {
+    if (existing.has(item.candidate.candidateKey)) continue;
+    const candidate: ProviderIdentityCandidate = {
+      ...item.candidate,
+      statement: item.candidate.displayName,
+      excerpt: item.candidate.displayName,
+      prefix: null,
+      suffix: null,
+      structuredUrl: item.document.citationUrl,
+    };
+    try {
+      const proof = await options.sourceVerifier.verifyDocument({
+        document: item.document,
+        candidate,
+        attributedDisplayNames: [candidate.displayName],
+      });
+      reconstructed.push({ candidate, proof });
+      existing.add(candidate.candidateKey);
+    } catch {
+      // The fetched document remains available as a candidate source, but does
+      // not become identity evidence when the requested name is absent.
+    }
+  }
+  return reconstructed;
+}
+
+function groundedFactHasMinimumQuality(
+  item: VerifiedCandidate<ProviderFactCandidate>,
+): boolean {
+  const excerpt = normalizeVisibleText(item.proof.verifiedExcerpt);
+  if (item.candidate.category === "identity" || excerpt.length < 8 || /[?？]\s*$/u.test(excerpt)) {
+    return false;
+  }
+  if (item.candidate.category === "metric") {
+    return item.candidate.scopeLabel !== null &&
+      item.candidate.factPeriodLabel !== null &&
+      item.candidate.normalizedValue !== null &&
+      item.candidate.unit !== null &&
+      deriveFactPeriod(item.candidate).status === "stated";
+  }
+  return true;
+}
+
+const IDENTITY_ANCHOR_STOPWORDS = new Set([
+  "avec", "chez", "dans", "des", "elle", "est", "for", "from", "les", "pour", "that",
+  "the", "une", "with",
+]);
+
+function identityAnchorTokens(value: string, displayName: string): Set<string> {
+  const nameTokens = new Set(
+    normalizeVisibleText(displayName).toLocaleLowerCase("fr").match(/[\p{L}\p{N}]+/gu) ?? [],
+  );
+  return new Set(
+    (normalizeVisibleText(value).toLocaleLowerCase("fr").match(/[\p{L}\p{N}]+/gu) ?? [])
+      .filter((token) => token.length >= 4 && !nameTokens.has(token) && !IDENTITY_ANCHOR_STOPWORDS.has(token)),
+  );
 }
 
 function buildDossier(options: {
@@ -319,6 +714,7 @@ function buildDossier(options: {
   readonly verifiedIdentityCandidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
   readonly verifiedFacts: readonly VerifiedCandidate<ProviderFactCandidate>[];
   readonly rejectedProofCount: number;
+  readonly retainedGroundedCount: number;
   readonly executionId: string;
   readonly startedAt: Date;
   readonly completedAt: Date;
@@ -326,43 +722,95 @@ function buildDossier(options: {
   readonly searchingMs: number;
   readonly sourceVerifyingMs: number;
   readonly estimatedCostUsd: number;
+  readonly diagnostics: DossierBuildDiagnostics;
 }): ResearchDossier {
   const requestedType = options.input.entityType ?? "auto";
+  const verifiedIdentityCandidates = assembleVerifiedIdentityCandidates({
+    candidates: options.result.document.candidates,
+    verifiedCandidates: options.verifiedIdentityCandidates,
+    verifiedFacts: options.verifiedFacts,
+  });
   const identityDecision = resolveIdentity({
     input: options.input,
     providerStatus: options.result.document.identityStatus,
-    candidates: options.verifiedIdentityCandidates as readonly VerifiedIdentityCandidate[],
+    candidates: verifiedIdentityCandidates,
   });
+  options.diagnostics.identityStatus = identityDecision.status;
+  options.diagnostics.identityReasonCodes = identityDecision.reasonCodes;
   const selected = identityDecision.selected;
+  const identityPublisherDomains = selected === null
+    ? new Set<string>()
+    : new Set(
+        [selected.proof, ...(selected.corroboratingProofs ?? [])].flatMap((proof) => {
+          const domain = publisherDomainForUrl(proof.finalUrl);
+          return domain === null ? [] : [domain];
+        }),
+      );
   const attributionDecisions = selected === null
     ? []
-    : options.verifiedFacts.map((fact) => ({
-        fact,
-        decision: evaluateFactAttribution({
-          selected,
+    : options.verifiedFacts.map((fact) => {
+        const supportingFacts = new Set(selected.corroboratingFacts ?? []);
+        const factDomain = publisherDomainForUrl(fact.proof.finalUrl);
+        const selectedTexts = [selected.proof, ...(selected.corroboratingProofs ?? [])]
+          .map(({ verifiedExcerpt }) => verifiedExcerpt)
+          .join(" ");
+        const selectedAnchors = identityAnchorTokens(selectedTexts, selected.candidate.displayName);
+        const factAnchors = identityAnchorTokens(
+          fact.proof.verifiedExcerpt,
+          selected.candidate.displayName,
+        );
+        const requiresAnchorContinuity = options.input.context !== undefined &&
+          selected.proofBasis === "verified_facts" &&
+          !supportingFacts.has(fact) &&
+          !identityPublisherDomains.has(factDomain ?? "");
+        const anchorContinuous = !requiresAnchorContinuity ||
+          [...factAnchors].some((token) => selectedAnchors.has(token));
+        return {
           fact,
-          requestedName: options.input.name,
-          verifiedOfficialSite: identityDecision.verifiedDiscriminators.officialSite,
-        }),
-      }));
+          decision: anchorContinuous
+            ? evaluateFactAttribution({
+                selected,
+                fact,
+                requestedName: options.input.name,
+                verifiedOfficialSite: identityDecision.verifiedDiscriminators.officialSite,
+              })
+            : { accepted: false as const, reasonCode: "identity_evidence_mismatch" as const },
+        };
+      });
   const eligibleFacts = attributionDecisions.flatMap(({ fact, decision }) =>
     decision.accepted ? [fact] : [],
   );
   const attributionRejectedCount = attributionDecisions.length - eligibleFacts.length;
+  for (const { decision } of attributionDecisions) {
+    if (!decision.accepted) {
+      options.diagnostics.attributionRejections[decision.reasonCode] =
+        (options.diagnostics.attributionRejections[decision.reasonCode] ?? 0) + 1;
+    }
+  }
   const qualityDecisions = selected === null
     ? []
     : eligibleFacts.map((fact) => ({
         fact,
-        decision: evaluateClaimQuality({
-          candidate: fact.candidate,
-          proof: fact.proof,
-          selectedDisplayName: selected.candidate.displayName,
-        }),
+        decision: proofVerificationMethod(fact.proof) === "source_content"
+          ? evaluateClaimQuality({
+              candidate: fact.candidate,
+              proof: fact.proof,
+              selectedDisplayName: selected.candidate.displayName,
+            })
+          : groundedFactHasMinimumQuality(fact)
+            ? { accepted: true as const }
+            : { accepted: false as const, reasonCode: "weak_fragment" as const },
       }));
   const qualityAcceptedFacts = qualityDecisions.flatMap(({ fact, decision }) =>
     decision.accepted ? [fact] : [],
   );
   const qualityRejectedCount = qualityDecisions.length - qualityAcceptedFacts.length;
+  for (const { decision } of qualityDecisions) {
+    if (!decision.accepted) {
+      options.diagnostics.qualityRejections[decision.reasonCode] =
+        (options.diagnostics.qualityRejections[decision.reasonCode] ?? 0) + 1;
+    }
+  }
   const deduplication = deduplicateVerifiedFacts(qualityAcceptedFacts);
   const businessFacts = deduplication.facts;
   const resolved = identityDecision.status === "resolved" && selected !== null;
@@ -395,19 +843,25 @@ function buildDossier(options: {
     const existing = sourceBySubjectAndUrl.get(key);
     if (existing !== undefined) return existing;
     const sourceId = `source-${randomUUID()}`;
+    const verificationMethod = proofVerificationMethod(proof);
+    const directlyRetrieved = proof.retrievalStatus !== "unavailable";
+    const publisherDomain = publisherDomainForUrl(proof.finalUrl);
+    const sameAsIdentityPublisher = publisherDomain !== null && identityPublisherDomains.has(publisherDomain);
     sources.push({
       source_id: sourceId,
       provider_url: proof.citationUrl,
-      resolved_url: proof.finalUrl,
+      resolved_url: directlyRetrieved ? proof.finalUrl : null,
       canonical_url: null,
       title: proof.title,
       publisher: new URL(proof.finalUrl).hostname,
-      source_type: "search_result",
+      source_type: verificationMethod === "source_content" && sameAsIdentityPublisher
+        ? "official_publication"
+        : "search_result",
       published_at: null,
       accessed_at: proof.locator.retrievedAt,
-      collection_method: "direct_access",
+      collection_method: verificationMethod === "source_content" ? "direct_access" : "provider_search",
       collection_compliance: "not_verified",
-      accessibility_status: "accessible",
+      accessibility_status: directlyRetrieved ? "accessible" : "unknown",
       assumed_entity_id: subjectId,
       assumed_scope: scope,
     });
@@ -417,13 +871,12 @@ function buildDossier(options: {
 
   let identityClaimId: string | null = null;
   if (resolved && selected !== null) {
-    identityClaimId = `claim-${randomUUID()}`;
-    const identityEvidenceId = `evidence-${randomUUID()}`;
+    const resolvedIdentityClaimId = `claim-${randomUUID()}`;
+    identityClaimId = resolvedIdentityClaimId;
     const identityScope: DossierScope = {
       type: selected.candidate.entityScope,
       label: selected.candidate.displayName,
     };
-    const identitySourceId = ensureSource(resolvedSubjectId, identityScope, selected.proof);
     const unknownPeriod: DossierFactPeriod = {
       status: "unknown",
       start: null,
@@ -431,21 +884,27 @@ function buildDossier(options: {
       as_of: null,
       label: null,
     };
-    evidence.push({
-      evidence_id: identityEvidenceId,
-      source_id: identitySourceId,
-      claim_id: identityClaimId,
-      excerpt: selected.proof.verifiedExcerpt,
-      locator: serializeSourceLocator(selected.proof.locator),
-      entity_id: resolvedSubjectId,
-      fact_period: unknownPeriod,
-      scope: identityScope,
-      relation: "supports",
-      verification_method: "source_content",
-      verified_at: selected.proof.locator.retrievedAt,
+    const identityProofs = [selected.proof, ...(selected.corroboratingProofs ?? [])];
+    const identityEvidenceIds = identityProofs.map((proof, proofIndex) => {
+      const evidenceId = `evidence-${randomUUID()}`;
+      const sourceId = ensureSource(resolvedSubjectId, identityScope, proof);
+      evidence.push({
+        evidence_id: evidenceId,
+        source_id: sourceId,
+        claim_id: resolvedIdentityClaimId,
+        excerpt: proof.verifiedExcerpt,
+        locator: serializeSourceLocator(proof.locator),
+        entity_id: resolvedSubjectId,
+        fact_period: unknownPeriod,
+        scope: identityScope,
+        relation: proofIndex === 0 ? "supports" : "context_only",
+        verification_method: proofVerificationMethod(proof),
+        verified_at: proof.locator.retrievedAt,
+      });
+      return evidenceId;
     });
     claims.push({
-      claim_id: identityClaimId,
+      claim_id: resolvedIdentityClaimId,
       subject_id: resolvedSubjectId,
       statement: selected.proof.verifiedExcerpt,
       predicate: "identity.proof",
@@ -454,11 +913,13 @@ function buildDossier(options: {
       fact_period: unknownPeriod,
       scope: identityScope,
       temporal_status: "unknown",
-      evidence_ids: [identityEvidenceId],
+      evidence_ids: identityEvidenceIds,
       claim_state: "supported",
       reconciliation_state: "confirmation",
       presentation_decision: "display_fact",
-      presentation_reason: "Preuve d’identité séparée des faits métier ; l’extrait exact retrouvé est conservé.",
+      presentation_reason: selected.proofBasis === "verified_facts"
+        ? "Identité établie par corroboration factuelle vérifiée ; chaque extrait utilisé reste relié à sa source."
+        : "Preuve d’identité dédiée, distincte des faits métier ; l’extrait exact retrouvé est conservé.",
     });
   }
 
@@ -500,7 +961,10 @@ function buildDossier(options: {
     });
   }
   if (resolved) {
-    const metrics = businessFacts.filter(({ candidate }) => candidate.category === "metric");
+    const metrics = businessFacts.filter(({ candidate, proofs }) =>
+      candidate.category === "metric" &&
+      proofs.every((proof) => proofVerificationMethod(proof) === "source_content")
+    );
     for (const [index, left] of metrics.entries()) {
       for (const right of metrics.slice(index + 1)) {
         const leftSignature = metricComparisonSignature(left.candidate);
@@ -634,7 +1098,7 @@ function buildDossier(options: {
           fact_period: period,
           scope,
           relation: "supports",
-          verification_method: "source_content",
+          verification_method: proofVerificationMethod(proof),
           verified_at: proof.locator.retrievedAt,
         });
         return evidenceId;
@@ -645,7 +1109,7 @@ function buildDossier(options: {
       claims.push({
         claim_id: claimId,
         subject_id: resolvedSubjectId,
-        statement: item.candidate.excerpt,
+        statement: item.proofs[0]?.verifiedExcerpt ?? item.candidate.excerpt,
         predicate: conflictSignature === undefined
           ? `${item.candidate.category}.${item.candidate.predicate}`
           : `metric.${conflictSignature.metric}`,
@@ -671,7 +1135,9 @@ function buildDossier(options: {
         presentation_decision: indeterminate ? "reject" : "display_fact",
         presentation_reason: indeterminate
           ? "La valeur reste conservée dans le dossier mais n’est pas affichée comme un fait faute de dimensions de comparaison suffisantes."
-          : "Le texte affiché est l’extrait exact retrouvé dans la page source consultée.",
+          : item.proofs.some((proof) => proofVerificationMethod(proof) === "source_content")
+            ? "Le texte affiché est l’extrait retrouvé dans une page source consultée."
+            : "Le texte affiché reste attribué à une citation Web Search ; la page n’a pas confirmé littéralement cet extrait.",
       });
       factRecordByFact.set(item, { claimId, evidenceIds, period, normalizedValue });
     }
@@ -702,7 +1168,7 @@ function buildDossier(options: {
         fact_period: { status: "unknown", start: null, end: null, as_of: null, label: null },
         scope,
         relation: "supports",
-        verification_method: "source_content",
+        verification_method: proofVerificationMethod(item.proof),
         verified_at: item.proof.locator.retrievedAt,
       });
       claims.push({
@@ -813,7 +1279,14 @@ function buildDossier(options: {
     addUnknown(
       "source_inaccessible",
       `${options.rejectedProofCount} preuve(s) proposée(s) ont été écartées avant affichage.`,
-      "URL non reliée, page inaccessible, format refusé ou extrait exact introuvable.",
+      "URL non reliée, page inaccessible, format refusé ou extrait source vérifiable introuvable.",
+    );
+  }
+  if (options.retainedGroundedCount > 0) {
+    addUnknown(
+      "not_verified",
+      `${options.retainedGroundedCount} information(s) restent affichées avec une confiance dégradée.`,
+      "La citation Web Search est attribuable, mais l’extrait n’a pas été confirmé directement dans la page.",
     );
   }
   if (attributionRejectedCount > 0) {
@@ -857,7 +1330,7 @@ function buildDossier(options: {
   let resultMode: ResearchDossier["result_mode"];
   if (resolved) {
     identityStatus = "resolved";
-    globalStatus = completeness.status;
+    globalStatus = options.retainedGroundedCount > 0 ? "partial" : completeness.status;
     resultMode = "standard";
   } else if (
     identityDecision.status === "ambiguous" ||
@@ -1050,8 +1523,8 @@ function buildDossier(options: {
     global_status: globalStatus,
     error: null,
     limitations: [
-      "Le dossier couvre uniquement des pages Web publiques accessibles pendant cette exécution.",
-      "Les faits affichés reprennent des extraits directs ; aucune inférence n’est ajoutée.",
+      "Le dossier couvre uniquement des pages et citations Web publiques attribuables pendant cette exécution.",
+      "Chaque fait affiché conserve son URL et indique si l’extrait a été confirmé dans la page ou seulement fourni par Web Search.",
       "Une date récente établit un événement daté, jamais à elle seule un état actuel.",
       "La visibilité est vérifiée dans le HTML rendu côté serveur, sans exécuter le JavaScript ni les feuilles de style externes.",
       ...(resolved && completeness.criteria.publisherDomains < 2
@@ -1140,6 +1613,7 @@ function safeLog(logger: SafeLogger, receipt: PublicReceipt, errorCode?: string)
       },
       sourceCount: receipt.sourceCount,
       sourceFetchCount: receipt.sourceFetchCount,
+      pipelineCounts: receipt.pipelineCounts,
       durations: receipt.durations,
       timedOutOrCancelled: receipt.timedOutOrCancelled,
       finalStatus: receipt.finalStatus,
@@ -1191,6 +1665,7 @@ export async function executeResearch(options: {
   let validatingMs = 0;
   let failedStage: FailureStage = "generation";
   let terminalRecorded = false;
+  let pipelineCounts: PublicReceipt["pipelineCounts"] | undefined;
 
   async function deliverTerminal(event: ResearchProgressEvent): Promise<void> {
     if (terminalRecorded || (event.state !== "completed" && event.state !== "failed")) return;
@@ -1232,6 +1707,7 @@ export async function executeResearch(options: {
     failedStage = "metadata_extraction";
     assertProviderAdmission(result);
     const estimatedCostUsd = requireMeasuredCost(result);
+    result = withSelectedIdentitySource(result, options.input);
 
     options.emit({
       state: "source_verifying",
@@ -1243,6 +1719,25 @@ export async function executeResearch(options: {
     sourceVerifyingStartMs = Math.max(
       0,
       Math.round(verificationStart - totalStart),
+    );
+    const providerCandidates = result.document.candidates;
+    const displayNamesByCandidateKey = new Map(
+      providerCandidates.map((candidate) => [
+        candidate.candidateKey,
+        providerCandidates.filter(
+          (other) => other.candidateKey === candidate.candidateKey,
+        ).length === 1
+          ? [...new Set([
+              candidate.displayName,
+              ...(candidate.entityType === "company"
+                ? [candidate.displayName.replace(
+                    /\s+(?:AG|Corp(?:oration)?|GmbH|Group|Groupe|Inc|LLC|Ltd|PLC|SA|SAS|SASU|SE)\.?$/iu,
+                    "",
+                  ).trim()]
+                : []),
+            ].filter((label) => label.length > 0))]
+          : undefined,
+      ] as const),
     );
     const [candidateBatch, factBatch] = await Promise.all([
       verifyBatch({
@@ -1256,15 +1751,37 @@ export async function executeResearch(options: {
         result,
         sourceVerifier: options.sourceVerifier,
         signal: options.signal,
+        attributedDisplayNames: (fact) =>
+          displayNamesByCandidateKey.get(fact.subjectKey) ?? [],
       }),
     ]);
+    const reconstructedIdentityCandidates = await reconstructIdentityFromDocuments({
+      documents: candidateBatch.documents,
+      alreadyVerified: candidateBatch.verified,
+      sourceVerifier: options.sourceVerifier,
+    });
+    const directlyVerifiedIdentityCandidates = [
+      ...candidateBatch.verified,
+      ...reconstructedIdentityCandidates,
+    ];
+    const sourceFirstFacts = deriveSourceFirstRoleFacts(directlyVerifiedIdentityCandidates);
+    const verifiedIdentityCandidates = [
+      ...directlyVerifiedIdentityCandidates,
+      ...candidateBatch.grounded.filter(({ candidate }) =>
+        !directlyVerifiedIdentityCandidates.some(
+          (verified) => verified.candidate.candidateKey === candidate.candidateKey,
+        )
+      ),
+    ];
+    const verifiedFacts = [...factBatch.verified, ...sourceFirstFacts, ...factBatch.grounded];
     sourceVerifyingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
     );
     sourceFetchCount = candidateBatch.sourceFetchCount + factBatch.sourceFetchCount;
     excerptVerificationCount =
-      candidateBatch.excerptVerificationCount + factBatch.excerptVerificationCount;
+      candidateBatch.excerptVerificationCount + factBatch.excerptVerificationCount +
+      reconstructedIdentityCandidates.length + sourceFirstFacts.length;
 
     options.emit({
       state: "building",
@@ -1276,12 +1793,21 @@ export async function executeResearch(options: {
     const completedAt = now();
     const interimTotalMs = Math.max(0, Math.round(monotonicNow() - totalStart));
     failedStage = "receipt_construction";
+    const dossierDiagnostics: DossierBuildDiagnostics = {
+      attributionRejections: {},
+      qualityRejections: {},
+      identityStatus: "pending",
+      identityReasonCodes: [],
+    };
     const dossier = buildDossier({
       input: options.input,
       result,
-      verifiedIdentityCandidates: candidateBatch.verified,
-      verifiedFacts: factBatch.verified,
-      rejectedProofCount: candidateBatch.rejectedCount + factBatch.rejectedCount,
+      verifiedIdentityCandidates,
+      verifiedFacts,
+      rejectedProofCount:
+        candidateBatch.rejectedCount + factBatch.rejectedCount -
+        candidateBatch.grounded.length - factBatch.grounded.length,
+      retainedGroundedCount: candidateBatch.grounded.length + factBatch.grounded.length,
       executionId,
       startedAt,
       completedAt,
@@ -1289,7 +1815,30 @@ export async function executeResearch(options: {
       searchingMs,
       sourceVerifyingMs,
       estimatedCostUsd,
+      diagnostics: dossierDiagnostics,
     });
+    pipelineCounts = {
+      providerIdentityCandidates: result.document.candidates.length,
+      providerFactCandidates: result.document.claims.length,
+      retrievedIdentityDocuments: candidateBatch.documents.length,
+      retrievedFactDocuments: factBatch.documents.length,
+      directIdentityProofs: candidateBatch.verified.length,
+      reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
+      directFactProofs: factBatch.verified.length,
+      sourceFirstFacts: sourceFirstFacts.length,
+      retainedGroundedIdentityProofs: candidateBatch.grounded.length,
+      retainedGroundedFactProofs: factBatch.grounded.length,
+      discardedProofs:
+        candidateBatch.rejectedCount + factBatch.rejectedCount -
+        candidateBatch.grounded.length - factBatch.grounded.length,
+      displayedBusinessFacts: dossier.claims.filter(({ predicate, presentation_decision }) =>
+        presentation_decision === "display_fact" && !predicate.startsWith("identity.")
+      ).length,
+      attributionRejections: dossierDiagnostics.attributionRejections,
+      qualityRejections: dossierDiagnostics.qualityRejections,
+      identityStatus: dossierDiagnostics.identityStatus,
+      identityReasonCodes: dossierDiagnostics.identityReasonCodes,
+    };
     buildingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - buildingStartMs,
@@ -1369,6 +1918,7 @@ export async function executeResearch(options: {
       totalMs,
       finalStatus: "completed",
       timedOutOrCancelled: false,
+      ...(pipelineCounts === undefined ? {} : { pipelineCounts }),
     });
     await deliverTerminal({ state: "completed", executionId, elapsedMs: totalMs, dossier, receipt });
   } catch (error) {

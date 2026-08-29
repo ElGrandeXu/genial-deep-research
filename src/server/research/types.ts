@@ -5,6 +5,7 @@ export interface ResearchInput {
   readonly name: string;
   readonly context?: string;
   readonly entityType?: "auto" | "person" | "company";
+  readonly identitySourceUrl?: string;
 }
 
 export interface ProviderCitation {
@@ -183,7 +184,7 @@ export interface ProviderResearchDocument {
 
 export interface SourceLocator {
   readonly exact: string;
-  readonly matchMode?: "exact" | "typographic_equivalence";
+  readonly matchMode?: "exact" | "mechanical_equivalence";
   readonly prefix: string;
   readonly suffix: string;
   readonly occurrenceIndex: number;
@@ -207,14 +208,47 @@ export interface VerifiedSourceProof {
   readonly locator: SourceLocator;
   readonly sourceFetchCount: number;
   readonly sourceVerificationMs: number;
+  /** Defaults to source_content for legacy/test proofs. */
+  readonly verificationMethod?: "source_content" | "provider_annotation" | "search_snippet";
+  /** Whether the public page itself was available to the server. */
+  readonly retrievalStatus?: "retrieved" | "unavailable";
+}
+
+export interface RetrievedSourceDocument {
+  readonly citation: ProviderSourceBinding;
+  readonly citationUrl: string;
+  readonly finalUrl: string;
+  readonly title: string;
+  readonly documentText: string;
+  readonly retrievedAt: string;
+  readonly contentType: string;
+  readonly bytesRead: number;
+  readonly redirectCount: number;
+  readonly sourceFetchCount: number;
+  readonly sourceVerificationMs: number;
 }
 
 export interface SourceVerifier {
   verify(
     request: {
       readonly candidate: ProviderClaimCandidate;
+      readonly attributedDisplayNames?: readonly string[];
       readonly citation: ProviderSourceBinding;
       readonly signal: AbortSignal;
+    },
+  ): Promise<VerifiedSourceProof>;
+  inspect?(
+    request: {
+      readonly candidate: ProviderClaimCandidate;
+      readonly citation: ProviderSourceBinding;
+      readonly signal: AbortSignal;
+    },
+  ): Promise<RetrievedSourceDocument>;
+  verifyDocument?(
+    request: {
+      readonly document: RetrievedSourceDocument;
+      readonly candidate: ProviderClaimCandidate;
+      readonly attributedDisplayNames?: readonly string[];
     },
   ): Promise<VerifiedSourceProof>;
 }
@@ -295,6 +329,24 @@ export interface PublicReceipt {
   };
   readonly estimatedCostUsd: number | null;
   readonly costLimitations: readonly string[];
+  readonly pipelineCounts?: {
+    readonly providerIdentityCandidates: number;
+    readonly providerFactCandidates: number;
+    readonly retrievedIdentityDocuments: number;
+    readonly retrievedFactDocuments: number;
+    readonly directIdentityProofs: number;
+    readonly reconstructedIdentityProofs: number;
+    readonly directFactProofs: number;
+    readonly sourceFirstFacts: number;
+    readonly retainedGroundedIdentityProofs: number;
+    readonly retainedGroundedFactProofs: number;
+    readonly discardedProofs: number;
+    readonly displayedBusinessFacts: number;
+    readonly attributionRejections: Readonly<Record<string, number>>;
+    readonly qualityRejections: Readonly<Record<string, number>>;
+    readonly identityStatus: string;
+    readonly identityReasonCodes: readonly string[];
+  };
 }
 
 export const FAILURE_CATEGORIES = [

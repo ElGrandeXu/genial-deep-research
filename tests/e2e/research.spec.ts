@@ -118,7 +118,18 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
   await expect(page.getByRole("heading", { name: "Faits publics vérifiés" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lecture rapide — extraits vérifiés" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "3 faits métier étayés" })).toBeVisible();
+  await expect(page.locator(".result-focus")).toBeFocused();
+  expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
   await expect(page.getByText("Preuve d’identité vérifiée")).toBeVisible();
+  const identityProof = page.locator(".identity-proof");
+  await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(1);
+  await identityProof.locator(".additional-evidence").click();
+  await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(2);
+  await expect(identityProof.getByText("Contexte seulement")).toBeVisible();
+  await expect(identityProof.getByRole("link", { name: /Registre public — Acme Group/u })).toHaveAttribute(
+    "href",
+    "https://registry.public.net/acme",
+  );
   const activityCard = page.locator(".claim-card").filter({
     hasText: "Acme Group conçoit des logiciels de planification industrielle.",
   });
@@ -130,8 +141,9 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
   await expect(page.getByText("Portée : Acme Group — groupe")).toBeVisible();
   await expect(page.getByText("Identité résolue")).toBeVisible();
   await expect(page.getByText("3 faits étayés")).toBeVisible();
-  await expect(page.locator(".result-focus")).toBeFocused();
-  expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
+  await expect(page.getByText("Équivalence mécanique · occurrence 1")).toBeVisible();
+  await expect(page.getByText("Correspondance exacte · occurrence 1").first()).toBeVisible();
+  await expect(page.getByText("Extrait source vérifié · occurrence 1")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   if (updateReleaseEvidence) {
     await page.screenshot({ path: join(evidenceDirectory, "complete-1440.png"), fullPage: true });
@@ -204,6 +216,12 @@ test("768 px layout, keyboard order and reduced motion remain usable", async ({ 
 });
 
 test("ambiguity keeps candidates separate and clarification only prefills", async ({ page }) => {
+  const submittedBodies: Record<string, unknown>[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/research") && request.method() === "POST") {
+      submittedBodies.push(request.postDataJSON() as Record<string, unknown>);
+    }
+  });
   await mockSse(page, completedSse(ambiguousDossier()));
   await page.goto("/");
   await submit(page, "Thomas Martin");
@@ -212,9 +230,20 @@ test("ambiguity keeps candidates separate and clarification only prefills", asyn
   await expect(page.getByText("Candidat possible 2")).toBeVisible();
   await page.getByRole("button", { name: /Préremplir avec Thomas Martin/u }).first().click();
   await expect(page.getByLabel("Nom")).toHaveValue("Thomas Martin");
-  await expect(page.getByLabel(/Contexte/)).toHaveValue(/studio\.public\.org/u);
+  await expect(page.getByLabel(/Contexte/)).toHaveValue(
+    "Source officielle https://official.public.org",
+  );
+  expect(submittedBodies).toHaveLength(1);
   await expect(page.getByRole("status")).toContainText("relancez manuellement");
   await expect(page.getByLabel("Nom")).toBeFocused();
+  await page.getByRole("button", { name: "Construire le dossier" }).click();
+  await expect.poll(() => submittedBodies.length).toBe(2);
+  expect(submittedBodies[1]).toMatchObject({
+    name: "Thomas Martin",
+    entityType: "person",
+    context: "Source officielle https://official.public.org",
+    identitySourceUrl: "https://studio.public.org/thomas-martin",
+  });
 });
 
 test("a single plausible candidate uses a singular clarification label", async ({ page }) => {

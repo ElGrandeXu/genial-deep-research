@@ -22,6 +22,7 @@ import type {
   ResearchInput,
   ResearchProgressEvent,
   ResearchProvider,
+  RetrievedSourceDocument,
   SourceVerifier,
 } from "../src/server/research/types";
 
@@ -265,7 +266,10 @@ describe("provider multi-fact contract", () => {
     for (const requirement of [
       "3 à 6 faits utiles",
       "au moins deux pages distinctes",
-      "extrait exact, contigu et visible",
+      "citation ou un extrait attribuable",
+      "snippet réellement fourni par Web Search",
+      "recherche du nom exact",
+      "au moins une deuxième action Web Search",
       "Ne fusionne jamais des homonymes",
       "identityStatus=ambiguous",
       "identityStatus=not_found",
@@ -438,6 +442,171 @@ describe("research request", () => {
 });
 
 describe("verified dossier service", () => {
+  it("fetches a selected identity source and derives its adjacent atomic role", async () => {
+    const selectedUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const searchUrl = "https://directory.public.net/camille-durand";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Camille Durand",
+      structuredUrl: searchUrl,
+      excerpt: "Camille Durand",
+      prefix: null,
+      suffix: null,
+    };
+    const document: ProviderResearchDocument = {
+      identityStatus: "insufficient_context",
+      entityType: "person",
+      candidates: [candidate],
+      claims: [],
+      missingCategories: ["role"],
+    };
+    const verifiedUrls: string[] = [];
+    const fallbackVerifier = exactSourceVerifier({
+      documentText: "Camille Durand\nDirectrice de l’Atelier Nordique",
+    });
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        verifiedUrls.push(request.candidate.structuredUrl);
+        const proof = await fallbackVerifier.verify(request);
+        return { ...proof, title: "Atelier Nordique | Équipe" };
+      },
+    };
+
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        context: "Rennes, design",
+        identitySourceUrl: selectedUrl,
+      },
+      sourceVerifier,
+    }));
+
+    expect(verifiedUrls).toEqual([selectedUrl]);
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "role.professional_role",
+        statement: "Camille Durand\nDirectrice de l’Atelier Nordique",
+        presentation_decision: "display_fact",
+      }),
+    ]));
+    expect(terminal.dossier.claims.find(({ predicate }) => predicate === "identity.proof")
+      ?.evidence_ids).toHaveLength(1);
+    expect(terminal.dossier.sources).toHaveLength(1);
+    expect(terminal.receipt.sourceFetchCount).toBe(1);
+  });
+
+  it("reconstructs identity and an adjacent role from a fetched document after snippet mismatch", async () => {
+    const url = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Snippet fournisseur absent de la page",
+      structuredUrl: url,
+      excerpt: "Snippet fournisseur absent de la page",
+      prefix: null,
+      suffix: null,
+    };
+    const sourceDocument: RetrievedSourceDocument = {
+      citation: { provider: "openai", bindingType: "provider_source", url, sourceId: "source-1" },
+      citationUrl: url,
+      finalUrl: url,
+      title: "Atelier Nordique | Équipe",
+      documentText: "Camille Durand\nDirectrice de l’Atelier Nordique",
+      retrievedAt: consultedAt,
+      contentType: "text/html; charset=utf-8",
+      bytesRead: 256,
+      redirectCount: 0,
+      sourceFetchCount: 1,
+      sourceVerificationMs: 3,
+    };
+    const sourceVerifier: SourceVerifier = {
+      async verify() {
+        throw new Error("legacy verify must not run");
+      },
+      async inspect() {
+        return sourceDocument;
+      },
+      async verifyDocument({ document, candidate: proofCandidate }) {
+        if (!document.documentText.includes(proofCandidate.excerpt)) {
+          throw new ResearchPipelineError("source_excerpt_missing", "Synthetic mismatch.");
+        }
+        return {
+          citation: document.citation,
+          citationUrl: document.citationUrl,
+          finalUrl: document.finalUrl,
+          title: document.title,
+          verifiedExcerpt: proofCandidate.excerpt,
+          documentText: document.documentText,
+          locator: {
+            exact: proofCandidate.excerpt,
+            matchMode: "exact",
+            prefix: "",
+            suffix: "",
+            occurrenceIndex: 0,
+            finalUrl: document.finalUrl,
+            citationUrl: document.citationUrl,
+            retrievedAt: document.retrievedAt,
+            normalizedTextSha256: createHash("sha256").update(document.documentText).digest("hex"),
+            contentType: document.contentType,
+            bytesRead: document.bytesRead,
+            redirectCount: document.redirectCount,
+          },
+          sourceFetchCount: document.sourceFetchCount,
+          sourceVerificationMs: document.sourceVerificationMs,
+          verificationMethod: "source_content",
+          retrievalStatus: "retrieved",
+        };
+      },
+    };
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "insufficient_context",
+        entityType: "person",
+        candidates: [candidate],
+        claims: [],
+        missingCategories: [],
+      }),
+      input: { name: "Camille Durand", entityType: "person", context: "Atelier Nordique" },
+      sourceVerifier,
+    }));
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "role.professional_role",
+        statement: "Camille Durand\nDirectrice de l’Atelier Nordique",
+      }),
+    ]));
+    expect(terminal.dossier.evidence.every(({ verification_method }) =>
+      verification_method === "source_content"
+    )).toBe(true);
+  });
+
   it("builds a complete dossier with multiple exact facts and distinct pages", async () => {
     const events = await executeWith();
     expect(events.map(({ state }) => state)).toEqual([
@@ -480,6 +649,286 @@ describe("verified dossier service", () => {
     expect(terminal.dossier.claims.some(({ predicate }) => predicate.startsWith("activity."))).toBe(true);
   });
 
+  it("uses independently verified facts to preserve a candidate whose dedicated proof is inaccessible", async () => {
+    const inaccessibleIdentityUrl = "https://directory.public.org/people/camille-durand";
+    const roleUrl = "https://studio.public.net/team/camille-durand";
+    const profileUrl = "https://camille-durand.fr/design";
+    const homonymUrl = "https://university.public.edu/biology/camille-durand";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: "Rennes",
+        country: null,
+        industry: "design numérique",
+        employer: "Atelier Nordique",
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Camille Durand dirige l’Atelier Nordique.",
+      structuredUrl: inaccessibleIdentityUrl,
+      excerpt: "Camille Durand dirige l’Atelier Nordique.",
+      prefix: null,
+      suffix: null,
+    };
+    const role = fact("Camille Durand est directrice du design numérique de l’Atelier Nordique à Rennes.", roleUrl, {
+      subjectKey: "camille-durand",
+      entityType: "person",
+      category: "role",
+      predicate: "professional_role",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+    });
+    const activity = fact("Camille Durand conçoit des services de design numérique.", profileUrl, {
+      subjectKey: "camille-durand",
+      entityType: "person",
+      category: "activity",
+      predicate: "professional_activity",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+    });
+    const homonymFact = fact("Camille Durand enseigne la biologie marine à Brest.", homonymUrl, {
+      subjectKey: "camille-durand",
+      entityType: "person",
+      category: "activity",
+      predicate: "marine_biology",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+    });
+    const document: ProviderResearchDocument = {
+      identityStatus: "resolved",
+      entityType: "person",
+      candidates: [candidate],
+      claims: [role, activity, homonymFact],
+      missingCategories: [],
+    };
+    const fallbackVerifier = exactSourceVerifier();
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        if (request.candidate.structuredUrl === inaccessibleIdentityUrl) {
+          throw new ResearchPipelineError(
+            "source_http_error",
+            "Synthetic directory refusal.",
+            { sourceFetchCount: 1, sourceVerificationMs: 4 },
+          );
+        }
+        return fallbackVerifier.verify(request);
+      },
+    };
+
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        context: "Rennes, design numérique",
+      },
+      sourceVerifier,
+    }));
+
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims.filter(
+      ({ predicate }) => !predicate.startsWith("identity."),
+    )).toHaveLength(2);
+    expect(terminal.dossier.sources.map(({ resolved_url }) => resolved_url)).not.toContain(
+      inaccessibleIdentityUrl,
+    );
+    expect(terminal.dossier.sources.map(({ resolved_url }) => resolved_url)).not.toContain(
+      homonymUrl,
+    );
+    expect(terminal.dossier.claims.map(({ statement }) => statement)).not.toContain(
+      homonymFact.excerpt,
+    );
+    expect(terminal.dossier.sources.map(({ resolved_url }) => resolved_url)).toEqual(
+      expect.arrayContaining([roleUrl, profileUrl]),
+    );
+    const identityClaim = terminal.dossier.claims.find(
+      ({ predicate }) => predicate === "identity.proof",
+    );
+    const identityEvidence = terminal.dossier.evidence.filter(({ evidence_id }) =>
+      identityClaim?.evidence_ids.includes(evidence_id) === true
+    );
+    expect(identityClaim?.presentation_reason).toContain("corroboration factuelle vérifiée");
+    expect(identityClaim?.presentation_reason).not.toContain("séparée des faits métier");
+    expect(identityClaim?.evidence_ids).toHaveLength(2);
+    expect(identityEvidence.map(({ relation }) => relation)).toEqual([
+      "supports",
+      "context_only",
+    ]);
+    expect(identityEvidence.map(({ source_id }) =>
+      terminal.dossier.sources.find(({ source_id: candidateId }) => candidateId === source_id)?.resolved_url
+    )).toEqual([roleUrl, profileUrl]);
+    expect(terminal.receipt.sourceFetchCount).toBe(4);
+    expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ category: "out_of_scope" }),
+    ]));
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("publishes the exact verified source slice after a mechanical excerpt match", async () => {
+    const candidateExcerpt = "AIRBUS SE designs and manufactures commercial aircraft.";
+    const verifiedExcerpt = "Airbus SE designs and manufactures commercial aircraft.";
+    const document = resolvedDocument({
+      claims: [fact(candidateExcerpt, sourceA)],
+    });
+    const fallbackVerifier = exactSourceVerifier();
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        const verified = await fallbackVerifier.verify(request);
+        if (request.candidate.excerpt !== candidateExcerpt) return verified;
+        return {
+          ...verified,
+          verifiedExcerpt,
+          documentText: verifiedExcerpt,
+          locator: {
+            ...verified.locator,
+            exact: verifiedExcerpt,
+            matchMode: "mechanical_equivalence",
+            normalizedTextSha256: createHash("sha256")
+              .update(verifiedExcerpt, "utf8")
+              .digest("hex"),
+          },
+        };
+      },
+    };
+
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      sourceVerifier,
+    }));
+    const businessClaim = terminal.dossier.claims.find(
+      ({ predicate }) => predicate === "activity.activity",
+    );
+    const claimEvidence = terminal.dossier.evidence.find(
+      ({ evidence_id }) => businessClaim?.evidence_ids.includes(evidence_id) === true,
+    );
+
+    expect(businessClaim?.statement).toBe(verifiedExcerpt);
+    expect(claimEvidence?.excerpt).toBe(verifiedExcerpt);
+    expect(claimEvidence?.locator).toContain('"matchMode":"mechanical_equivalence"');
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("binds fact verification to the provider candidate's full name and safe company alias", async () => {
+    const acmeUrl = "https://official.public.org/acme";
+    const candidate: ProviderIdentityCandidate = {
+      ...identityCandidate,
+      candidateKey: "acme-sas",
+      displayName: "Acme SAS",
+      discriminators: {
+        ...identityCandidate.discriminators,
+        officialSite: "official.public.org",
+      },
+      statement: "Acme SAS est une entreprise industrielle.",
+      excerpt: "Acme SAS est une entreprise industrielle.",
+      structuredUrl: acmeUrl,
+    };
+    const businessFact = fact(
+      "Acme développe des logiciels de planification industrielle.",
+      acmeUrl,
+      {
+        subjectKey: "acme-sas",
+        scopeLabel: null,
+      },
+    );
+    const requests: Array<Parameters<SourceVerifier["verify"]>[0]> = [];
+    const fallbackVerifier = exactSourceVerifier();
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        requests.push(request);
+        return fallbackVerifier.verify(request);
+      },
+    };
+
+    await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "company",
+        candidates: [candidate],
+        claims: [businessFact],
+        missingCategories: [],
+      }),
+      input: {
+        name: "Acme SAS",
+        entityType: "company",
+        context: "official.public.org",
+      },
+      sourceVerifier,
+    });
+
+    const factRequest = requests.find(({ candidate: item }) => "subjectKey" in item);
+    expect(factRequest?.attributedDisplayNames).toEqual(["Acme SAS", "Acme"]);
+  });
+
+  it("propagates a non-empty attributed name for a one-character candidate", async () => {
+    const xUrl = "https://official.public.org/x";
+    const candidate: ProviderIdentityCandidate = {
+      ...identityCandidate,
+      candidateKey: "x",
+      displayName: "X",
+      statement: "X est une entreprise industrielle.",
+      excerpt: "X est une entreprise industrielle.",
+      structuredUrl: xUrl,
+    };
+    const businessFact = fact("X publie ses résultats.", xUrl, {
+      subjectKey: "x",
+      scopeLabel: null,
+    });
+    const requests: Array<Parameters<SourceVerifier["verify"]>[0]> = [];
+    const fallbackVerifier = exactSourceVerifier();
+    const sourceVerifier: SourceVerifier = {
+      async verify(request) {
+        requests.push(request);
+        return fallbackVerifier.verify(request);
+      },
+    };
+
+    await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "company",
+        candidates: [candidate],
+        claims: [businessFact],
+        missingCategories: [],
+      }),
+      input: { name: "X", entityType: "company", context: "official.public.org" },
+      sourceVerifier,
+    });
+
+    const factRequest = requests.find(({ candidate: item }) => "subjectKey" in item);
+    expect(factRequest?.attributedDisplayNames).toEqual(["X"]);
+  });
+
+  it("keeps contradictory structured values on separate source-bound claims", async () => {
+    const firstExcerpt = "Airbus SE publie le catalogue annuel complet officiel de référence industrielle pour ses clients européens avec les données validées du service en 2024.";
+    const secondExcerpt = "Airbus SE publie le catalogue annuel complet de référence industrielle pour ses clients européens avec les données validées du service en 2025.";
+    const document = resolvedDocument({
+      claims: [
+        fact(firstExcerpt, sourceA),
+        fact(secondExcerpt, sourceB),
+      ],
+    });
+
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    const businessClaims = terminal.dossier.claims.filter(
+      ({ predicate }) => predicate === "activity.activity",
+    );
+    expect(businessClaims).toHaveLength(2);
+    expect(businessClaims.map(({ statement, evidence_ids: evidenceIds }) => ({
+      statement,
+      evidence: terminal.dossier.evidence.find(({ evidence_id }) =>
+        evidenceIds.includes(evidence_id)
+      )?.excerpt,
+    }))).toEqual(expect.arrayContaining([
+      { statement: firstExcerpt, evidence: firstExcerpt },
+      { statement: secondExcerpt, evidence: secondExcerpt },
+    ]));
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
   it("keeps identity proof outside the three-business-fact completeness count", async () => {
     const document = resolvedDocument({ claims: resolvedDocument().claims.slice(0, 2) });
     const terminal = completed(await executeWith({ result: providerResult(document) }));
@@ -515,6 +964,42 @@ describe("verified dossier service", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0]?.evidence_ids).toHaveLength(2);
     expect(terminal.dossier.global_status).toBe("complete_within_scope");
+  });
+
+  it("does not inflate completeness when one statement is repeated across categories", async () => {
+    const excerpt = "Airbus SE designs and manufactures commercial aircraft.";
+    const document = resolvedDocument({
+      claims: [
+        fact(excerpt, sourceA, {
+          category: "activity",
+          predicate: "aircraft_manufacturing",
+        }),
+        fact(excerpt, sourceB, {
+          category: "geography",
+          predicate: "industrial_presence",
+        }),
+        fact(excerpt, sourceC, {
+          category: "other",
+          predicate: "company_profile",
+        }),
+      ],
+    });
+
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    const businessClaims = terminal.dossier.claims.filter(
+      ({ predicate }) => !predicate.startsWith("identity."),
+    );
+
+    expect(businessClaims).toHaveLength(1);
+    expect(businessClaims[0]?.evidence_ids).toHaveLength(3);
+    expect(terminal.dossier.global_status).toBe("partial");
+    expect(terminal.dossier.receipt.search_scope.stop_reason).toContain(
+      "faits uniques: 1/3 minimum",
+    );
+    expect(terminal.dossier.receipt.search_scope.stop_reason).toContain(
+      "catégories: 1/2 minimum",
+    );
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
   it("keeps three facts from subdomains of one publisher partial", async () => {
@@ -943,7 +1428,7 @@ describe("verified dossier service", () => {
     });
   });
 
-  it("discards a rejected proof, exposes the gap and never leaks its statement", async () => {
+  it("retains an attributable Web Search citation when direct excerpt verification fails", async () => {
     const rejected = "Airbus has a synthetic unsupported secret fact.";
     const document = resolvedDocument({
       claims: [
@@ -958,13 +1443,37 @@ describe("verified dossier service", () => {
       result: providerResult(document),
       sourceVerifier: exactSourceVerifier({ rejectExcerpt: rejected }),
     }));
-    expect(JSON.stringify(terminal.dossier)).not.toContain(rejected);
+    expect(JSON.stringify(terminal.dossier)).toContain(rejected);
+    const retainedClaim = terminal.dossier.claims.find(({ statement }) => statement === rejected);
+    expect(retainedClaim).toBeDefined();
+    const retainedEvidence = terminal.dossier.evidence.find(
+      ({ claim_id }) => claim_id === retainedClaim?.claim_id,
+    );
+    expect(retainedEvidence?.verification_method).toBe("provider_annotation");
+    expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ description: expect.stringContaining("confiance dégradée") }),
+    ]));
+    expect(terminal.dossier.claims.length).toBeGreaterThanOrEqual(3);
+    expect(terminal.dossier.global_status).toBe("partial");
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("still rejects a fact whose URL is not an admissible attributable source", async () => {
+    const unsupported = "Airbus has a model-only unsupported statement.";
+    const document = resolvedDocument({
+      claims: [
+        ...resolvedDocument().claims,
+        fact(unsupported, "http://unsafe.invalid/unbound", {
+          category: "other",
+          predicate: "unsupported",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    expect(JSON.stringify(terminal.dossier)).not.toContain(unsupported);
     expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
       expect.objectContaining({ category: "source_inaccessible" }),
     ]));
-    expect(terminal.dossier.claims.length).toBeGreaterThanOrEqual(3);
-    expect(terminal.dossier.global_status).toBe("complete_within_scope");
-    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
   it("rejects a wrong-subject fact without penalizing sufficient clean coverage", async () => {

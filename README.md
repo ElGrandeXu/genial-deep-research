@@ -1,13 +1,12 @@
 # GENIAL Deep Research
 
-**Release candidate premium — 28 août 2026**
+**Hotfix de rappel traçable — 28 août 2026**
 
 GENIAL Deep Research transforme un nom de personne ou d’entreprise en un dossier public court, sourcé et traçable. Le produit préfère un refus utile à une réponse vraisemblable sans preuve : une identité ambiguë demande du contexte, une recherche pauvre devient « données insuffisantes » et une panne reste distincte d’un silence documentaire.
 
 - Production : <https://genial-deep-research.vercel.app>
 - Dépôt : <https://github.com/ElGrandeXu/genial-deep-research>
-- Runtime Production courant : `f53b7aed0d25e45aed26dfe96a0ed8c271365218`, promu depuis la Preview exacte `dpl_GE1Zk1cvuyYmRBuYEF4ufbFEAy4V` ([preuve Production](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md))
-- Runtime Production antérieur conservé pour rollback : `8e91ed0c66765d5cab3bb8a8364cea04eaeda2af`
+- Livraison : la Production est promue depuis une Preview immuable validée ; le déploiement Production précédent reste disponible comme rollback.
 
 ## Installer et relancer
 
@@ -37,7 +36,7 @@ L’application est un monolithe Next.js App Router en TypeScript strict, sans b
 2. La route Node protège la frontière HTTP, applique limite de débit, concurrence et délai total.
 3. OpenAI `gpt-5.6-luna` propose candidats, faits, URL et extraits via une sortie structurée et Web Search.
 4. Chaque URL passe par les contrôles d’URL publique et anti-SSRF ; le serveur récupère ensuite directement la page.
-5. Un extrait exact doit être retrouvé dans le HTML. Sinon, le fait est retiré.
+5. L’extrait est d’abord recherché littéralement, puis par une équivalence mécanique unique et bornée — casse, espaces/blocs HTML et signes typographiques. Le texte finalement affiché reste toujours la tranche exacte relue dans la page ; un mot, un nombre, une ponctuation sémantique ou un ordre différent entraîne le rejet.
 6. Le serveur décide l’identité, le sujet, la portée, la temporalité, la qualité et la complétude.
 7. JSON Schema, invariants métier — dont l’intégrité structurale des conflits détectés — et garde de coût valident le dossier avant son émission.
 8. L’interface ne rend que des chaînes `Claim → Evidence → Source` intègres.
@@ -46,11 +45,11 @@ Principe : **le fournisseur propose, le serveur décide**. Voir [l’architectur
 
 ## Identité, sources et refus
 
-`resolved` exige exactement un candidat directement vérifié. Le contexte n’est retenu que s’il est lui-même démontré. Pour chaque fait, le serveur contrôle la correspondance du sujet, du type, de la portée et de l’entité sur la page ; le statut proposé par le fournisseur ne suffit jamais.
+`resolved` exige exactement un candidat proposé et vérifiable. Pour une personne seulement, si sa preuve dédiée est indisponible ou ne démontre pas le contexte fourni, des faits ayant déjà passé les contrôles d’attribution et de qualité peuvent la compléter : nom demandé et nom complet du candidat identiques, même clé sujet, même type et même portée, nom complet présent dans chaque extrait, au moins deux familles d’éditeurs, deux documents et deux empreintes lexicales d’extraits distinctes. Un même indice significatif du contexte doit être explicitement relié au sujet dans au moins deux de ces preuves indépendantes. Il faut en plus soit un second indice significatif distinct relié au sujet dans l’une de ces mêmes preuves, soit une troisième preuve de rôle explicite et indépendante qui partage avec une preuve contextuelle un unique ancrage d’organisation : mêmes termes distinctifs dans les deux titres réellement lus et dans les deux URL finales. Le texte global de la page, un titre générique ou une URL seule ne suffit pas. Toutes les preuves ayant servi à cette décision restent reliées à l’affirmation d’identité ; dans cette voie, seuls les faits qui composent cet ensemble de résolution peuvent atteindre le dossier. Aucun candidat n’est créé à partir de faits seuls ; une entreprise conserve la voie de preuve d’identité dédiée. Pour chaque fait, le serveur contrôle la correspondance du sujet, du type, de la portée et de l’entité sur la page ; le statut proposé par le fournisseur ne suffit jamais.
 
 Un dossier complet comporte trois à six faits métier uniques, au moins deux catégories, deux pages et deux familles d’éditeurs. Un ou deux faits métier valides restent un résultat limité, même si leurs preuves sont intègres. Une homonymie non résolue produit une clarification ; l’absence de preuve produit un silence explicite ; une erreur technique ne produit aucun dossier partiel. Le résumé ne crée pas de nouveau fait.
 
-Chaque fait expose son extrait exact, son titre, son éditeur ou domaine, son URL, sa date de consultation, la période du fait et sa fraîcheur. Dans cette release, un conflit quantitatif visible est limité aux niveaux de `revenue` et `workforce` et à une période annuelle unique explicitement qualifiée de civile ou fiscale : même entité, métrique, portée, base d’observation, unité, devise reconnue (`EUR`, `USD`, `GBP`, `CHF`, `CAD`, `AUD`, `JPY` ou `CNY`) et nature publiée ou estimée, deux valeurs numériques exactes et finies et deux documents source distincts. La distinction exige à la fois deux chemins de page après retrait des paramètres de requête et deux empreintes SHA-256 du texte normalisé ; deux variantes d’URL ou deux extraits du même document ne suffisent pas. Pour chaque version, le sujet attendu, la métrique, sa valeur et son unité ou sa devise doivent être reliés dans la même proposition de l’extrait ; les dimensions sont redérivées au lieu de faire confiance aux seuls champs du modèle. Année nue, approximation, intervalle, taux, variation, sous-période, base ou population d’effectif non prise en charge, périmètre de maison mère non relié à une identité résolue, autre métrique, définition de revenu non allowlistée — par exemple ARR, run-rate, operating, subscription, deferred ou segment revenue — ou devise différente restent `indetermination` ; aucune conversion de devise n’est effectuée. Les versions contestées restent hors du résumé et aucune gagnante n’est inventée.
+Chaque fait expose la tranche exacte relue dans la source, son titre, son éditeur ou domaine, son URL, sa date de consultation, la période du fait et sa fraîcheur. Une différence purement mécanique peut servir à localiser cette tranche, mais jamais à réécrire ou élargir le fait. Dans cette release, un conflit quantitatif visible est limité aux niveaux de `revenue` et `workforce` et à une période annuelle unique explicitement qualifiée de civile ou fiscale : même entité, métrique, portée, base d’observation, unité, devise reconnue (`EUR`, `USD`, `GBP`, `CHF`, `CAD`, `AUD`, `JPY` ou `CNY`) et nature publiée ou estimée, deux valeurs numériques exactes et finies et deux documents source distincts. La distinction exige à la fois deux chemins de page après retrait des paramètres de requête et deux empreintes SHA-256 du texte normalisé ; deux variantes d’URL ou deux extraits du même document ne suffisent pas. Pour chaque version, le sujet attendu, la métrique, sa valeur et son unité ou sa devise doivent être reliés dans la même proposition de l’extrait ; les dimensions sont redérivées au lieu de faire confiance aux seuls champs du modèle. Année nue, approximation, intervalle, taux, variation, sous-période, base ou population d’effectif non prise en charge, périmètre de maison mère non relié à une identité résolue, autre métrique, définition de revenu non allowlistée — par exemple ARR, run-rate, operating, subscription, deferred ou segment revenue — ou devise différente restent `indetermination` ; aucune conversion de devise n’est effectuée. Les versions contestées restent hors du résumé et aucune gagnante n’est inventée.
 
 ## Pourquoi OpenAI seulement
 
@@ -118,7 +117,7 @@ corepack pnpm verify:vercel
 
 1. [Application Production](https://genial-deep-research.vercel.app).
 2. [Dépôt source reproductible](https://github.com/ElGrandeXu/genial-deep-research), avec tests, contrat et documentation d’architecture.
-3. [Note d’arbitrage finale](docs/NOTE_ARBITRAGE_FINALE.pdf), avec [source Markdown](docs/NOTE_ARBITRAGE_FINALE.md) et [version HTML](docs/NOTE_ARBITRAGE_FINALE.html).
+3. [Arbitrage du hotfix rappel/traçabilité](docs/HOTFIX_RECALL_ARBITRATION.md), amendant pour le runtime courant la [note d’arbitrage initiale](docs/NOTE_ARBITRAGE_FINALE.pdf), sa [source Markdown](docs/NOTE_ARBITRAGE_FINALE.md) et sa [version HTML](docs/NOTE_ARBITRAGE_FINALE.html).
 4. [Résultats live historiques](docs/evidence/final-2026-08-28/LIVE_BENCH_FINAL.md) et [preuve CONFLIT déterministe](docs/evidence/final-2026-08-28/CONFLICT_DETERMINISTIC.md), avec [reçus](docs/evidence/final-2026-08-28/live/), [captures](docs/captures/final-2026-08-28/), [validation Production](docs/evidence/final-2026-08-28/PRODUCTION_VALIDATION_FINAL.md) et [validation WAF](docs/evidence/final-2026-08-28/WAF_VALIDATION.md).
 
 Les protocoles préenregistrés sont conservés uniquement comme preuve d’absence de sélection a posteriori : [bench](docs/evidence/final-2026-08-28/protocol/LIVE_BENCH_PREREGISTRATION.md) et [holdout](docs/evidence/final-2026-08-28/protocol/HOLDOUT_PREREGISTRATION.md).

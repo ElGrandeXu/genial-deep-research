@@ -3,7 +3,7 @@
     "slug": "nextjs"
   },
   "fileCount": 40,
-  "totalSize": 651575,
+  "totalSize": 736392,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/app/research-form.tsx",
-      "size": 73408,
+      "size": 73761,
       "mode": 33188
     },
     {
@@ -112,12 +112,12 @@
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 26625,
+      "size": 27777,
       "mode": 33188
     },
     {
       "path": "src/server/research/claim-quality.ts",
-      "size": 8412,
+      "size": 13812,
       "mode": 33188
     },
     {
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 12559,
+      "size": 53951,
       "mode": 33188
     },
     {
@@ -157,22 +157,22 @@
     },
     {
       "path": "src/server/research/request.ts",
-      "size": 4820,
+      "size": 5905,
       "mode": 33188
     },
     {
       "path": "src/server/research/scope-policy.ts",
-      "size": 4956,
+      "size": 5003,
       "mode": 33188
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 53868,
+      "size": 61550,
       "mode": 33188
     },
     {
       "path": "src/server/research/source-content.ts",
-      "size": 20172,
+      "size": 46986,
       "mode": 33188
     },
     {
@@ -187,12 +187,12 @@
     },
     {
       "path": "src/server/research/temporal-policy.ts",
-      "size": 4843,
+      "size": 5638,
       "mode": 33188
     },
     {
       "path": "src/server/research/types.ts",
-      "size": 12265,
+      "size": 12362,
       "mode": 33188
     },
     {

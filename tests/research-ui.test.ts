@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import fixtures from "../docs/contracts/contract-fixtures.json";
 import {
   categoryForClaim,
+  confidenceForClaim,
   decodeSseBlock,
   dossierDisplayIssue,
   shouldDisplayEvidenceExcerpt,
@@ -73,6 +74,36 @@ describe("research UI truth mapping", () => {
       "Acme SAS conçoit des logiciels.",
       "Une autre page confirme l’activité logicielle d’Acme SAS.",
     )).toBe(true);
+  });
+
+  it("derives graduated confidence from observable source verification", () => {
+    const confirmed = partialDossier();
+    const confirmedClaim = confirmed.claims.find((item) => !item.predicate.startsWith("identity."))!;
+    confirmed.sources[0]!.source_type = "official_publication";
+    expect(confidenceForClaim(confirmed, confirmedClaim)).toMatchObject({
+      level: "confirmed",
+      label: "Confirmé",
+    });
+
+    const supported = partialDossier();
+    const supportedClaim = supported.claims.find((item) => !item.predicate.startsWith("identity."))!;
+    supported.evidence.find(({ claim_id }) => claim_id === supportedClaim.claim_id)!.verification_method =
+      "provider_annotation";
+    supported.sources[0]!.accessibility_status = "unknown";
+    expect(confidenceForClaim(supported, supportedClaim)).toMatchObject({
+      level: "supported",
+      label: "Étayé",
+    });
+
+    const lead = partialDossier();
+    const leadClaim = lead.claims.find((item) => !item.predicate.startsWith("identity."))!;
+    lead.evidence.find(({ claim_id }) => claim_id === leadClaim.claim_id)!.verification_method =
+      "search_snippet";
+    lead.sources[0]!.accessibility_status = "unknown";
+    expect(confidenceForClaim(lead, leadClaim)).toMatchObject({
+      level: "lead",
+      label: "Piste à vérifier",
+    });
   });
 
   it("fails closed when a completed dossier omits its presentation graph", () => {

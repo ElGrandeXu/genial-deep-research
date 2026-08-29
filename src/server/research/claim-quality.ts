@@ -1,5 +1,10 @@
-import { normalizeVisibleText } from "./source-content";
+import {
+  containsEntityNameInText,
+  normalizeVisibleText,
+  textsAreMechanicallyEquivalent,
+} from "./source-content";
 import { parseMetricValue } from "./numeric-normalization";
+import { deriveFactPeriod } from "./temporal-policy";
 import type {
   ProviderFactCandidate,
   VerifiedSourceProof,
@@ -9,6 +14,7 @@ export type ClaimQualityRejectionCode =
   | "identity_not_business_fact"
   | "weak_fragment"
   | "non_atomic_claim"
+  | "non_declarative_claim"
   | "subject_not_stated"
   | "structured_value_not_in_excerpt"
   | "metric_scope_or_period_missing"
@@ -37,6 +43,95 @@ export interface DeduplicationResult {
 
 const LEGAL_SUFFIX = /\s+(?:AG|Corp(?:oration)?|GmbH|Group|Groupe|Inc|LLC|Ltd|PLC|SA|SAS|SASU|SE)\.?$/iu;
 const NAVIGATION_WORDS = /\b(?:accueil|about|contact|home|menu|navigation|privacy|mentions légales)\b/giu;
+const DIRECTORY_PATH_PARTS = new Set([
+  "a propos",
+  "about",
+  "about us",
+  "comite de direction",
+  "direction",
+  "direction generale",
+  "dirigeants",
+  "equipe",
+  "equipe de direction",
+  "equipe dirigeante",
+  "executive team",
+  "governance",
+  "gouvernance",
+  "leadership",
+  "la direction",
+  "management",
+  "management team",
+  "notre equipe",
+  "nos dirigeants",
+  "our team",
+  "people",
+  "team",
+  "qui sommes nous",
+  "who we are",
+]);
+const DIRECTORY_TITLE_PARTS = new Set([
+  ...DIRECTORY_PATH_PARTS,
+  "a propos de nous",
+  "meet the team",
+  "notre direction",
+  "the team",
+]);
+const DIRECTORY_NAME_TOKENS = new Set([
+  "direction",
+  "dirigeants",
+  "equipe",
+  "governance",
+  "gouvernance",
+  "leadership",
+  "management",
+  "people",
+  "team",
+]);
+const EXCLUDED_DIRECTORY_PARTS = new Set([
+  "accueil",
+  "actualites",
+  "article",
+  "articles",
+  "blog",
+  "conditions generales",
+  "confidentialite",
+  "contact",
+  "contact us",
+  "contactez nous",
+  "contacts",
+  "home",
+  "homepage",
+  "legal",
+  "legal notice",
+  "login",
+  "menu",
+  "mentions legales",
+  "navigation",
+  "news",
+  "politique de confidentialite",
+  "press",
+  "presse",
+  "privacy",
+  "privacy policy",
+  "recherche",
+  "resources",
+  "ressources",
+  "search",
+  "signin",
+  "terms",
+  "terms and conditions",
+]);
+const DIRECTORY_ROLE_PATTERNS = [
+  /^(?:ceo|cfo|chro|cio|cmo|coo|cpo|cro|cso|cto)$/u,
+  /^chief (?:executive|financial|human resources|information|marketing|operating|people|product|revenue|strategy|technology) officer$/u,
+  /^(?:co[- ]?)?founder$/u,
+  /^(?:co[- ]?)?fondateur$/u,
+  /^(?:co[- ]?)?fondatrice$/u,
+  /^(?:chairman|chairperson|chairwoman|managing director|partner)$/u,
+  /^(?:president|président|présidente|vice[- ]president|vice[- ]président|vice[- ]présidente)$/u,
+  /^(?:directeur|directrice)(?: général| générale)?$/u,
+  /^(?:gérant|gérante|associé|associée)$/u,
+] as const;
 
 function normalized(value: string): string {
   return normalizeVisibleText(value)
@@ -47,20 +142,106 @@ function normalized(value: string): string {
     .trim();
 }
 
-function compact(value: string): string {
-  return normalized(value).replace(/[^\p{L}\p{N}]+/gu, "");
+function semanticPart(value: string): string {
+  return normalized(value)
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function decodedPathPart(value: string): string {
+  try {
+    return semanticPart(decodeURIComponent(value));
+  } catch {
+    return "";
+  }
+}
+
+function isDirectoryPage(proof: VerifiedSourceProof): boolean {
+  let pathParts: string[];
+  try {
+    pathParts = new URL(proof.finalUrl).pathname
+      .split("/")
+      .filter(Boolean)
+      .map(decodedPathPart)
+      .filter(Boolean);
+  } catch {
+    return false;
+  }
+  if (pathParts.length > 6 || pathParts.some((part) => EXCLUDED_DIRECTORY_PARTS.has(part))) {
+    return false;
+  }
+
+  const title = normalized(proof.title);
+  if (title.length === 0 || title.length > 180 || wordCount(title) > 18) return false;
+  const titleParts = proof.title
+    .split(/\s*(?:[|•·:–—]|\s+-\s+)\s*/gu)
+    .map(semanticPart)
+    .filter(Boolean);
+  if (titleParts.some((part) => EXCLUDED_DIRECTORY_PARTS.has(part))) return false;
+
+  return pathParts.some((part) => DIRECTORY_PATH_PARTS.has(part)) ||
+    titleParts.some((part) => DIRECTORY_TITLE_PARTS.has(part));
+}
+
+function explicitDirectoryRole(value: string): boolean {
+  const role = normalized(value);
+  return role.length > 0 &&
+    role.length <= 64 &&
+    wordCount(role) <= 6 &&
+    DIRECTORY_ROLE_PATTERNS.some((pattern) => pattern.test(role));
+}
+
+function isDirectoryRoleEvidence(options: {
+  readonly candidate: ProviderFactCandidate;
+  readonly proof: VerifiedSourceProof;
+  readonly selectedDisplayName: string;
+}): boolean {
+  const { candidate, proof } = options;
+  const selectedName = normalized(options.selectedDisplayName);
+  const selectedSemanticName = semanticPart(options.selectedDisplayName);
+  const selectedNameTokens = selectedSemanticName.split(" ").filter(Boolean);
+  if (
+    candidate.category !== "role" ||
+    candidate.entityType !== "person" ||
+    candidate.scopeType !== "person" ||
+    candidate.scopeLabel === null ||
+    normalized(candidate.scopeLabel) !== selectedName ||
+    wordCount(selectedName) < 2 ||
+    wordCount(selectedName) > 5 ||
+    DIRECTORY_PATH_PARTS.has(selectedSemanticName) ||
+    DIRECTORY_TITLE_PARTS.has(selectedSemanticName) ||
+    selectedNameTokens.some((token) => DIRECTORY_NAME_TOKENS.has(token)) ||
+    !isDirectoryPage(proof)
+  ) {
+    return false;
+  }
+
+  const excerpt = normalized(proof.verifiedExcerpt);
+  if (!excerpt.startsWith(selectedName)) return false;
+  const remainder = excerpt.slice(selectedName.length);
+  if (!/^[\s/|•·,:–—-]/u.test(remainder)) return false;
+  const role = remainder.replace(/^\s*(?:[/|•·,:–—-]\s*)?/u, "").trim();
+  return explicitDirectoryRole(role);
 }
 
 function subjectLabels(displayName: string): string[] {
-  const labels = new Set([normalized(displayName)]);
-  const alias = normalized(displayName.replace(LEGAL_SUFFIX, ""));
+  const labels = new Set([displayName]);
+  const alias = displayName.replace(LEGAL_SUFFIX, "").trim();
   if (alias.length >= 3) labels.add(alias);
   return [...labels];
 }
 
-function containsSubject(excerpt: string, displayName: string): boolean {
-  const text = normalized(excerpt);
-  return subjectLabels(displayName).some((label) => text.includes(label));
+function containsSubject(
+  excerpt: string,
+  displayName: string,
+  entityType: ProviderFactCandidate["entityType"],
+): boolean {
+  return subjectLabels(displayName).some((label) =>
+    containsEntityNameInText(excerpt, label, entityType)
+  );
 }
 
 function wordCount(value: string): number {
@@ -95,6 +276,17 @@ function literalAppears(candidate: ProviderFactCandidate): boolean {
   return value.length >= 2 && normalized(candidate.excerpt).includes(value);
 }
 
+function hasVerifiedFactPeriod(
+  candidate: ProviderFactCandidate,
+  proof: VerifiedSourceProof,
+): boolean {
+  return deriveFactPeriod({
+    ...candidate,
+    statement: proof.verifiedExcerpt,
+    excerpt: proof.verifiedExcerpt,
+  }).status === "stated";
+}
+
 export function evaluateClaimQuality(options: {
   readonly candidate: ProviderFactCandidate;
   readonly proof: VerifiedSourceProof;
@@ -104,13 +296,21 @@ export function evaluateClaimQuality(options: {
   if (candidate.category === "identity") {
     return { accepted: false, reasonCode: "identity_not_business_fact" };
   }
-  if (isWeakFragment(proof.verifiedExcerpt)) {
+  if (/[?？]\s*$/u.test(proof.verifiedExcerpt)) {
+    return { accepted: false, reasonCode: "non_declarative_claim" };
+  }
+  const directoryRole = isDirectoryRoleEvidence(options);
+  if (isWeakFragment(proof.verifiedExcerpt) && !directoryRole) {
     return { accepted: false, reasonCode: "weak_fragment" };
   }
   if (isCompound(proof.verifiedExcerpt)) {
     return { accepted: false, reasonCode: "non_atomic_claim" };
   }
-  if (!containsSubject(proof.verifiedExcerpt, options.selectedDisplayName)) {
+  if (!containsSubject(
+    proof.verifiedExcerpt,
+    options.selectedDisplayName,
+    candidate.entityType,
+  )) {
     return { accepted: false, reasonCode: "subject_not_stated" };
   }
   if (candidate.category === "metric") {
@@ -119,7 +319,8 @@ export function evaluateClaimQuality(options: {
       candidate.factPeriodLabel === null ||
       candidate.normalizedValue === null ||
       candidate.unit === null ||
-      parseMetricValue(candidate.excerpt) === null
+      parseMetricValue(candidate.excerpt) === null ||
+      !hasVerifiedFactPeriod(candidate, proof)
     ) {
       return { accepted: false, reasonCode: "metric_scope_or_period_missing" };
     }
@@ -130,13 +331,17 @@ export function evaluateClaimQuality(options: {
   if (candidate.category === "role") {
     const hasPersonLikeName = /\b\p{Lu}[\p{L}'’-]+\s+\p{Lu}[\p{L}'’-]+\b/u.test(proof.verifiedExcerpt);
     const hasRelation = /\b(?:chez|de|d['’]|du|of|at|pour|for)\b/iu.test(proof.verifiedExcerpt);
-    if (!hasPersonLikeName || !hasRelation) {
+    if (!directoryRole && (!hasPersonLikeName || !hasRelation)) {
       return { accepted: false, reasonCode: "role_relation_missing" };
     }
   }
   if (
     (candidate.category === "event" || candidate.category === "recent_signal") &&
-    (candidate.factDate === null || candidate.factPeriodLabel === null)
+    (
+      candidate.factDate === null ||
+      candidate.factPeriodLabel === null ||
+      !hasVerifiedFactPeriod(candidate, proof)
+    )
   ) {
     return { accepted: false, reasonCode: "dated_event_date_missing" };
   }
@@ -159,22 +364,10 @@ function metadataKey(candidate: ProviderFactCandidate): string {
   ].join("|");
 }
 
-function tokenSet(value: string): Set<string> {
-  return new Set(normalized(value).match(/[\p{L}\p{N}]+/gu) ?? []);
-}
-
-function lexicalSimilarity(left: string, right: string): number {
-  const a = tokenSet(left);
-  const b = tokenSet(right);
-  const union = new Set([...a, ...b]);
-  if (union.size === 0) return 0;
-  let intersection = 0;
-  for (const token of a) if (b.has(token)) intersection += 1;
-  return intersection / union.size;
-}
-
 function sameFact(left: ProviderFactCandidate, right: ProviderFactCandidate): boolean {
-  if (left.category !== right.category) return false;
+  if (left.category !== right.category) {
+    return textsAreMechanicallyEquivalent(left.excerpt, right.excerpt);
+  }
   if (
     left.scopeType !== right.scopeType ||
     normalized(left.scopeLabel ?? "") !== normalized(right.scopeLabel ?? "") ||
@@ -184,16 +377,10 @@ function sameFact(left: ProviderFactCandidate, right: ProviderFactCandidate): bo
   if (left.category === "metric" && right.category === "metric") {
     return metadataKey(left) === metadataKey(right);
   }
-  const a = compact(left.excerpt);
-  const b = compact(right.excerpt);
-  const wordingMatches = a === b || a.includes(b) || b.includes(a) ||
-    lexicalSimilarity(left.excerpt, right.excerpt) >= 0.86;
-  return wordingMatches && (
-    normalized(left.predicate) === normalized(right.predicate) ||
-    a === b ||
-    a.includes(b) ||
-    b.includes(a)
-  );
+  if (normalized(left.normalizedValue ?? "") !== normalized(right.normalizedValue ?? "")) {
+    return false;
+  }
+  return textsAreMechanicallyEquivalent(left.excerpt, right.excerpt);
 }
 
 function proofKey(proof: VerifiedSourceProof): string {
@@ -217,11 +404,25 @@ export function deduplicateVerifiedFacts(
       continue;
     }
     duplicateCount += 1;
-    if (!existing.proofs.some((proof) => proofKey(proof) === proofKey(item.proof))) {
+    const itemProofKey = proofKey(item.proof);
+    let representativeIndex = existing.proofs.findIndex(
+      (proof) => proofKey(proof) === itemProofKey,
+    );
+    if (representativeIndex < 0) {
       existing.proofs.push(item.proof);
+      representativeIndex = existing.proofs.length - 1;
     }
-    if (normalizeVisibleText(item.proof.verifiedExcerpt).length < normalizeVisibleText(existing.candidate.excerpt).length) {
+    const currentRepresentative = existing.proofs[0];
+    if (
+      currentRepresentative !== undefined &&
+      normalizeVisibleText(item.proof.verifiedExcerpt).length <
+        normalizeVisibleText(currentRepresentative.verifiedExcerpt).length
+    ) {
       existing.candidate = item.candidate;
+      if (representativeIndex > 0) {
+        const [representativeProof] = existing.proofs.splice(representativeIndex, 1);
+        if (representativeProof !== undefined) existing.proofs.unshift(representativeProof);
+      }
     }
   }
 

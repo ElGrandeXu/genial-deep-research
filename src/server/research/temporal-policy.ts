@@ -69,6 +69,20 @@ function literalYear(value: string): number | null {
   return year >= 1000 && year <= 9999 ? year : null;
 }
 
+function textContainsYear(value: string, year: number): boolean {
+  const literal = String(year);
+  return new RegExp(`(?:^|[^\\d])${literal}(?=$|[^\\d])`, "u").test(
+    normalizedDateText(value),
+  );
+}
+
+function textContainsStandaloneIsoDate(value: string, isoLiteral: string): boolean {
+  const escaped = isoLiteral.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`(?:^|[^\\d])${escaped}(?=$|[^\\d])`, "u").test(
+    normalizedDateText(value),
+  );
+}
+
 export function deriveFactPeriod(candidate: ProviderFactCandidate): FactPeriod {
   const label = candidate.factPeriodLabel ?? candidate.factDate;
   const dateLiteral = candidate.factDate;
@@ -81,6 +95,9 @@ export function deriveFactPeriod(candidate: ProviderFactCandidate): FactPeriod {
   }
   const year = literalYear(dateLiteral);
   if (year !== null) {
+    if (!textContainsYear(label, year) || !textContainsYear(candidate.excerpt, year)) {
+      return { status: "unknown", start: null, end: null, as_of: null, label: null };
+    }
     return {
       status: "stated",
       start: `${year.toString().padStart(4, "0")}-01-01T00:00:00.000Z`,
@@ -90,7 +107,14 @@ export function deriveFactPeriod(candidate: ProviderFactCandidate): FactPeriod {
     };
   }
   const exact = isoDate(dateLiteral);
-  if (exact !== null && exactDateMatchesLabel(dateLiteral, label)) {
+  if (
+    exact !== null &&
+    exactDateMatchesLabel(dateLiteral, label) &&
+    (
+      normalizedDateText(label) !== dateLiteral ||
+      textContainsStandaloneIsoDate(candidate.excerpt, dateLiteral)
+    )
+  ) {
     return {
       status: "stated",
       start: null,

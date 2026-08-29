@@ -1,6 +1,6 @@
 # Contrat produit et contrat de vérité
 
-Version : `1.0.0`
+Version : `1.1.0`
 Statut : **APPLIQUÉ À LA RELEASE TECHNIQUE**
 Portée : sémantique du dossier, frontières de preuve et invariants appliqués par le runtime.
 
@@ -70,7 +70,7 @@ Les termes ont toujours le sens suivant :
 
 | État | Conditions d’entrée | Informations autorisées | Comportement utilisateur | Interdictions | Passage au dossier factuel final |
 |---|---|---|---|---|---|
-| `resolved` | Un seul candidat est soutenu par des attributs discriminants cohérents avec la demande ; aucun conflit d’identité bloquant ne subsiste. | Identité retenue, contexte utilisé, justification, candidats écartés et preuves associées. | Afficher clairement l’identité et la raison du choix ; permettre de revoir le contexte. | Choix sur le seul nom ; fusion ; dissimulation d’un candidat plausible. | Autorisé si tous les autres invariants de vérité passent. |
+| `resolved` | Un seul candidat proposé est soutenu par sa preuve dédiée ou, pour une personne seulement, par des faits déjà admis par l’attribution et la qualité. Dans cette seconde voie, le nom demandé égale exactement le nom complet, chaque extrait contient ce nom, clé sujet, type et portée concordent, au moins deux familles d’éditeurs, deux empreintes documentaires et deux empreintes lexicales d’extraits distinctes sont présentes. Un même indice significatif du contexte est explicitement relié au sujet dans au moins deux preuves indépendantes. Il faut en plus soit un second indice significatif distinct relié au sujet dans l’une de ces mêmes preuves, soit une troisième preuve de rôle explicite et indépendante qui partage avec une preuve contextuelle un unique ancrage d’organisation, visible dans les deux titres vérifiés et confirmé par les deux URL finales. Le texte global de page, un titre générique ou une URL seule est insuffisant ; seuls les faits ayant constitué cet ensemble peuvent être affichés et aucun conflit d’identité bloquant ne subsiste. | Identité retenue, contexte utilisé, justification, candidats écartés et toutes les preuves associées à la décision. | Afficher clairement l’identité et la raison du choix ; permettre de revoir le contexte. | Création d’un candidat à partir de faits seuls ; complément factuel d’une entreprise ; choix sur le seul nom ; fusion ; dissimulation d’un candidat plausible. | Autorisé si tous les autres invariants de vérité passent. |
 | `ambiguous` | Au moins deux candidats restent plausibles et les preuves/contexte ne permettent pas de choisir honnêtement. | Candidats séparés, attributs discriminants, preuves de rattachement, clarification utile. | Présenter les candidats ou demander une précision. | Fiche certaine ; classement arbitraire présenté comme résolution ; faits fusionnés. | Interdit jusqu’à une nouvelle demande donnant `resolved`. |
 | `insufficient_context` | L’entrée est valide mais trop pauvre pour lancer ou conclure une résolution bornée sans risque de confusion. | Contexte manquant, raisons, exemples de précisions acceptables. | Demander uniquement les discriminants utiles. | Inventer un type ou une identité ; transformer la clarification en erreur technique. | Interdit jusqu’à une nouvelle demande donnant `resolved`. |
 | `not_found_within_scope` | La recherche bornée n’a identifié aucun candidat suffisamment fiable dans les catégories et limites explorées. | Périmètre exploré, catégories consultées, raison d’arrêt, contexte utile à une reprise. | Produire un silence honnête et permettre une nouvelle tentative contextualisée. | Affirmer que l’entité ou l’information n’existe pas ; proposer automatiquement un homonyme. | Interdit ; aucun dossier présenté comme certain. |
@@ -100,9 +100,9 @@ Les termes ont toujours le sens suivant :
 | `partial` | Identité `resolved`, contenu valide disponible, mais une partie du périmètre prévu n’a pas pu être établie. Les manques et la raison d’arrêt sont visibles. |
 | `needs_clarification` | Identité `ambiguous` ou `insufficient_context` ; aucun dossier certain ; les précisions utiles sont proposées. |
 | `insufficient_evidence` | La collecte s’est exécutée sans panne déterminante mais n’a pas produit de preuves suffisantes. Le silence et son périmètre sont conservés. |
-| `technical_failure` | Timeout, erreur fournisseur, quota, réponse invalide ou autre panne technique. L’erreur est visible, typée et distincte d’une absence de preuve. Les éléments déjà vérifiés peuvent être conservés, sans changer l’état global. |
+| `technical_failure` | Timeout global, erreur fournisseur, quota, réponse invalide ou autre panne déterminante de la requête. L’erreur est visible, typée et distincte d’une absence de preuve ; aucun dossier partiel n’est émis par le flux terminal d’échec. |
 
-**DÉCISION** — Un timeout, un quota, une erreur API, une réponse invalide ou une source techniquement inaccessible ne devient jamais `insufficient_evidence`.
+**DÉCISION** — Un timeout global, un quota, une erreur API ou une réponse fournisseur invalide ne devient jamais `insufficient_evidence`. L’inaccessibilité d’une page candidate isolée invalide cette preuve et devient une inconnue ; si la collecte se termine normalement sans aucune autre preuve suffisante, le résultat peut honnêtement être `insufficient_evidence`.
 
 ## 8. Attente longue et reprises
 
@@ -152,6 +152,8 @@ Les trois URL sont conservées séparément. Une URL de redirection fournisseur 
 Relations autorisées : `supports`, `contradicts`, `context_only`, `entity_mismatch`, `insufficient`.
 
 Un snippet de moteur ou une annotation fournisseur peut orienter la recherche. Il ne devient preuve finale que si le système conserve une source vérifiable, l’emplacement exact et la relation exacte à l’affirmation. Une annotation ou un snippet seul n’est jamais une preuve d’affichage.
+
+La localisation essaie d’abord l’extrait littéral. À défaut, elle autorise une projection mécanique bornée : normalisation Unicode déjà appliquée au texte visible, casse, suites d’espaces ou frontières de blocs HTML, guillemets, apostrophes, tirets, ellipse, trait d’union conditionnel et caractère de jointure uniquement en frontière. La projection doit produire une occurrence unique. Tout changement de mot, nombre, ponctuation sémantique, ordre ou tout autre caractère invisible à l’intérieur d’un mot reste rejeté. L’`Evidence.excerpt` et la `Claim.statement` conservent la tranche exacte de la source, jamais la variante proposée par le fournisseur.
 
 ### 9.3 Affirmation atomique
 
@@ -250,7 +252,7 @@ Il est interdit de moyenner, de choisir silencieusement, de perdre la valeur éc
 
 Formulations interdites : « cette personne n’a aucune présence en ligne », « cette information n’existe pas », ou toute biographie reconstruite par plausibilité.
 
-Un silence conserve : périmètre exploré, catégories de sources, raison d’arrêt et contexte permettant une nouvelle tentative. Il ne contient aucune affirmation affichable. Une erreur technique utilise `technical_failure`, jamais le mode silence.
+Un silence conserve : périmètre exploré, catégories de sources, raison d’arrêt et contexte permettant une nouvelle tentative. Il ne contient aucune affirmation affichable. Une erreur technique utilise `technical_failure`, jamais le mode silence. Un silence est légitime lorsque aucune chaîne complète candidat → fait → preuve → source ne survit ; le rejet d’une différence seulement mécanique ou la perte de faits valides parce qu’une autre preuve échoue constitue au contraire un faux négatif de validation.
 
 ## 13. Vie privée et conservation
 
@@ -266,7 +268,7 @@ Toute évolution nécessitant une persistance métier, un historique nominatif, 
 
 Le schéma exprime notamment les champs obligatoires, énumérations, formats, bornes, preuves minimales des faits affichables, état complet avec identité résolue, et mesures non négatives.
 
-Les invariants référentiels ou sémantiques impossibles ou disproportionnés en JSON Schema sont contrôlés déterministiquement : unicité globale des identifiants ; résolution des références ; appartenance d’une preuve à une source et une affirmation ; qualité finale d’une URL/source ; cohérence des sections affichées ; concurrence des preuves d’un conflit ; silence sans fait ; séparation erreur/silence ; reprise explicite ; cohérence temporelle et de périmètre.
+Les invariants référentiels ou sémantiques impossibles ou disproportionnés en JSON Schema sont contrôlés déterministiquement : unicité globale des identifiants ; résolution des références ; appartenance d’une preuve à une source et une affirmation ; qualité finale d’une URL/source ; occurrence unique lors d’une équivalence mécanique ; égalité entre le fait affiché et la tranche source conservée ; pour le complément factuel d’une identité de personne, nom complet exact, attribution et qualité préalables, diversité de familles d’éditeurs, de documents et d’extraits, contexte explicitement relié au sujet et second indice dans la paire corroborante ou troisième preuve de rôle indépendante avec un ancrage d’organisation unique et visible dans les métadonnées vérifiées, puis exclusion de tout fait extérieur à cet ensemble de résolution ; cohérence des sections affichées ; concurrence des preuves d’un conflit ; silence sans fait ; séparation erreur/silence ; reprise explicite ; cohérence temporelle et de périmètre.
 
 La détection qu’une inférence introduit un nouveau fait exige en plus une comparaison sémantique lors de l’implémentation. Jusqu’à preuve de ce contrôle, toute inférence non strictement extractive doit être rejetée.
 
@@ -293,4 +295,4 @@ La détection qu’une inférence introduit un nouveau fait exige en plus une co
 
 **DÉCISION** — Ce contrat ne choisit ni fournisseur, ni modèle, ni stack, ni architecture, ni interface, ni hébergement. Il ne prouve pas l’accès futur au contenu réel des sources, la résolution systématique des redirections, la qualité sur requêtes inconnues, la précision d’un résolveur d’identité, ni la couverture complète de MARQUE ou FILIALE.
 
-**SUITE RECOMMANDÉE, NON ENGAGÉE** — Élargir le benchmark aveugle annoté avant d’augmenter le rappel, d’ajouter un fournisseur ou de revendiquer de nouveaux cas live.
+**SUITE RECOMMANDÉE, NON ENGAGÉE** — Élargir le benchmark aveugle annoté avant d’augmenter de nouveau le rappel, d’ajouter un fournisseur ou de revendiquer de nouveaux cas live.

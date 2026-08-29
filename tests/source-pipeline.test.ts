@@ -20,6 +20,7 @@ import {
 import { executeResearch } from "../src/server/research/service";
 import {
   createSourceVerifier,
+  containsEntityNameInText,
   extractVisibleText,
   locateVerifiedExcerpt,
   normalizeVisibleText,
@@ -46,6 +47,7 @@ import {
 import {
   FAILURE_CATEGORIES,
   type ProviderClaimCandidate,
+  type ProviderFactCandidate,
   type ProviderResearchResult,
   type ResearchProgressEvent,
   type SourceVerifier,
@@ -1509,7 +1511,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("allows bounded %s accounting and still requires direct proof", async (_case, results) => {
+  ] as const)("allows bounded %s accounting and retains attributable provider evidence", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1535,8 +1537,8 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        claims: [],
+        global_status: "partial",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1571,7 +1573,7 @@ describe("G3-R3 inspection action URL binding", () => {
       okHtml("<html><head><title>Airbus</title></head><body><p>Different text.</p></body></html>"),
       "source_excerpt_missing",
     ],
-  ] as const)("returns honest insufficiency without retry after %s rejection", async (
+  ] as const)("retains provider-grounded identity without retry after %s rejection", async (
     _case,
     response,
     expectedCode,
@@ -1601,9 +1603,9 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        result_mode: "silence",
-        claims: [],
+        global_status: "partial",
+        result_mode: "standard",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1900,7 +1902,7 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("turns an invalid title into honest insufficiency with no partial fact", async () => {
+  it("retains provider-grounded identity when direct title validation fails", async () => {
     const source = realSyntheticVerifier(
       `<html><head></head><body><p>${claim}</p></body></html>`,
     );
@@ -1921,9 +1923,9 @@ describe("M5-R3 verified document title binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        result_mode: "silence",
-        claims: [],
+        global_status: "partial",
+        result_mode: "standard",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
     });
     expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
@@ -4111,7 +4113,7 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       sourceMediaTypeClass: "application_pdf",
     },
   ] as const)(
-    "discards $name proof without retaining raw header data",
+    "degrades $name proof to provider grounding without retaining raw header data",
     async ({ response: createResponse, reasonCode, sourceMediaTypeClass }) => {
       const response = createResponse();
       const source = contentTypeDiagnosticVerifier(response);
@@ -4124,12 +4126,12 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       expect(terminal).toMatchObject({
         state: "completed",
         dossier: {
-          global_status: "insufficient_evidence",
-          result_mode: "silence",
-          claims: [],
-          unknowns: [
-            expect.objectContaining({ category: "source_inaccessible" }),
-          ],
+          global_status: "partial",
+          result_mode: "standard",
+          claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+          unknowns: expect.arrayContaining([
+            expect.objectContaining({ category: "not_verified" }),
+          ]),
         },
       });
       expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
@@ -4306,6 +4308,26 @@ describe("M5-R2B parsing and normalization", () => {
     const second = locateVerifiedExcerpt(locatorInput(text2, candidate({ excerpt: "A & B" }))).locator;
     expect(first.normalizedTextSha256).toBe(second.normalizedTextSha256);
   });
+
+  it("matches one excerpt across HTML block boundaries and keeps the source slice", () => {
+    const visibleText = extractVisibleText(
+      "<html><body><div>Alex Martin</div><div>CEO de Nova Labs</div></body></html>",
+      "text/html",
+    );
+    const located = locateVerifiedExcerpt(
+      locatorInput(
+        visibleText,
+        candidate({ excerpt: "Alex Martin CEO de NOVA LABS" }),
+      ),
+    );
+    expect(located).toMatchObject({
+      excerpt: "Alex Martin\nCEO de Nova Labs",
+      locator: {
+        exact: "Alex Martin\nCEO de Nova Labs",
+        matchMode: "mechanical_equivalence",
+      },
+    });
+  });
 });
 
 describe("M5-R2B exact excerpt and locator", () => {
@@ -4327,6 +4349,17 @@ describe("M5-R2B exact excerpt and locator", () => {
   it("[58] rejects an excerpt beyond the 500-character bound", () => {
     const oversized = "A".repeat(501);
     expectPipelineCode(() => locateVerifiedExcerpt(locatorInput(oversized, candidate({ excerpt: oversized }))), "source_excerpt_missing");
+  });
+
+  it("rejects a mechanically remapped source slice beyond the 500-character bound", () => {
+    const inflatedSource = `Air${"\u00ad".repeat(600)}bus`;
+    expectPipelineCode(
+      () => locateVerifiedExcerpt(locatorInput(
+        inflatedSource,
+        candidate({ statement: "Airbus", excerpt: "Airbus" }),
+      )),
+      "source_excerpt_missing",
+    );
   });
 
   it("[59] rejects repeated text without context", () => {
@@ -4371,21 +4404,27 @@ describe("M5-R2B exact excerpt and locator", () => {
   });
 
   it.each([
-    ["straight to typographic double quotes", 'Airbus "SE"', "Airbus \u201cSE\u201d", "typographic_equivalence"],
-    ["typographic to straight double quotes", "Airbus \u201cSE\u201d", 'Airbus "SE"', "typographic_equivalence"],
-    ["straight to typographic apostrophe", "l'Airbus", "l\u2019Airbus", "typographic_equivalence"],
-    ["typographic to straight apostrophe", "l\u2019Airbus", "l'Airbus", "typographic_equivalence"],
-    ["ASCII to typographic dash", "Airbus - Europe", "Airbus \u2014 Europe", "typographic_equivalence"],
-    ["typographic to ASCII dash", "Airbus \u2013 Europe", "Airbus - Europe", "typographic_equivalence"],
-    ["three dots to ellipsis", "Airbus...", "Airbus\u2026", "typographic_equivalence"],
+    ["straight to typographic double quotes", 'Airbus "SE"', "Airbus \u201cSE\u201d", "mechanical_equivalence"],
+    ["typographic to straight double quotes", "Airbus \u201cSE\u201d", 'Airbus "SE"', "mechanical_equivalence"],
+    ["straight to typographic apostrophe", "l'Airbus", "l\u2019Airbus", "mechanical_equivalence"],
+    ["typographic to straight apostrophe", "l\u2019Airbus", "l'Airbus", "mechanical_equivalence"],
+    ["ASCII to typographic dash", "Airbus - Europe", "Airbus \u2014 Europe", "mechanical_equivalence"],
+    ["typographic to ASCII dash", "Airbus \u2013 Europe", "Airbus - Europe", "mechanical_equivalence"],
+    ["three dots to ellipsis", "Airbus...", "Airbus\u2026", "mechanical_equivalence"],
     ["ellipsis to three dots", "Airbus\u2026", "Airbus...", "exact"],
-    ["soft hyphen in source", "Airbus", "Air\u00adbus", "typographic_equivalence"],
-    ["soft hyphen in candidate", "Air\u00adbus", "Airbus", "typographic_equivalence"],
+    ["soft hyphen in source", "Airbus", "Air\u00adbus", "mechanical_equivalence"],
+    ["soft hyphen in candidate", "Air\u00adbus", "Airbus", "mechanical_equivalence"],
+    ["block newline in source", "Alex Martin CEO", "Alex Martin\nCEO", "mechanical_equivalence"],
+    ["block newline in candidate", "Alex Martin\nCEO", "Alex Martin CEO", "mechanical_equivalence"],
+    ["case difference", "Alex Martin, CEO de NOVA LABS.", "Alex Martin, CEO de Nova Labs.", "mechanical_equivalence"],
+    ["standalone Webflow joiner", "Acme, Generative AI Lab", "Acme,\n\u200dGenerative AI Lab", "mechanical_equivalence"],
+    ["punctuation-boundary Webflow joiner", "Acme,Generative AI Lab", "Acme,\u200dGenerative AI Lab", "mechanical_equivalence"],
+    ["boundary zero-width space", "Airbus Europe", "Airbus\u200b Europe", "mechanical_equivalence"],
     [
       "combined authorized equivalences",
       '"L\'Airbus - cooperator..."',
       "\u201cL\u2019Airbus \u2014 co\u00adoperator\u2026\u201d",
-      "typographic_equivalence",
+      "mechanical_equivalence",
     ],
   ])("accepts %s and returns source text", (_case, candidateExcerpt, sourceExcerpt, matchMode) => {
     const visibleText = `Before ${sourceExcerpt} After`;
@@ -4411,7 +4450,6 @@ describe("M5-R2B exact excerpt and locator", () => {
   });
 
   it.each([
-    ["case difference", "Airbus SE", "airbus SE"],
     ["added word", "Airbus SE", "Airbus Group SE"],
     ["absent word", "Airbus European SE", "Airbus SE"],
     ["modified word", "Airbus société", "Airbus entreprise"],
@@ -4421,6 +4459,29 @@ describe("M5-R2B exact excerpt and locator", () => {
     ["different order", "Airbus SE Europe", "Europe Airbus SE"],
     ["paraphrase", "Airbus est une société", "Airbus constitue une entreprise"],
     ["generic invisible removal", "Air\u200bbus", "Airbus"],
+    ["intra-word zero-width joiner", "Air\u200dbus", "Airbus"],
+    ["intra-word zero-width non-joiner", "Air\u200cbus", "Airbus"],
+    ["exact substring inside a name", "Joann Lee travaille à Paris.", "Ann Lee travaille à Paris."],
+    ["case-folded substring inside a name", "Joann Lee travaille à Paris.", "ANN LEE travaille à Paris."],
+    ["hyphenated word prefix", "Non-Acme SAS conçoit des logiciels industriels.", "Acme SAS conçoit des logiciels industriels."],
+    ["apostrophe word prefix", "L'Acme SAS conçoit des logiciels industriels.", "Acme SAS conçoit des logiciels industriels."],
+    ["partial ellipsis expansion", "A\u2026", "A.."],
+    ["partial Unicode case expansion", "\u0130STANBUL accueille le congrès.", "\u0307stanbul accueille le congrès."],
+    [
+      "complete claim after an intra-name joiner",
+      "Jo\u200dAnn Lee travaille comme ingénieure à Paris.",
+      "Ann Lee travaille comme ingénieure à Paris.",
+    ],
+    [
+      "complete claim after an intra-name soft hyphen",
+      "Jo\u00adAnn Lee travaille comme ingénieure à Paris.",
+      "Ann Lee travaille comme ingénieure à Paris.",
+    ],
+    [
+      "complete claim after an intra-name control character",
+      "Jo\u0000Ann Lee travaille comme ingénieure à Paris.",
+      "Ann Lee travaille comme ingénieure à Paris.",
+    ],
   ])("rejects %s", (_case, sourceExcerpt, candidateExcerpt) => {
     expectPipelineCode(
       () =>
@@ -4429,6 +4490,241 @@ describe("M5-R2B exact excerpt and locator", () => {
         ),
       "source_excerpt_missing",
     );
+  });
+
+  it("accepts an exact excerpt at punctuation boundaries", () => {
+    expect(
+      locateVerifiedExcerpt(
+        locatorInput("Profil : Ann Lee, CEO.", candidate({ excerpt: "Ann Lee" })),
+      ),
+    ).toMatchObject({
+      excerpt: "Ann Lee",
+      locator: { matchMode: "exact" },
+    });
+  });
+
+  it.each([
+    ["Jo Ann Lee", "Ann Lee", "Ann Lee travaille à Paris."],
+    ["jo Ann Lee", "Ann Lee", "Ann Lee travaille à Paris."],
+    ["Non-Acme SAS", "Acme SAS", "Acme SAS travaille à Paris."],
+  ])(
+    "rejects a fact truncated from the longer name %s",
+    (longerName, attributedDisplayName, excerpt) => {
+      const personFact: ProviderFactCandidate = {
+        ...candidate({
+          entityType: attributedDisplayName === "Ann Lee" ? "person" : "company",
+          statement: excerpt,
+          excerpt,
+        }),
+        subjectKey: "ann-lee",
+        category: "activity",
+        predicate: "works",
+        scopeType: attributedDisplayName === "Ann Lee" ? "person" : "company",
+        scopeLabel: null,
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+      };
+      expectPipelineCode(
+        () => locateVerifiedExcerpt({
+          ...locatorInput(`${longerName} travaille à Paris.`, personFact),
+          attributedDisplayNames: [attributedDisplayName],
+        }),
+        "source_excerpt_missing",
+      );
+    },
+  );
+
+  it("keeps significant entity-name punctuation and rejects longer company names", () => {
+    expect(containsEntityNameInText("C Corp develops tools.", "C++", "company")).toBe(false);
+    expect(containsEntityNameInText("Yahoo! développe des services.", "Yahoo!", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme Inc. développe des services.", "Acme Inc.", "company")).toBe(true);
+    expect(containsEntityNameInText(".NET Foundation publie.", ".NET Foundation", "company")).toBe(true);
+    expect(
+      containsEntityNameInText("Mega Acme SAS développe des outils.", "Acme SAS", "company"),
+    ).toBe(false);
+    expect(
+      containsEntityNameInText("Mega Group Acme SAS développe des outils.", "Acme SAS", "company"),
+    ).toBe(false);
+    expect(
+      containsEntityNameInText("Mega The Group Acme SAS développe.", "Acme SAS", "company"),
+    ).toBe(false);
+    expect(containsEntityNameInText("The Group Acme SAS développe.", "Acme SAS", "company")).toBe(true);
+  });
+
+  it("requires a closed company suffix when matching an attributed alias", () => {
+    expect(containsEntityNameInText("Acme", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme publie ses résultats.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme Logistics publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme Solutions SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme Inc. publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme SAS Solutions publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme & Logistics SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme + logistics SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme / Logistics publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("acme logistics sas publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme solutions SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme et Fils SAS publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme and Logistics SAS publishes.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("acme logistics", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("acme logistics publie.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("acme works employs 100 people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("aCME works employs 100 people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works employs 100 people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("nova labs works employs 100 people.", "Nova Labs", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works Ltd employs 100 people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme designs SAS manufactures aircraft.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works & Sons Ltd employs people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works and Sons Ltd employs people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works-global Systems Ltd employs people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works global advanced integrated systems Ltd employs people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme works group employs people.", "Acme", "company")).toBe(false);
+    expect(containsEntityNameInText("Nova Labs works global advanced integrated systems Ltd employs people.", "Nova Labs", "company")).toBe(false);
+    expect(containsEntityNameInText("Acme développe des logiciels.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme publishes its results.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme est un groupe industriel.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme a publié ses résultats.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme exploite un établissement.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme designs aircraft.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme manufactures equipment.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme delivered aircraft.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme employed 250 people.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme exerce une activité industrielle.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme indicates its registered office.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme confirms its annual results.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme consolide sa présence en Europe.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme designs research & development tools.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme develops AI + analytics tools.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme has operations in SE Asia.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme designs Group A software.", "Acme", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme SAS designs aircraft.", "Acme SAS", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme SAS manufactures equipment.", "Acme SAS", "company")).toBe(true);
+    expect(containsEntityNameInText("Acme SAS delivered aircraft.", "Acme SAS", "company")).toBe(true);
+    expect(containsEntityNameInText("Airbus SE Reports Full-Year Results.", "Airbus SE", "company")).toBe(true);
+    expect(containsEntityNameInText("AIRBUS SE MANUFACTURES AIRCRAFT.", "Airbus SE", "company")).toBe(true);
+  });
+
+  it("applies the closed company-suffix guard to explicitly attributed aliases", () => {
+    const acceptedExcerpt = "Acme SAS publie ses résultats.";
+    expect(locateVerifiedExcerpt({
+      ...locatorInput(
+        acceptedExcerpt,
+        candidate({ statement: acceptedExcerpt, excerpt: acceptedExcerpt }),
+      ),
+      attributedDisplayNames: ["Acme SAS", "Acme"],
+    })).toMatchObject({ excerpt: acceptedExcerpt });
+
+    const rejectedExcerpt = "Acme Logistics publie ses résultats.";
+    expectPipelineCode(
+      () => locateVerifiedExcerpt({
+        ...locatorInput(
+          rejectedExcerpt,
+          candidate({ statement: rejectedExcerpt, excerpt: rejectedExcerpt }),
+        ),
+        attributedDisplayNames: ["Acme"],
+      }),
+      "source_excerpt_missing",
+    );
+
+    for (const rejectedExcerpt of [
+      "Acme & Logistics SAS publie ses résultats.",
+      "Acme et Fils SAS publie ses résultats.",
+      "acme logistics sas publie ses résultats.",
+      "acme logistics publie ses résultats.",
+      "Acme works & Sons Ltd employs 100 people.",
+      "Acme designs SAS manufactures aircraft.",
+    ]) {
+      expectPipelineCode(
+        () => locateVerifiedExcerpt({
+          ...locatorInput(
+            rejectedExcerpt,
+            candidate({ statement: rejectedExcerpt, excerpt: rejectedExcerpt }),
+          ),
+          attributedDisplayNames: ["Acme"],
+        }),
+        "source_excerpt_missing",
+      );
+    }
+  });
+
+  it("keeps a soft hyphen mechanically transparent during company attribution", () => {
+    const sourceExcerpt = "Air\u00adbus SE manufactures aircraft.";
+    const candidateExcerpt = "Airbus SE manufactures aircraft.";
+    expect(locateVerifiedExcerpt({
+      ...locatorInput(
+        sourceExcerpt,
+        candidate({ statement: candidateExcerpt, excerpt: candidateExcerpt }),
+      ),
+      attributedDisplayNames: ["Airbus SE", "Airbus"],
+    })).toMatchObject({
+      excerpt: sourceExcerpt,
+      locator: { matchMode: "mechanical_equivalence" },
+    });
+  });
+
+  it.each([
+    ["zero-width joiner", "Jo\u200dAnn Lee", "Ann Lee", "person"],
+    ["zero-width space", "Jo\u200bAnn Lee", "Ann Lee", "person"],
+    ["soft hyphen", "Jo\u00adAnn Lee", "Ann Lee", "person"],
+    ["control character", "Jo\u0000Ann Lee", "Ann Lee", "person"],
+    ["company zero-width joiner", "Non\u200dAcme SAS", "Acme SAS", "company"],
+  ] as const)(
+    "rejects an attributed name truncated after an intra-component %s",
+    (_case, longerName, attributedDisplayName, entityType) => {
+      const excerpt = `${longerName} publie.`;
+      expect(containsEntityNameInText(
+        excerpt,
+        attributedDisplayName,
+        entityType,
+      )).toBe(false);
+      expectPipelineCode(
+        () => locateVerifiedExcerpt({
+          ...locatorInput(
+            excerpt,
+            candidate({ entityType, statement: excerpt, excerpt }),
+          ),
+          attributedDisplayNames: [attributedDisplayName],
+        }),
+        "source_excerpt_missing",
+      );
+    },
+  );
+
+  it("fails closed when explicit attribution contains no display name", () => {
+    expectPipelineCode(
+      () => locateVerifiedExcerpt({
+        ...locatorInput(claim),
+        attributedDisplayNames: [],
+      }),
+      "source_excerpt_missing",
+    );
+  });
+
+  it("allows bounded person-name possessives and directory titles", () => {
+    expect(containsEntityNameInText("Ann Lee's company builds tools.", "Ann Lee", "person")).toBe(true);
+    expect(containsEntityNameInText("Camille Durand—CEO", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Contact Camille Durand", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Selon Camille Durand, le projet avance.", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Le CEO Camille Durand publie.", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Notre CEO Camille Durand publie.", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Selon le CEO Camille Durand, le projet avance.", "Camille Durand", "person")).toBe(true);
+    expect(containsEntityNameInText("Dr. Ann Lee publie.", "Ann Lee", "person")).toBe(true);
+    expect(containsEntityNameInText("Alex Martin Mis à jour le 22/07/2025 Expert en IA.", "Alex Martin", "person")).toBe(true);
+    expect(containsEntityNameInText("Alex Martin Last updated on 2025-07-22 AI expert.", "Alex Martin", "person")).toBe(true);
+  });
+
+  it("rejects a person-name suffix after an ambiguous connector", () => {
+    expect(containsEntityNameInText("Juan de Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Jean Dr Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Jean Mr. Dr. Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Jean le Dr Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Jean notre CEO Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Son Ann Lee publie.", "Ann Lee", "person")).toBe(false);
+    expect(containsEntityNameInText("Her Ann Lee publishes.", "Ann Lee", "person")).toBe(false);
   });
 
   it("rejects two canonical occurrences", () => {
@@ -4451,6 +4747,19 @@ describe("M5-R2B exact excerpt and locator", () => {
           locatorInput(
             "Air-bus puis Air\u2014bus",
             candidate({ excerpt: "Air\u2013bus" }),
+          ),
+        ),
+      "source_excerpt_ambiguous",
+    );
+  });
+
+  it("rejects a collision created by whitespace and case equivalence", () => {
+    expectPipelineCode(
+      () =>
+        locateVerifiedExcerpt(
+          locatorInput(
+            "Airbus\nSE puis AIRBUS SE",
+            candidate({ excerpt: "Airbus SE" }),
           ),
         ),
       "source_excerpt_ambiguous",

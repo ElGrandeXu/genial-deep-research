@@ -1,3 +1,4 @@
+import { validateSourceUrl } from "./source-security";
 import type { ResearchInput } from "./types";
 
 export const MAX_REQUEST_BYTES = 1_024;
@@ -106,7 +107,8 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
   const keys = Object.keys(record);
   if (
     keys.some(
-      (key) => key !== "name" && key !== "context" && key !== "entityType",
+      (key) => key !== "name" && key !== "context" && key !== "entityType" &&
+        key !== "identitySourceUrl",
     )
   ) {
     throw new ResearchRequestError(
@@ -159,7 +161,43 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
     );
   }
 
-  return context === undefined || context.length === 0
-    ? { name, entityType }
-    : { name, context, entityType };
+  if (
+    record.identitySourceUrl !== undefined &&
+    typeof record.identitySourceUrl !== "string"
+  ) {
+    throw new ResearchRequestError(
+      400,
+      "invalid_identity_source_url",
+      "La source d’identité doit être une URL publique HTTPS.",
+    );
+  }
+  let identitySourceUrl: string | undefined;
+  if (typeof record.identitySourceUrl === "string") {
+    if (entityType === "auto") {
+      throw new ResearchRequestError(
+        400,
+        "identity_source_type_required",
+        "Le type de l’entité doit être fixé pour utiliser une source d’identité.",
+      );
+    }
+    try {
+      identitySourceUrl = validateSourceUrl(
+        record.identitySourceUrl,
+        "citation",
+      ).safeHref;
+    } catch {
+      throw new ResearchRequestError(
+        400,
+        "invalid_identity_source_url",
+        "La source d’identité doit être une URL publique HTTPS.",
+      );
+    }
+  }
+
+  return {
+    name,
+    entityType,
+    ...(context === undefined || context.length === 0 ? {} : { context }),
+    ...(identitySourceUrl === undefined ? {} : { identitySourceUrl }),
+  };
 }

@@ -861,6 +861,61 @@ button.secondary:hover {
   padding: clamp(1.1rem, 3vw, 1.6rem);
 }
 
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  width: fit-content;
+  margin-bottom: 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.58rem;
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+}
+
+.confidence-badge span + span {
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
+.confidence-confirmed {
+  border-color: #9bc1a3;
+  background: #e8f5ea;
+  color: #285f36;
+}
+
+.confidence-supported {
+  border-color: #c6b26f;
+  background: #fff7d9;
+  color: #725b13;
+}
+
+.confidence-lead {
+  border-color: #c9b2a5;
+  background: #fff1e9;
+  color: #7d4930;
+}
+
+.confidence-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.confidence-legend p {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: #fff;
+  padding: 0.75rem 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .claim-statement {
   max-width: 55rem;
   margin: 0;
@@ -1388,6 +1443,9 @@ button.secondary:hover {
 }
 
 @media (max-width: 680px) {
+  .confidence-legend {
+    grid-template-columns: 1fr;
+  }
   main {
     width: min(100% - 1.25rem, 42rem);
   }
