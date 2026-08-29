@@ -2277,6 +2277,40 @@ describe("server identity resolution", () => {
     expect(decision.selected?.candidate.displayName).toBe("Elon Musk");
   });
 
+  it("prefers an attributable fact proof when the dedicated identity snippet omits the name", () => {
+    const identity = personCandidate({
+      statement: "Chief executive of a technology company.",
+      excerpt: "Chief executive of a technology company.",
+    });
+    const role = personFact({
+      category: "activity",
+      predicate: "conçoit",
+      statement: "Camille Durand conçoit des services numériques.",
+      excerpt: "Camille Durand conçoit des services numériques.",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+    });
+    const weakProof = proof(identity, {
+      verifiedExcerpt: identity.excerpt,
+      documentText: identity.excerpt,
+      verificationMethod: "provider_annotation",
+      retrievalStatus: "unavailable",
+    });
+    const roleProof = proof(role, {
+      verificationMethod: "provider_annotation",
+      retrievalStatus: "unavailable",
+    });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{ candidate: identity, proof: weakProof, proofBasis: "dedicated" }],
+      verifiedFacts: [{ candidate: role, proof: roleProof }],
+    });
+
+    expect(assembled).toHaveLength(1);
+    expect(assembled[0]?.proof.verifiedExcerpt).toContain("Camille Durand");
+    expect(assembled[0]?.proofBasis).toBe("verified_facts");
+  });
+
   it("requires context before resolving a common-word brand", () => {
     const orange = candidate({
       candidateKey: "orange-brand",

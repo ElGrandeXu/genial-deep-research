@@ -181,9 +181,15 @@ export function assembleVerifiedIdentityCandidates(options: {
         proof,
       ] as const),
     ).values()];
-    const primaryProof = direct?.proof ?? proofs[0];
+    const directNamesCandidate = direct !== undefined &&
+      proofContainsDisplayName(direct.proof, candidate);
+    const primaryProof = directNamesCandidate
+      ? direct.proof
+      : factProofs[0] ?? direct?.proof ?? proofs[0];
     if (primaryProof === undefined) return [];
-    const primaryCandidate = direct?.candidate ?? {
+    const primaryCandidate = directNamesCandidate && direct !== undefined
+      ? direct.candidate
+      : {
       ...candidate,
       statement: primaryProof.verifiedExcerpt,
       structuredUrl: primaryProof.finalUrl,
@@ -196,7 +202,7 @@ export function assembleVerifiedIdentityCandidates(options: {
       proof: primaryProof,
       corroboratingProofs: proofs.filter((proof) => proof !== primaryProof),
       corroboratingFacts,
-      proofBasis: direct === undefined ? "verified_facts" : "dedicated",
+      proofBasis: directNamesCandidate ? "dedicated" : "verified_facts",
     }];
   });
 }
