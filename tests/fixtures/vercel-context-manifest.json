@@ -3,7 +3,7 @@
     "slug": "nextjs"
   },
   "fileCount": 40,
-  "totalSize": 736392,
+  "totalSize": 786070,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/app/research-form.tsx",
-      "size": 73761,
+      "size": 81213,
       "mode": 33188
     },
     {
@@ -77,7 +77,7 @@
     },
     {
       "path": "src/app/styles.css",
-      "size": 25451,
+      "size": 26503,
       "mode": 33188
     },
     {
@@ -107,12 +107,12 @@
     },
     {
       "path": "src/domain/runtime-invariants.ts",
-      "size": 30166,
+      "size": 30195,
       "mode": 33188
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 27777,
+      "size": 40088,
       "mode": 33188
     },
     {
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 53951,
+      "size": 58550,
       "mode": 33188
     },
     {
@@ -147,7 +147,7 @@
     },
     {
       "path": "src/server/research/provider-metadata.ts",
-      "size": 27726,
+      "size": 28165,
       "mode": 33188
     },
     {
@@ -162,17 +162,17 @@
     },
     {
       "path": "src/server/research/scope-policy.ts",
-      "size": 5003,
+      "size": 5924,
       "mode": 33188
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 61550,
+      "size": 80305,
       "mode": 33188
     },
     {
       "path": "src/server/research/source-content.ts",
-      "size": 46986,
+      "size": 49163,
       "mode": 33188
     },
     {
@@ -192,7 +192,7 @@
     },
     {
       "path": "src/server/research/types.ts",
-      "size": 12362,
+      "size": 14305,
       "mode": 33188
     },
     {

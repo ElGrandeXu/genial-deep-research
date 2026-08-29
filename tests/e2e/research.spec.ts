@@ -115,17 +115,16 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
   expect(await robotsResponse.text()).toContain("Allow: /");
   await submit(page);
 
-  await expect(page.getByRole("heading", { name: "Faits publics vérifiés" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Lecture rapide — extraits vérifiés" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Faits publics sourcés" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lecture rapide — informations sourcées" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "3 faits métier étayés" })).toBeVisible();
   await expect(page.locator(".result-focus")).toBeFocused();
   expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
-  await expect(page.getByText("Preuve d’identité vérifiée")).toBeVisible();
   const identityProof = page.locator(".identity-proof");
+  await expect(identityProof.locator("strong")).toHaveText("Identité confirmé");
   await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(1);
   await identityProof.locator(".additional-evidence").click();
   await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(2);
-  await expect(identityProof.getByText("Contexte seulement")).toBeVisible();
   await expect(identityProof.getByRole("link", { name: /Registre public — Acme Group/u })).toHaveAttribute(
     "href",
     "https://registry.public.net/acme",
@@ -346,7 +345,7 @@ test("fragmented SSE reaches completion without accepting obsolete phases", asyn
   await installStreamingFetch(page, chunks);
   await page.goto("/");
   await submit(page);
-  await expect(page.getByRole("heading", { name: "Faits publics vérifiés" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Faits publics sourcés" })).toBeVisible();
   await expect(page.locator(".timeline-label")).toHaveText([
     "Demande admise",
     "Recherche Web et résolution",
