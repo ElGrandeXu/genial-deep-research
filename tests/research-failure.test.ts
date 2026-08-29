@@ -310,7 +310,7 @@ describe("safe failure classification with installed AI SDK errors", () => {
     },
   );
 
-  it("treats rejected individual source proofs as dossier gaps, not leaked failures", async () => {
+  it("retains attributable provider evidence after a direct source rejection without leaking failures", async () => {
     const marker = "PRIVATE_SOURCE_REJECTION_MARKER";
     const events = await executeWith({
         result: providerResult(),
@@ -327,12 +327,12 @@ describe("safe failure classification with installed AI SDK errors", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "silence",
-        global_status: "insufficient_evidence",
-        claims: [],
-        unknowns: [
-          expect.objectContaining({ category: "source_inaccessible" }),
-        ],
+        result_mode: "standard",
+        global_status: "partial",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        unknowns: expect.arrayContaining([
+          expect.objectContaining({ category: "not_verified" }),
+        ]),
       },
     });
     expect(JSON.stringify(events)).not.toContain(marker);
@@ -616,7 +616,7 @@ describe("terminal failure guarantees", () => {
     });
   });
 
-  it("discards every unverifiable excerpt and returns honest insufficiency", async () => {
+  it("keeps attributable unresolved identity evidence when every direct excerpt check fails", async () => {
     const events: ResearchProgressEvent[] = [];
     await executeResearch({
       input: { name: "Airbus SE" },
@@ -637,12 +637,12 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "silence",
-        global_status: "insufficient_evidence",
-        claims: [],
-        evidence: [],
-        sources: [],
-        unknowns: [expect.objectContaining({ category: "source_inaccessible" })],
+        result_mode: "standard",
+        global_status: "needs_clarification",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.candidate" })]),
+        evidence: expect.arrayContaining([expect.objectContaining({ verification_method: "provider_annotation" })]),
+        sources: expect.arrayContaining([expect.objectContaining({ collection_method: "provider_search" })]),
+        unknowns: expect.arrayContaining([expect.objectContaining({ category: "not_verified" })]),
       },
       receipt: { sourceFetchCount: 2 },
     });

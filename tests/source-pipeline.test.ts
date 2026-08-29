@@ -1511,7 +1511,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("allows bounded %s accounting and still requires direct proof", async (_case, results) => {
+  ] as const)("allows bounded %s accounting and retains attributable provider evidence", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1537,8 +1537,8 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        claims: [],
+        global_status: "partial",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1573,7 +1573,7 @@ describe("G3-R3 inspection action URL binding", () => {
       okHtml("<html><head><title>Airbus</title></head><body><p>Different text.</p></body></html>"),
       "source_excerpt_missing",
     ],
-  ] as const)("returns honest insufficiency without retry after %s rejection", async (
+  ] as const)("retains provider-grounded identity without retry after %s rejection", async (
     _case,
     response,
     expectedCode,
@@ -1603,9 +1603,9 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        result_mode: "silence",
-        claims: [],
+        global_status: "partial",
+        result_mode: "standard",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1902,7 +1902,7 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("turns an invalid title into honest insufficiency with no partial fact", async () => {
+  it("retains provider-grounded identity when direct title validation fails", async () => {
     const source = realSyntheticVerifier(
       `<html><head></head><body><p>${claim}</p></body></html>`,
     );
@@ -1923,9 +1923,9 @@ describe("M5-R3 verified document title binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "insufficient_evidence",
-        result_mode: "silence",
-        claims: [],
+        global_status: "partial",
+        result_mode: "standard",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
     });
     expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
@@ -4113,7 +4113,7 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       sourceMediaTypeClass: "application_pdf",
     },
   ] as const)(
-    "discards $name proof without retaining raw header data",
+    "degrades $name proof to provider grounding without retaining raw header data",
     async ({ response: createResponse, reasonCode, sourceMediaTypeClass }) => {
       const response = createResponse();
       const source = contentTypeDiagnosticVerifier(response);
@@ -4126,12 +4126,12 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       expect(terminal).toMatchObject({
         state: "completed",
         dossier: {
-          global_status: "insufficient_evidence",
-          result_mode: "silence",
-          claims: [],
-          unknowns: [
-            expect.objectContaining({ category: "source_inaccessible" }),
-          ],
+          global_status: "partial",
+          result_mode: "standard",
+          claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+          unknowns: expect.arrayContaining([
+            expect.objectContaining({ category: "not_verified" }),
+          ]),
         },
       });
       expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
