@@ -92,16 +92,6 @@ const CLARIFICATION_LABELS: Readonly<Record<string, string>> = {
   discriminating_hint: "autre indice distinctif",
 };
 
-const EVIDENCE_RELATION_LABELS: Readonly<
-  Record<ResearchDossier["evidence"][number]["relation"], string>
-> = {
-  supports: "Étaye",
-  contradicts: "Contredit",
-  context_only: "Contexte seulement",
-  entity_mismatch: "Entité différente",
-  insufficient: "Insuffisant",
-};
-
 const CATEGORY_ORDER = [
   "Activité",
   "Rôles et responsabilités",
@@ -536,7 +526,12 @@ function requiresVisibleScope(claim: DossierClaim): boolean {
   return prefix === "metric" || prefix === "role" || prefix === "event" || prefix === "recent_signal";
 }
 
-function formatLocator(value: string): string {
+function formatLocator(
+  value: string,
+  verificationMethod?: ResearchDossier["evidence"][number]["verification_method"],
+): string {
+  if (verificationMethod === "provider_annotation") return "Citation fournisseur reliée à cette URL";
+  if (verificationMethod === "search_snippet") return "Extrait du résultat Web Search";
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!isRecord(parsed)) return "Extrait retrouvé dans la page";
@@ -564,6 +559,80 @@ function freshnessLabel(claim: DossierClaim): string {
     return "État explicitement observé à la date indiquée";
   }
   return "Validité actuelle non établie";
+}
+
+export type ClaimConfidence = {
+  readonly level: "confirmed" | "supported" | "lead";
+  readonly label: "Confirmé" | "Étayé" | "Piste à vérifier";
+  readonly score: number;
+  readonly explanation: string;
+};
+
+export function confidenceForClaim(
+  dossier: ResearchDossier,
+  claim: DossierClaim,
+): ClaimConfidence {
+  const evidenceById = new Map(dossier.evidence.map((item) => [item.evidence_id, item]));
+  const sourceById = new Map(dossier.sources.map((item) => [item.source_id, item]));
+  const records = claim.evidence_ids.flatMap((evidenceId) => {
+    const evidence = evidenceById.get(evidenceId);
+    if (evidence === undefined) return [];
+    const source = sourceById.get(evidence.source_id);
+    return source === undefined ? [] : [{ evidence, source }];
+  });
+  if (claim.claim_state === "contested" || claim.reconciliation_state === "contradiction") {
+    return {
+      level: "lead",
+      label: "Piste à vérifier",
+      score: 50,
+      explanation: "Une contradiction ouverte limite la confiance.",
+    };
+  }
+  const direct = records.filter(({ evidence, source }) =>
+    evidence.verification_method === "source_content" &&
+    source.accessibility_status === "accessible"
+  );
+  const directDomains = new Set(direct.map(({ source }) => sourcePublisherDomain(source)));
+  const authoritative = direct.some(({ source }) =>
+    source.source_type === "official_publication" ||
+    source.source_type === "institutional_registry"
+  );
+  if (direct.length > 0 && (authoritative || directDomains.size >= 2)) {
+    return {
+      level: "confirmed",
+      label: "Confirmé",
+      score: authoritative && directDomains.size >= 2 ? 97 : 93,
+      explanation: "Extrait retrouvé dans une page directement consultée et source forte.",
+    };
+  }
+  if (
+    direct.length > 0 ||
+    records.some(({ evidence }) => evidence.verification_method === "provider_annotation")
+  ) {
+    return {
+      level: "supported",
+      label: "Étayé",
+      score: direct.length > 0 ? 84 : 74,
+      explanation: direct.length > 0
+        ? "Extrait retrouvé dans une page consultée, avec corroboration limitée."
+        : "Citation Web Search attribuable ; vérification directe incomplète.",
+    };
+  }
+  return {
+    level: "lead",
+    label: "Piste à vérifier",
+    score: 55,
+    explanation: "Résultat Web Search attribuable, à confirmer avant utilisation comme fait établi.",
+  };
+}
+
+function evidenceVerificationLabel(
+  method: ResearchDossier["evidence"][number]["verification_method"],
+): string {
+  if (method === "source_content") return "Vérifié dans la page";
+  if (method === "provider_annotation") return "Citation Web Search attribuée";
+  if (method === "search_snippet") return "Extrait de recherche à vérifier";
+  return "Vérification complémentaire";
 }
 
 const CATEGORY_BY_PREFIX: Readonly<Record<string, (typeof CATEGORY_ORDER)[number]>> = {
@@ -682,7 +751,9 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
         evidence === undefined ||
         evidence.claim_id !== claim.claim_id ||
         evidence.entity_id !== claim.subject_id ||
-        evidence.verification_method !== "source_content"
+        !["source_content", "provider_annotation", "search_snippet"].includes(
+          evidence.verification_method,
+        )
       ) {
         return "Une affirmation pointe vers une preuve source incohérente.";
       }
@@ -698,7 +769,7 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
       return "Une affirmation affichable ne possède aucune preuve qui l’étaye.";
     }
     if (claim.presentation_decision === "display_fact" && !hasExactSupportingEvidence) {
-      return "Une affirmation n’est identique à aucun extrait source vérifié.";
+      return "Une affirmation n’est identique à aucune citation attribuable.";
     }
     if (
       claim.presentation_decision === "display_fact" &&
@@ -950,7 +1021,7 @@ function EvidenceList({
       <aside className="evidence-card" key={evidence.evidence_id}>
         <div className="evidence-heading">
           <span>Preuve {index + 1}</span>
-          <span>{EVIDENCE_RELATION_LABELS[evidence.relation]}</span>
+          <span>{evidenceVerificationLabel(evidence.verification_method)}</span>
         </div>
         {shouldDisplayEvidenceExcerpt(statement, evidence.excerpt) ? (
           <blockquote className="evidence-excerpt">{evidence.excerpt}</blockquote>
@@ -967,7 +1038,8 @@ function EvidenceList({
           <div><dt>Consultation</dt><dd>{formatDate(source.accessed_at)}</dd></div>
           <div><dt>Période du fait</dt><dd>{formatPeriod(evidence.fact_period)}</dd></div>
           <div><dt>Portée</dt><dd>{formatScope(evidence.scope)}</dd></div>
-          <div><dt>Repère</dt><dd>{formatLocator(evidence.locator)}</dd></div>
+          <div><dt>Vérification</dt><dd>{evidenceVerificationLabel(evidence.verification_method)}</dd></div>
+          <div><dt>Repère</dt><dd>{formatLocator(evidence.locator, evidence.verification_method)}</dd></div>
         </dl>
       </aside>
     );
@@ -994,9 +1066,14 @@ function ClaimCard({
   claim,
   ambiguous = false,
 }: Readonly<{ dossier: ResearchDossier; claim: DossierClaim; ambiguous?: boolean }>) {
+  const confidence = confidenceForClaim(dossier, claim);
   return (
     <article className={`claim-card${ambiguous ? " claim-card-ambiguous" : ""}`}>
       <div className="claim-heading">
+        <div className={`confidence-badge confidence-${confidence.level}`} title={confidence.explanation}>
+          <span>{confidence.label}</span>
+          <span>{confidence.score} %</span>
+        </div>
         <p className="claim-statement">{claim.statement}</p>
         <div className="claim-context" aria-label="Temporalité de l’affirmation">
           <span>{formatPeriod(claim.fact_period)}</span>
@@ -1031,7 +1108,7 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       </p>
       {identityProof === undefined ? null : (
         <div className="identity-proof">
-          <strong>Preuve d’identité vérifiée</strong>
+          <strong>Identité {confidenceForClaim(dossier, identityProof).label.toLocaleLowerCase("fr")}</strong>
           <p>{identityProof.statement}</p>
           <EvidenceList
             dossier={dossier}
@@ -1066,11 +1143,14 @@ function QuickRead({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
     <section className="result-section quick-read" aria-labelledby="quick-read-title">
       <div className="section-intro">
         <p className="section-kicker">Résumé extractif</p>
-        <h3 id="quick-read-title">Lecture rapide — extraits vérifiés</h3>
+        <h3 id="quick-read-title">Lecture rapide — informations sourcées</h3>
       </div>
       <ol>
         {items.map(({ claim, source, href }) => (
           <li key={claim.claim_id}>
+            <span className={`confidence-badge confidence-${confidenceForClaim(dossier, claim).level}`}>
+              {confidenceForClaim(dossier, claim).label}
+            </span>
             <p>{claim.statement}</p>
             {source !== undefined && href !== undefined ? (
               <a href={href} target="_blank" rel="noopener noreferrer">
@@ -1081,6 +1161,16 @@ function QuickRead({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+function ConfidenceLegend() {
+  return (
+    <section className="confidence-legend" aria-label="Niveaux de confiance">
+      <p><strong>Confirmé</strong> : page consultée, extrait retrouvé, source forte.</p>
+      <p><strong>Étayé</strong> : source attribuable, mais corroboration ou inspection limitée.</p>
+      <p><strong>Piste à vérifier</strong> : signal public utile à confirmer avant de l’affirmer.</p>
     </section>
   );
 }
@@ -1382,7 +1472,11 @@ function DossierResult({
       claim.presentation_decision === "display_fact" &&
       claim.claim_state !== "contested" &&
       !claim.predicate.startsWith("identity."),
-  );
+  ).sort((left, right) => {
+    const rank = { confirmed: 0, supported: 1, lead: 2 } as const;
+    return rank[confidenceForClaim(dossier, left).level] -
+      rank[confidenceForClaim(dossier, right).level];
+  });
   const visibleConflictCount = dossier.contradictions.filter(({ visible }) => visible).length;
   const groupedFacts = new Map<string, DossierClaim[]>();
   for (const category of CATEGORY_ORDER) groupedFacts.set(category, []);
@@ -1401,13 +1495,13 @@ function DossierResult({
   const isPartial = dossier.global_status === "partial";
 
   let statusLabel = "Dossier étayé";
-  let statusTitle = "Faits publics vérifiés";
-  let statusDescription = "Chaque fait affiché reste au contact de l’extrait et de la page qui l’étayent.";
+  let statusTitle = "Faits publics sourcés";
+  let statusDescription = "Chaque information conserve sa source et un niveau de confiance explicite.";
   let statusTone = "success";
   if (isPartial) {
     statusLabel = "Résultat limité";
     statusTitle = "Dossier partiel";
-    statusDescription = "Les faits vérifiables sont affichés ; les manques et désaccords restent visibles.";
+    statusDescription = "Les informations attribuables sont affichées ; leur niveau de preuve, les manques et les désaccords restent visibles.";
     statusTone = "limited";
   }
   if (isAmbiguous) {
@@ -1498,6 +1592,8 @@ function DossierResult({
           ) : null}
 
           {!isTechnical ? <Contradictions dossier={dossier} /> : null}
+
+          {!isAmbiguous && !isTechnical && displayFacts.length > 0 ? <ConfidenceLegend /> : null}
 
           {!isAmbiguous && !isTechnical ? <QuickRead dossier={dossier} /> : null}
 

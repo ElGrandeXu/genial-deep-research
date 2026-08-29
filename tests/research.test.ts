@@ -22,6 +22,7 @@ import type {
   ResearchInput,
   ResearchProgressEvent,
   ResearchProvider,
+  RetrievedSourceDocument,
   SourceVerifier,
 } from "../src/server/research/types";
 
@@ -265,7 +266,9 @@ describe("provider multi-fact contract", () => {
     for (const requirement of [
       "3 à 6 faits utiles",
       "au moins deux pages distinctes",
-      "extrait exact, contigu et visible",
+      "citation ou un extrait attribuable",
+      "snippet réellement fourni par Web Search",
+      "recherche du nom exact",
       "Ne fusionne jamais des homonymes",
       "identityStatus=ambiguous",
       "identityStatus=not_found",
@@ -504,6 +507,103 @@ describe("verified dossier service", () => {
       ?.evidence_ids).toHaveLength(1);
     expect(terminal.dossier.sources).toHaveLength(1);
     expect(terminal.receipt.sourceFetchCount).toBe(1);
+  });
+
+  it("reconstructs identity and an adjacent role from a fetched document after snippet mismatch", async () => {
+    const url = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Snippet fournisseur absent de la page",
+      structuredUrl: url,
+      excerpt: "Snippet fournisseur absent de la page",
+      prefix: null,
+      suffix: null,
+    };
+    const sourceDocument: RetrievedSourceDocument = {
+      citation: { provider: "openai", bindingType: "provider_source", url, sourceId: "source-1" },
+      citationUrl: url,
+      finalUrl: url,
+      title: "Atelier Nordique | Équipe",
+      documentText: "Camille Durand\nDirectrice de l’Atelier Nordique",
+      retrievedAt: consultedAt,
+      contentType: "text/html; charset=utf-8",
+      bytesRead: 256,
+      redirectCount: 0,
+      sourceFetchCount: 1,
+      sourceVerificationMs: 3,
+    };
+    const sourceVerifier: SourceVerifier = {
+      async verify() {
+        throw new Error("legacy verify must not run");
+      },
+      async inspect() {
+        return sourceDocument;
+      },
+      async verifyDocument({ document, candidate: proofCandidate }) {
+        if (!document.documentText.includes(proofCandidate.excerpt)) {
+          throw new ResearchPipelineError("source_excerpt_missing", "Synthetic mismatch.");
+        }
+        return {
+          citation: document.citation,
+          citationUrl: document.citationUrl,
+          finalUrl: document.finalUrl,
+          title: document.title,
+          verifiedExcerpt: proofCandidate.excerpt,
+          documentText: document.documentText,
+          locator: {
+            exact: proofCandidate.excerpt,
+            matchMode: "exact",
+            prefix: "",
+            suffix: "",
+            occurrenceIndex: 0,
+            finalUrl: document.finalUrl,
+            citationUrl: document.citationUrl,
+            retrievedAt: document.retrievedAt,
+            normalizedTextSha256: createHash("sha256").update(document.documentText).digest("hex"),
+            contentType: document.contentType,
+            bytesRead: document.bytesRead,
+            redirectCount: document.redirectCount,
+          },
+          sourceFetchCount: document.sourceFetchCount,
+          sourceVerificationMs: document.sourceVerificationMs,
+          verificationMethod: "source_content",
+          retrievalStatus: "retrieved",
+        };
+      },
+    };
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "insufficient_context",
+        entityType: "person",
+        candidates: [candidate],
+        claims: [],
+        missingCategories: [],
+      }),
+      input: { name: "Camille Durand", entityType: "person", context: "Atelier Nordique" },
+      sourceVerifier,
+    }));
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "role.professional_role",
+        statement: "Camille Durand\nDirectrice de l’Atelier Nordique",
+      }),
+    ]));
+    expect(terminal.dossier.evidence.every(({ verification_method }) =>
+      verification_method === "source_content"
+    )).toBe(true);
   });
 
   it("builds a complete dossier with multiple exact facts and distinct pages", async () => {
@@ -1327,7 +1427,7 @@ describe("verified dossier service", () => {
     });
   });
 
-  it("discards a rejected proof, exposes the gap and never leaks its statement", async () => {
+  it("retains an attributable Web Search citation when direct excerpt verification fails", async () => {
     const rejected = "Airbus has a synthetic unsupported secret fact.";
     const document = resolvedDocument({
       claims: [
@@ -1342,13 +1442,37 @@ describe("verified dossier service", () => {
       result: providerResult(document),
       sourceVerifier: exactSourceVerifier({ rejectExcerpt: rejected }),
     }));
-    expect(JSON.stringify(terminal.dossier)).not.toContain(rejected);
+    expect(JSON.stringify(terminal.dossier)).toContain(rejected);
+    const retainedClaim = terminal.dossier.claims.find(({ statement }) => statement === rejected);
+    expect(retainedClaim).toBeDefined();
+    const retainedEvidence = terminal.dossier.evidence.find(
+      ({ claim_id }) => claim_id === retainedClaim?.claim_id,
+    );
+    expect(retainedEvidence?.verification_method).toBe("provider_annotation");
+    expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ description: expect.stringContaining("confiance dégradée") }),
+    ]));
+    expect(terminal.dossier.claims.length).toBeGreaterThanOrEqual(3);
+    expect(terminal.dossier.global_status).toBe("partial");
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("still rejects a fact whose URL is not an admissible attributable source", async () => {
+    const unsupported = "Airbus has a model-only unsupported statement.";
+    const document = resolvedDocument({
+      claims: [
+        ...resolvedDocument().claims,
+        fact(unsupported, "http://unsafe.invalid/unbound", {
+          category: "other",
+          predicate: "unsupported",
+        }),
+      ],
+    });
+    const terminal = completed(await executeWith({ result: providerResult(document) }));
+    expect(JSON.stringify(terminal.dossier)).not.toContain(unsupported);
     expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
       expect.objectContaining({ category: "source_inaccessible" }),
     ]));
-    expect(terminal.dossier.claims.length).toBeGreaterThanOrEqual(3);
-    expect(terminal.dossier.global_status).toBe("complete_within_scope");
-    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
   it("rejects a wrong-subject fact without penalizing sufficient clean coverage", async () => {

@@ -208,6 +208,24 @@ export interface VerifiedSourceProof {
   readonly locator: SourceLocator;
   readonly sourceFetchCount: number;
   readonly sourceVerificationMs: number;
+  /** Defaults to source_content for legacy/test proofs. */
+  readonly verificationMethod?: "source_content" | "provider_annotation" | "search_snippet";
+  /** Whether the public page itself was available to the server. */
+  readonly retrievalStatus?: "retrieved" | "unavailable";
+}
+
+export interface RetrievedSourceDocument {
+  readonly citation: ProviderSourceBinding;
+  readonly citationUrl: string;
+  readonly finalUrl: string;
+  readonly title: string;
+  readonly documentText: string;
+  readonly retrievedAt: string;
+  readonly contentType: string;
+  readonly bytesRead: number;
+  readonly redirectCount: number;
+  readonly sourceFetchCount: number;
+  readonly sourceVerificationMs: number;
 }
 
 export interface SourceVerifier {
@@ -217,6 +235,20 @@ export interface SourceVerifier {
       readonly attributedDisplayNames?: readonly string[];
       readonly citation: ProviderSourceBinding;
       readonly signal: AbortSignal;
+    },
+  ): Promise<VerifiedSourceProof>;
+  inspect?(
+    request: {
+      readonly candidate: ProviderClaimCandidate;
+      readonly citation: ProviderSourceBinding;
+      readonly signal: AbortSignal;
+    },
+  ): Promise<RetrievedSourceDocument>;
+  verifyDocument?(
+    request: {
+      readonly document: RetrievedSourceDocument;
+      readonly candidate: ProviderClaimCandidate;
+      readonly attributedDisplayNames?: readonly string[];
     },
   ): Promise<VerifiedSourceProof>;
 }

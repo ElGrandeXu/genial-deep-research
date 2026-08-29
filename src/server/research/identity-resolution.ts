@@ -1624,7 +1624,8 @@ function narrowedFactBackedItem(options: {
   readonly factItem: VerifiedIdentityCandidate;
   readonly support: FactBackedIdentitySupport;
 }): VerifiedIdentityCandidate {
-  const dedicatedProof = options.original.proofBasis === "dedicated"
+  const dedicatedProof = options.original.proofBasis === "dedicated" &&
+      (options.original.proof.verificationMethod ?? "source_content") === "source_content"
     ? options.original.proof
     : null;
   const sameDocumentFactProof = dedicatedProof === null

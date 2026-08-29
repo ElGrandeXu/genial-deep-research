@@ -288,11 +288,12 @@ export function validateRuntimeDossier(
       const source = sources.get(item.source_id);
       if (
         source !== undefined &&
-        source.accessibility_status === "accessible" &&
         item.relation === "supports" &&
-        item.verification_method === "source_content" &&
         item.entity_id === claim.subject_id &&
         source.assumed_entity_id === claim.subject_id &&
+        ["source_content", "provider_annotation", "search_snippet"].includes(
+          item.verification_method,
+        ) &&
         normalizeText(item.excerpt) === normalizeText(claim.statement)
       ) {
         qualifyingSources.push(source);
@@ -300,18 +301,19 @@ export function validateRuntimeDossier(
       if (
         businessClaim &&
         source !== undefined &&
-        source.accessibility_status === "accessible" &&
         item.relation === "supports" &&
-        item.verification_method === "source_content" &&
         item.entity_id === claim.subject_id &&
-        source.assumed_entity_id === claim.subject_id
+        source.assumed_entity_id === claim.subject_id &&
+        ["source_content", "provider_annotation", "search_snippet"].includes(
+          item.verification_method,
+        )
       ) {
         businessProofSources.add(source.source_id);
       }
     }
 
     if (qualifyingSources.length === 0) {
-      errors.push(`displayed_claim_without_exact_source_content:${claim.claim_id}`);
+      errors.push(`displayed_claim_without_attributable_evidence:${claim.claim_id}`);
       continue;
     }
 

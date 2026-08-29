@@ -18,6 +18,7 @@ import {
 } from "./source-transport";
 import type {
   ProviderClaimCandidate,
+  RetrievedSourceDocument,
   SourceLocator,
   SourceVerifier,
   VerifiedSourceProof,
@@ -1554,59 +1555,120 @@ export function createSourceVerifier(options: {
     return entry;
   }
 
-  return {
-    async verify(request): Promise<VerifiedSourceProof> {
-      const monotonicNow = options.monotonicNow ?? (() => performance.now());
-      const started = monotonicNow();
-      let sourceFetchCount = 0;
+  async function inspect(request: {
+    readonly candidate: ProviderClaimCandidate;
+    readonly citation: VerifiedSourceProof["citation"];
+    readonly signal: AbortSignal;
+  }): Promise<RetrievedSourceDocument> {
+    const monotonicNow = options.monotonicNow ?? (() => performance.now());
+    const started = monotonicNow();
+    let sourceFetchCount = 0;
+    try {
+      const initialUrl = validateCitationAndStructuredUrl(
+        request.citation.url,
+        request.candidate.structuredUrl,
+      );
+      const cacheEntry = cachedPage(initialUrl, request.signal);
+      let prepared: PreparedSource;
       try {
-        const initialUrl = validateCitationAndStructuredUrl(
-          request.citation.url,
-          request.candidate.structuredUrl,
-        );
-        const cacheEntry = cachedPage(initialUrl, request.signal);
-        let prepared: PreparedSource;
-        try {
-          prepared = await cacheEntry.promise;
-        } finally {
-          sourceFetchCount = consumeNetworkFetchCount(cacheEntry);
-        }
-        const { fetched, verifiedTitle, visibleText, retrievedAt } = prepared;
-        const { body: _discardedBody, ...fetchedMetadata } = fetched;
-        void _discardedBody;
-        const located = locateVerifiedExcerpt({
-          visibleText,
+        prepared = await cacheEntry.promise;
+      } finally {
+        sourceFetchCount = consumeNetworkFetchCount(cacheEntry);
+      }
+      return {
+        citation: request.citation,
+        citationUrl: prepared.fetched.citationUrl,
+        finalUrl: prepared.fetched.finalUrl,
+        title: prepared.verifiedTitle,
+        documentText: prepared.visibleText,
+        retrievedAt: prepared.retrievedAt.toISOString(),
+        contentType: prepared.fetched.contentType,
+        bytesRead: prepared.fetched.bytesRead,
+        redirectCount: prepared.fetched.redirectCount,
+        sourceFetchCount,
+        sourceVerificationMs: Math.max(0, Math.round(monotonicNow() - started)),
+      };
+    } catch (error) {
+      const duration = Math.max(0, Math.round(monotonicNow() - started));
+      if (error instanceof ResearchPipelineError) {
+        throw new ResearchPipelineError(error.code, error.message, {
+          sourceFetchCount,
+          sourceVerificationMs: duration,
+        }, error.contentTypeDiagnostics);
+      }
+      throw new ResearchPipelineError(
+        "source_parse_failed",
+        "La récupération de la source a échoué.",
+        { sourceFetchCount, sourceVerificationMs: duration },
+      );
+    }
+  }
+
+  async function verifyDocument(request: {
+    readonly document: RetrievedSourceDocument;
+    readonly candidate: ProviderClaimCandidate;
+    readonly attributedDisplayNames?: readonly string[];
+  }): Promise<VerifiedSourceProof> {
+    const document = request.document;
+    const mediaType: FetchedSource["mediaType"] = document.contentType
+      .toLocaleLowerCase("en-US")
+      .startsWith("text/plain")
+      ? "text/plain"
+      : document.contentType.toLocaleLowerCase("en-US").startsWith("application/xhtml+xml")
+        ? "application/xhtml+xml"
+        : "text/html";
+    const located = locateVerifiedExcerpt({
+      visibleText: document.documentText,
+      candidate: request.candidate,
+      ...(request.attributedDisplayNames === undefined
+        ? {}
+        : { attributedDisplayNames: request.attributedDisplayNames }),
+      fetched: {
+        mediaType,
+        contentType: document.contentType,
+        bytesRead: document.bytesRead,
+        finalUrl: document.finalUrl,
+        citationUrl: document.citationUrl,
+        redirectCount: document.redirectCount,
+        requestCount: document.redirectCount + 1,
+      },
+      retrievedAt: new Date(document.retrievedAt),
+    });
+    return {
+      citation: document.citation,
+      citationUrl: document.citationUrl,
+      finalUrl: document.finalUrl,
+      title: document.title,
+      verifiedExcerpt: located.excerpt,
+      documentText: document.documentText,
+      locator: located.locator,
+      sourceFetchCount: document.sourceFetchCount,
+      sourceVerificationMs: document.sourceVerificationMs,
+      verificationMethod: "source_content",
+      retrievalStatus: "retrieved",
+    };
+  }
+
+  return {
+    inspect,
+    verifyDocument,
+    async verify(request): Promise<VerifiedSourceProof> {
+      try {
+        const document = await inspect({
+          candidate: request.candidate,
+          citation: request.citation,
+          signal: request.signal,
+        });
+        return await verifyDocument({
+          document,
           candidate: request.candidate,
           ...(request.attributedDisplayNames === undefined
             ? {}
             : { attributedDisplayNames: request.attributedDisplayNames }),
-          fetched: fetchedMetadata,
-          retrievedAt,
         });
-        return {
-          citation: request.citation,
-          citationUrl: fetched.citationUrl,
-          finalUrl: fetched.finalUrl,
-          title: verifiedTitle,
-          verifiedExcerpt: located.excerpt,
-          documentText: visibleText,
-          locator: located.locator,
-          sourceFetchCount,
-          sourceVerificationMs: Math.max(0, Math.round(monotonicNow() - started)),
-        };
       } catch (error) {
-        const duration = Math.max(0, Math.round(monotonicNow() - started));
-        if (error instanceof ResearchPipelineError) {
-          throw new ResearchPipelineError(error.code, error.message, {
-            sourceFetchCount,
-            sourceVerificationMs: duration,
-          }, error.contentTypeDiagnostics);
-        }
-        throw new ResearchPipelineError(
-          "source_parse_failed",
-          "La vérification de la source a échoué.",
-          { sourceFetchCount, sourceVerificationMs: duration },
-        );
+        if (error instanceof ResearchPipelineError) throw error;
+        throw new ResearchPipelineError("source_parse_failed", "La vérification de la source a échoué.");
       }
     },
   };
