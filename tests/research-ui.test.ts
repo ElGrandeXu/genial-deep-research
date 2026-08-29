@@ -116,6 +116,27 @@ describe("research UI truth mapping", () => {
       label: "Étayé",
       score: 68,
     });
+
+    const urlAnchoredSnippet = partialDossier();
+    const urlAnchoredClaim = urlAnchoredSnippet.claims.find((item) =>
+      !item.predicate.startsWith("identity."))!;
+    const urlAnchoredEvidence = urlAnchoredSnippet.evidence.find(
+      ({ claim_id }) => claim_id === urlAnchoredClaim.claim_id,
+    )!;
+    urlAnchoredEvidence.verification_method = "search_snippet";
+    const urlAnchoredSource = urlAnchoredSnippet.sources.find(
+      ({ source_id }) => source_id === urlAnchoredEvidence.source_id,
+    )!;
+    urlAnchoredSource.title = "Profil public";
+    urlAnchoredSource.provider_url = "https://profiles.example.org/acme-group";
+    urlAnchoredSource.resolved_url = null;
+    urlAnchoredSource.canonical_url = null;
+    urlAnchoredSource.accessibility_status = "unknown";
+    expect(confidenceForClaim(urlAnchoredSnippet, urlAnchoredClaim)).toMatchObject({
+      level: "supported",
+      label: "Étayé",
+      score: 68,
+    });
   });
 
   it("fails closed when a completed dossier omits its presentation graph", () => {

@@ -629,15 +629,22 @@ export function confidenceForClaim(
     const titleNamesSubject = normalizedSelectedName !== null &&
       normalizedProofText(source.title).toLocaleLowerCase("fr").includes(normalizedSelectedName);
     let institutionalDomain = false;
+    let urlNamesSubject = false;
     try {
-      const hostname = new URL(
+      const parsed = new URL(
         source.resolved_url ?? source.canonical_url ?? source.provider_url,
-      ).hostname.toLocaleLowerCase("en-US");
+      );
+      const hostname = parsed.hostname.toLocaleLowerCase("en-US");
       institutionalDomain = /(?:\.gouv\.fr|\.gov|\.gov\.[a-z]{2})$/u.test(hostname);
+      const urlIdentityText = normalizedProofText(
+        decodeURIComponent(`${parsed.hostname} ${parsed.pathname}`).replace(/[-_.]+/gu, " "),
+      ).toLocaleLowerCase("fr");
+      urlNamesSubject = normalizedSelectedName !== null &&
+        urlIdentityText.includes(normalizedSelectedName);
     } catch {
       // An invalid URL cannot strengthen confidence.
     }
-    return titleNamesSubject || institutionalDomain;
+    return titleNamesSubject || urlNamesSubject || institutionalDomain;
   });
   if (stronglyAttributedSearchSnippet) {
     return {
