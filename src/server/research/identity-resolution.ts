@@ -1802,8 +1802,8 @@ export function resolveIdentity(options: {
     uniqueContextualCandidate.item.proofBasis === "dedicated" &&
     (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
       "source_content" &&
+    uniqueContextualCandidate.item.proof.retrievalStatus === "retrieved" &&
     options.input.context !== undefined &&
-    uniqueContextualCandidate.supportedContextEvidence.length > 0 &&
     options.providerStatus !== "ambiguous" &&
     options.providerStatus !== "not_found"
   ) {
@@ -1814,7 +1814,7 @@ export function resolveIdentity(options: {
       verifiedDiscriminators: uniqueContextualCandidate.verifiedDiscriminators,
       contextSignals: uniqueContextualCandidate.contextSignals,
       reasonCodes: ["unique_contextual_source_candidate"],
-      rationale: "Un seul candidat au nom exact est retrouvé dans une page qui contient aussi un indice du contexte fourni ; cette attribution reste graduée par la qualité de la source.",
+      rationale: "Un seul candidat au nom exact est retrouvé dans une page publique directement consultée, sans concurrent signalé par la recherche ciblée ; cette attribution reste graduée par la qualité de la source.",
     };
   }
 

@@ -1897,7 +1897,11 @@ describe("server identity resolution", () => {
     const decision = resolveIdentity({
       input: { name: "Camille Durand", entityType: "person", context: "Rennes" },
       providerStatus: "insufficient_context",
-      candidates: [{ candidate: identity, proof: proof(identity) }],
+      candidates: [{
+        candidate: identity,
+        proof: proof(identity, { retrievalStatus: "retrieved", verificationMethod: "source_content" }),
+        proofBasis: "dedicated",
+      }],
     });
 
     expect(decision.status).toBe("resolved");
