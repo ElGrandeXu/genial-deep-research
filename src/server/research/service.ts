@@ -107,8 +107,12 @@ function proofVerificationMethod(
   return proof.verificationMethod ?? "source_content";
 }
 
-function canRetainProviderGrounding(citation: ProviderSourceBinding): boolean {
-  return !("bindingType" in citation && citation.bindingType === "structured_output_url");
+function canRetainProviderGrounding(
+  citation: ProviderSourceBinding,
+  document: RetrievedSourceDocument | undefined,
+): boolean {
+  return !("bindingType" in citation && citation.bindingType === "structured_output_url") ||
+    document !== undefined;
 }
 
 function providerGroundedProof(options: {
@@ -117,7 +121,7 @@ function providerGroundedProof(options: {
   readonly citation: ProviderSourceBinding;
   readonly document?: RetrievedSourceDocument;
 }): VerifiedSourceProof | null {
-  if (!canRetainProviderGrounding(options.citation)) return null;
+  if (!canRetainProviderGrounding(options.citation, options.document)) return null;
   const url = options.document?.finalUrl ?? options.citation.url;
   let title = "Source Web Search";
   if ("title" in options.citation && typeof options.citation.title === "string") {
@@ -131,7 +135,8 @@ function providerGroundedProof(options: {
     .update(`provider-grounded\n${url}\n${options.candidate.excerpt}`, "utf8")
     .digest("hex");
   const verificationMethod = "bindingType" in options.citation &&
-      options.citation.bindingType === "web_search_source"
+      (options.citation.bindingType === "web_search_source" ||
+        options.citation.bindingType === "structured_output_url")
     ? "search_snippet" as const
     : "provider_annotation" as const;
   return {
@@ -264,6 +269,7 @@ function buildReceipt(options: {
   readonly totalMs: number;
   readonly finalStatus: "completed" | "failed";
   readonly timedOutOrCancelled: boolean;
+  readonly pipelineCounts?: PublicReceipt["pipelineCounts"];
 }): PublicReceipt {
   const cost = options.result === null
     ? { amount: null, limitations: ["Aucun usage facturable observé."] }
@@ -298,6 +304,7 @@ function buildReceipt(options: {
     pricing: PRICING,
     estimatedCostUsd: cost.amount,
     costLimitations: cost.limitations,
+    ...(options.pipelineCounts === undefined ? {} : { pipelineCounts: options.pipelineCounts }),
   };
 }
 
@@ -1557,6 +1564,7 @@ function safeLog(logger: SafeLogger, receipt: PublicReceipt, errorCode?: string)
       },
       sourceCount: receipt.sourceCount,
       sourceFetchCount: receipt.sourceFetchCount,
+      pipelineCounts: receipt.pipelineCounts,
       durations: receipt.durations,
       timedOutOrCancelled: receipt.timedOutOrCancelled,
       finalStatus: receipt.finalStatus,
@@ -1608,6 +1616,7 @@ export async function executeResearch(options: {
   let validatingMs = 0;
   let failedStage: FailureStage = "generation";
   let terminalRecorded = false;
+  let pipelineCounts: PublicReceipt["pipelineCounts"] | undefined;
 
   async function deliverTerminal(event: ResearchProgressEvent): Promise<void> {
     if (terminalRecorded || (event.state !== "completed" && event.state !== "failed")) return;
@@ -1752,6 +1761,24 @@ export async function executeResearch(options: {
       sourceVerifyingMs,
       estimatedCostUsd,
     });
+    pipelineCounts = {
+      providerIdentityCandidates: result.document.candidates.length,
+      providerFactCandidates: result.document.claims.length,
+      retrievedIdentityDocuments: candidateBatch.documents.length,
+      retrievedFactDocuments: factBatch.documents.length,
+      directIdentityProofs: candidateBatch.verified.length,
+      reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
+      directFactProofs: factBatch.verified.length,
+      sourceFirstFacts: sourceFirstFacts.length,
+      retainedGroundedIdentityProofs: candidateBatch.grounded.length,
+      retainedGroundedFactProofs: factBatch.grounded.length,
+      discardedProofs:
+        candidateBatch.rejectedCount + factBatch.rejectedCount -
+        candidateBatch.grounded.length - factBatch.grounded.length,
+      displayedBusinessFacts: dossier.claims.filter(({ predicate, presentation_decision }) =>
+        presentation_decision === "display_fact" && !predicate.startsWith("identity.")
+      ).length,
+    };
     buildingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - buildingStartMs,
@@ -1831,6 +1858,7 @@ export async function executeResearch(options: {
       totalMs,
       finalStatus: "completed",
       timedOutOrCancelled: false,
+      ...(pipelineCounts === undefined ? {} : { pipelineCounts }),
     });
     await deliverTerminal({ state: "completed", executionId, elapsedMs: totalMs, dossier, receipt });
   } catch (error) {

@@ -1414,6 +1414,7 @@ function ReceiptDetails({
     (dossier.receipt.cost.status === "unknown" ? null : dossier.receipt.cost.amount_usd);
   const sourceFetchCount = readFiniteNumber(receipt, "sourceFetchCount");
   const searchCount = readFiniteNumber(receipt, "webSearchQueryCount");
+  const pipelineCounts = isRecord(receipt.pipelineCounts) ? receipt.pipelineCounts : null;
 
   return (
     <details className="receipt-details">
@@ -1436,6 +1437,16 @@ function ReceiptDetails({
         <p>{dossier.receipt.search_scope.categories.join(" · ") || "non documenté"}</p>
         <strong>Critère d’arrêt</strong>
         <p>{dossier.receipt.search_scope.stop_reason}</p>
+        {pipelineCounts === null ? null : (
+          <p className="pipeline-counts">
+            Pipeline — candidats {readFiniteNumber(pipelineCounts, "providerIdentityCandidates") ?? 0} ·
+            faits proposés {readFiniteNumber(pipelineCounts, "providerFactCandidates") ?? 0} ·
+            documents {(
+              (readFiniteNumber(pipelineCounts, "retrievedIdentityDocuments") ?? 0) +
+              (readFiniteNumber(pipelineCounts, "retrievedFactDocuments") ?? 0)
+            )} · faits affichés {readFiniteNumber(pipelineCounts, "displayedBusinessFacts") ?? 0}
+          </p>
+        )}
       </div>
     </details>
   );

@@ -329,6 +329,20 @@ export interface PublicReceipt {
   };
   readonly estimatedCostUsd: number | null;
   readonly costLimitations: readonly string[];
+  readonly pipelineCounts?: {
+    readonly providerIdentityCandidates: number;
+    readonly providerFactCandidates: number;
+    readonly retrievedIdentityDocuments: number;
+    readonly retrievedFactDocuments: number;
+    readonly directIdentityProofs: number;
+    readonly reconstructedIdentityProofs: number;
+    readonly directFactProofs: number;
+    readonly sourceFirstFacts: number;
+    readonly retainedGroundedIdentityProofs: number;
+    readonly retainedGroundedFactProofs: number;
+    readonly discardedProofs: number;
+    readonly displayedBusinessFacts: number;
+  };
 }
 
 export const FAILURE_CATEGORIES = [

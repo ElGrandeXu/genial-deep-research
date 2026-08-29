@@ -20,6 +20,18 @@ import { validateSourceUrl } from "./source-security";
 const FORBIDDEN_ATOMIC_CONNECTORS =
   /[;:\n]|\b(?:et|ainsi que|mais|tandis que|alors que|dont|qui)\b/iu;
 
+function attributableUrlKey(value: string): string {
+  const validated = validateSourceUrl(value, "citation");
+  const url = new URL(validated.safeHref);
+  url.hash = "";
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^(?:utm_.+|fbclid|gclid)$/iu.test(key)) url.searchParams.delete(key);
+  }
+  url.searchParams.sort();
+  if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/u, "");
+  return url.toString();
+}
+
 interface OpenAITextPart {
   readonly type: "text";
   readonly text: string;
@@ -659,7 +671,7 @@ export function bindProviderSource(
     }
     const matches = (url: string): boolean => {
       try {
-        return validateSourceUrl(url, "citation").safeHref === structuredUrl.safeHref;
+        return attributableUrlKey(url) === attributableUrlKey(structuredUrl.safeHref);
       } catch {
         return false;
       }
@@ -733,7 +745,7 @@ export function bindProviderSource(
     }
     const matches = call.sources.filter(
       ({ url }) =>
-        validateSourceUrl(url, "citation").safeHref === structuredUrl.safeHref,
+        attributableUrlKey(url) === attributableUrlKey(structuredUrl.safeHref),
     );
     if (matches.length !== 1) {
       throw new ResearchPipelineError(
