@@ -269,12 +269,12 @@ describe("provider multi-fact contract", () => {
       "citation ou un extrait attribuable",
       "snippet réellement fourni par Web Search",
       "recherche du nom exact",
-      "au moins une deuxième action Web Search",
+      "au moins une deuxième recherche Web Search",
       "Ne fusionne jamais des homonymes",
       "identityStatus=ambiguous",
       "identityStatus=not_found",
       "aucune claim",
-      "jusqu’à quatre actions Web Search",
+      "jusqu’à huit actions Web Search",
       "candidateKey",
       "subjectKey",
       "entityScope",
@@ -288,7 +288,7 @@ describe("provider multi-fact contract", () => {
     expect(PROVIDER_INSTRUCTIONS).not.toContain("exactement sept lignes");
   });
 
-  it("serializes the structured-output schema, four-action budget and privacy options", async () => {
+  it("serializes the structured-output schema, bounded action budget and privacy options", async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = ["unit", "test", "placeholder"].join("-");
     let requestBody: Record<string, unknown> | undefined;
@@ -313,7 +313,7 @@ describe("provider multi-fact contract", () => {
       ).rejects.toBeInstanceOf(ProviderInvocationError);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(requestBody).toMatchObject({
-        max_tool_calls: 4,
+        max_tool_calls: 6,
         parallel_tool_calls: false,
         store: false,
         reasoning: { effort: "low" },
@@ -1563,18 +1563,18 @@ describe("verified dossier service", () => {
 
   it("fails technically when provider accounting exceeds the action ceiling", async () => {
     const result = providerResult(resolvedDocument(), {
-      webSearchCalls: Array.from({ length: 5 }, (_, index) => ({
+      webSearchCalls: Array.from({ length: 9 }, (_, index) => ({
         toolCallId: `search-${index}`,
         sources: [{ url: sourceA }],
       })),
-      webSearchActions: Array.from({ length: 5 }, (_, index) => ({
+      webSearchActions: Array.from({ length: 9 }, (_, index) => ({
         toolCallId: `search-${index}`,
         actionType: "search" as const,
       })),
-      webSearchActionCount: 5,
-      webSearchQueryCount: 5,
-      webSearchUniqueCallCount: 5,
-      toolCalls: 5,
+      webSearchActionCount: 9,
+      webSearchQueryCount: 9,
+      webSearchUniqueCallCount: 9,
+      toolCalls: 9,
     });
     const events = await executeWith({ result });
     expect(events.map(({ state }) => state)).toEqual([
@@ -1583,5 +1583,15 @@ describe("verified dossier service", () => {
       "failed",
     ]);
     expect(events.at(-1)).toMatchObject({ state: "failed" });
+  });
+
+  it("admits one bounded supplemental provider call", async () => {
+    const events = await executeWith({
+      result: providerResult(resolvedDocument(), { providerHttpCalls: 2 }),
+    });
+    expect(events.at(-1)).toMatchObject({
+      state: "completed",
+      receipt: { providerHttpCalls: 2 },
+    });
   });
 });

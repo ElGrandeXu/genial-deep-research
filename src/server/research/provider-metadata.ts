@@ -15,6 +15,7 @@ import type {
   ProviderWebSearchInspection,
   WebSearchActionPolicyCode,
 } from "./types";
+import { MAX_WEB_SEARCH_ACTIONS } from "./types";
 import { validateSourceUrl } from "./source-security";
 
 const FORBIDDEN_ATOMIC_CONNECTORS =
@@ -187,6 +188,7 @@ function normalizeWebSearchAccounting(options: {
         | { readonly status: "present"; readonly url: string }
         | { readonly status: "missing" | "invalid" }
       >;
+      readonly queryViews: Set<string>;
       inspectionSourceUrlObserved: boolean;
     }
   >();
@@ -226,10 +228,20 @@ function normalizeWebSearchAccounting(options: {
         readonly { readonly url: string }[] | null
       >(),
       inspectionUrlViews: new Map(),
+      queryViews: new Set<string>(),
       inspectionSourceUrlObserved: false,
     };
     observation.actionTypes.add(actionType);
     if (actionType === "search") {
+      const queries = typeof action.query === "string"
+        ? [action.query]
+        : Array.isArray(action.queries)
+          ? action.queries.filter((query): query is string => typeof query === "string")
+          : [];
+      for (const query of queries) {
+        const normalizedQuery = query.normalize("NFKC").trim().replace(/\s+/gu, " ");
+        if (normalizedQuery.length > 0) observation.queryViews.add(normalizedQuery);
+      }
       const signature = JSON.stringify(normalizedSources.sources);
       observation.sourceViews.set(signature, normalizedSources.sources);
     } else {
@@ -271,7 +283,14 @@ function normalizeWebSearchAccounting(options: {
       invalid = true;
       continue;
     }
-    actions.push({ toolCallId, actionType });
+    const observedQueries = actionType === "search" && observation.queryViews.size > 0
+      ? [...observation.queryViews]
+      : undefined;
+    actions.push({
+      toolCallId,
+      actionType,
+      ...(observedQueries === undefined ? {} : { queries: observedQueries }),
+    });
     if (actionType === "search") {
       searchCalls.push({
         toolCallId,
@@ -327,7 +346,7 @@ function normalizeWebSearchAccounting(options: {
       : invalid ||
           queryCount < 1 ||
           actionCount < 1 ||
-          actionCount > 4 ||
+          actionCount > MAX_WEB_SEARCH_ACTIONS ||
           actionCount !== queryCount + inspectionCount
         ? "web_search_action_invalid"
         : null;

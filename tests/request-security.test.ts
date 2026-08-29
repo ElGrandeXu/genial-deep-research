@@ -71,6 +71,32 @@ describe("bounded same-origin research input", () => {
     }))).rejects.toMatchObject({ status: 400, code: "invalid_identity_source_url" });
   });
 
+  it("normalizes structured positive hints and rejects conflicting source URLs", async () => {
+    await expect(parseResearchRequest(json({
+      name: "Clémence Bertrand",
+      entityType: "person",
+      context: "  autre indice  ",
+      hints: {
+        city: "  Bordeaux ",
+        organization: " Synapse   Medicine ",
+        role: " Marketing Communication ",
+      },
+    }))).resolves.toMatchObject({
+      context: "autre indice",
+      hints: {
+        city: "Bordeaux",
+        organization: "Synapse Medicine",
+        role: "Marketing Communication",
+      },
+    });
+    await expect(parseResearchRequest(json({
+      name: "Clémence Bertrand",
+      entityType: "person",
+      identitySourceUrl: "https://official.public.org/a",
+      hints: { sourceUrl: "https://official.public.org/b" },
+    }))).rejects.toMatchObject({ status: 400, code: "conflicting_source_url" });
+  });
+
   it("rejects unknown fields, malformed JSON and a non-JSON MIME type", async () => {
     await expect(parseResearchRequest(json({
       name: "Acme SAS",

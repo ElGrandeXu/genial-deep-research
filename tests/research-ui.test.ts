@@ -114,8 +114,8 @@ describe("research UI truth mapping", () => {
     expect(confidenceForClaim(titledSnippet, titledClaim)).toMatchObject({
       level: "supported",
       label: "Étayé",
-      score: 68,
     });
+    expect(confidenceForClaim(titledSnippet, titledClaim)).not.toHaveProperty("score");
 
     const urlAnchoredSnippet = partialDossier();
     const urlAnchoredClaim = urlAnchoredSnippet.claims.find((item) =>
@@ -135,7 +135,6 @@ describe("research UI truth mapping", () => {
     expect(confidenceForClaim(urlAnchoredSnippet, urlAnchoredClaim)).toMatchObject({
       level: "supported",
       label: "Étayé",
-      score: 68,
     });
   });
 

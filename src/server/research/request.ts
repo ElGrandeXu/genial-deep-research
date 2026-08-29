@@ -1,7 +1,7 @@
 import { validateSourceUrl } from "./source-security";
 import type { ResearchInput } from "./types";
 
-export const MAX_REQUEST_BYTES = 1_024;
+export const MAX_REQUEST_BYTES = 4_096;
 
 export class ResearchRequestError extends Error {
   constructor(
@@ -108,7 +108,7 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
   if (
     keys.some(
       (key) => key !== "name" && key !== "context" && key !== "entityType" &&
-        key !== "identitySourceUrl",
+        key !== "identitySourceUrl" && key !== "hints",
     )
   ) {
     throw new ResearchRequestError(
@@ -161,6 +161,32 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
     );
   }
 
+  if (record.hints !== undefined && (
+    typeof record.hints !== "object" || record.hints === null || Array.isArray(record.hints)
+  )) {
+    throw new ResearchRequestError(400, "invalid_hints", "Les indices structurés sont invalides.");
+  }
+  const rawHints = (record.hints ?? {}) as Record<string, unknown>;
+  if (Object.keys(rawHints).some((key) =>
+    !["city", "organization", "role", "industry", "sourceUrl"].includes(key)
+  )) {
+    throw new ResearchRequestError(400, "unknown_hint", "Un indice structuré n’est pas autorisé.");
+  }
+  const hintLimits = { city: 100, organization: 160, role: 160, industry: 160 } as const;
+  const textHints: Partial<Record<keyof typeof hintLimits, string>> = {};
+  for (const [key, maximum] of Object.entries(hintLimits) as [keyof typeof hintLimits, number][]) {
+    const raw = rawHints[key];
+    if (raw === undefined) continue;
+    if (typeof raw !== "string") {
+      throw new ResearchRequestError(400, "invalid_hint", `L’indice ${key} doit être du texte.`);
+    }
+    const normalized = normalizeText(raw);
+    if (normalized.length === 0 || characterCount(normalized) > maximum) {
+      throw new ResearchRequestError(400, "invalid_hint_length", `L’indice ${key} est vide ou trop long.`);
+    }
+    textHints[key] = normalized;
+  }
+
   if (
     record.identitySourceUrl !== undefined &&
     typeof record.identitySourceUrl !== "string"
@@ -194,10 +220,42 @@ export async function parseResearchRequest(request: Request): Promise<ResearchIn
     }
   }
 
+  let hintedSourceUrl: string | undefined;
+  if (rawHints.sourceUrl !== undefined) {
+    if (typeof rawHints.sourceUrl !== "string" || entityType === "auto") {
+      throw new ResearchRequestError(
+        400,
+        "invalid_source_url",
+        "Une URL source publique exige un type d’entité fixé.",
+      );
+    }
+    try {
+      hintedSourceUrl = validateSourceUrl(rawHints.sourceUrl, "citation").safeHref;
+    } catch {
+      throw new ResearchRequestError(400, "invalid_source_url", "La source doit être une URL publique HTTPS.");
+    }
+  }
+  if (
+    hintedSourceUrl !== undefined && identitySourceUrl !== undefined &&
+    hintedSourceUrl !== identitySourceUrl
+  ) {
+    throw new ResearchRequestError(
+      400,
+      "conflicting_source_url",
+      "Les deux URL source fournies ne désignent pas la même page.",
+    );
+  }
+  const sourceUrl = hintedSourceUrl ?? identitySourceUrl;
+  const hints = {
+    ...textHints,
+    ...(hintedSourceUrl === undefined ? {} : { sourceUrl: hintedSourceUrl }),
+  };
+
   return {
     name,
     entityType,
     ...(context === undefined || context.length === 0 ? {} : { context }),
-    ...(identitySourceUrl === undefined ? {} : { identitySourceUrl }),
+    ...(sourceUrl === undefined ? {} : { identitySourceUrl: sourceUrl }),
+    ...(Object.keys(hints).length === 0 ? {} : { hints }),
   };
 }

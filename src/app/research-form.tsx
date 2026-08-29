@@ -80,13 +80,14 @@ const STEP_LABELS: Readonly<Record<ProgressState, string>> = {
   building: "Construction du dossier",
   validating: "Contrôle final des preuves",
   completed: "Dossier prêt",
-  failed: "Recherche interrompue",
+  failed: "Échec de recherche",
 };
 
 const CLARIFICATION_LABELS: Readonly<Record<string, string>> = {
   city: "ville",
   country: "pays",
   industry: "secteur",
+  role: "rôle ou domaine",
   employer: "employeur",
   official_site: "site officiel",
   discriminating_hint: "autre indice distinctif",
@@ -564,7 +565,6 @@ function freshnessLabel(claim: DossierClaim): string {
 export type ClaimConfidence = {
   readonly level: "confirmed" | "supported" | "lead";
   readonly label: "Confirmé" | "Étayé" | "Piste à vérifier";
-  readonly score: number;
   readonly explanation: string;
 };
 
@@ -584,7 +584,6 @@ export function confidenceForClaim(
     return {
       level: "lead",
       label: "Piste à vérifier",
-      score: 50,
       explanation: "Une contradiction ouverte limite la confiance.",
     };
   }
@@ -597,11 +596,20 @@ export function confidenceForClaim(
     source.source_type === "official_publication" ||
     source.source_type === "institutional_registry"
   );
-  if (direct.length > 0 && (authoritative || directDomains.size >= 2)) {
+  const linkedinOnly = records.length > 0 && records.every(({ source }) => {
+    try {
+      const host = new URL(
+        source.resolved_url ?? source.canonical_url ?? source.provider_url,
+      ).hostname.toLocaleLowerCase("en-US");
+      return host === "linkedin.com" || host.endsWith(".linkedin.com");
+    } catch {
+      return false;
+    }
+  });
+  if (!linkedinOnly && direct.length > 0 && (authoritative || directDomains.size >= 2)) {
     return {
       level: "confirmed",
       label: "Confirmé",
-      score: authoritative && directDomains.size >= 2 ? 97 : 93,
       explanation: "Extrait retrouvé dans une page directement consultée et source forte.",
     };
   }
@@ -612,7 +620,6 @@ export function confidenceForClaim(
     return {
       level: "supported",
       label: "Étayé",
-      score: direct.length > 0 ? 84 : 74,
       explanation: direct.length > 0
         ? "Extrait retrouvé dans une page consultée, avec corroboration limitée."
         : "Citation Web Search attribuable ; vérification directe incomplète.",
@@ -650,14 +657,12 @@ export function confidenceForClaim(
     return {
       level: "supported",
       label: "Étayé",
-      score: 68,
       explanation: "Citation Web Search attribuable dont le titre ou le domaine institutionnel identifie le sujet ; contenu direct non confirmé.",
     };
   }
   return {
     level: "lead",
     label: "Piste à vérifier",
-    score: 55,
     explanation: "Résultat Web Search attribuable, à confirmer avant utilisation comme fait établi.",
   };
 }
@@ -1075,6 +1080,17 @@ function EvidenceList({
           <div><dt>Période du fait</dt><dd>{formatPeriod(evidence.fact_period)}</dd></div>
           <div><dt>Portée</dt><dd>{formatScope(evidence.scope)}</dd></div>
           <div><dt>Vérification</dt><dd>{evidenceVerificationLabel(evidence.verification_method)}</dd></div>
+          <div>
+            <dt>Disponibilité</dt>
+            <dd>
+              {source.accessibility_status === "accessible"
+                ? "Page récupérée"
+                : evidence.verification_method === "provider_annotation" ||
+                    evidence.verification_method === "search_snippet"
+                  ? "Page non récupérée · URL ou extrait attribuable"
+                  : "URL ou extrait non attribuable"}
+            </dd>
+          </div>
           <div><dt>Repère</dt><dd>{formatLocator(evidence.locator, evidence.verification_method)}</dd></div>
         </dl>
       </aside>
@@ -1108,8 +1124,8 @@ function ClaimCard({
       <div className="claim-heading">
         <div className={`confidence-badge confidence-${confidence.level}`} title={confidence.explanation}>
           <span>{confidence.label}</span>
-          <span>{confidence.score} %</span>
         </div>
+        <p className="confidence-explanation">{confidence.explanation}</p>
         <p className="claim-statement">{claim.statement}</p>
         <div className="claim-context" aria-label="Temporalité de l’affirmation">
           <span>{formatPeriod(claim.fact_period)}</span>
@@ -1132,6 +1148,32 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       claim.predicate.startsWith("identity.") &&
       claim.presentation_decision === "display_fact",
   );
+  const selectedDiscriminators = selected?.discriminators ?? {};
+  const contextAssessments = [
+    ["Ville", dossier.request.context.city, selectedDiscriminators.city],
+    ["Organisation", dossier.request.context.employer, selectedDiscriminators.employer],
+    ["Secteur", dossier.request.context.industry, selectedDiscriminators.industry],
+    ["Rôle ou domaine", dossier.request.context.role, undefined],
+    ["URL source", dossier.request.context.official_site, selectedDiscriminators.official_site],
+  ].flatMap(([label, requested, observed]) => {
+    if (requested === undefined) return [];
+    const requestedText = String(requested);
+    const observedText = observed === undefined ? "" : String(observed);
+    const normalizedRequested = normalizedProofText(requestedText).toLocaleLowerCase("fr");
+    const confirmedByDiscriminator = observedText.length > 0 && (
+      normalizedProofText(observedText).toLocaleLowerCase("fr").includes(normalizedRequested) ||
+      normalizedRequested.includes(normalizedProofText(observedText).toLocaleLowerCase("fr"))
+    );
+    const confirmedByClaim = dossier.claims.some((claim) =>
+      claim.subject_id === dossier.identity.selected_subject_id &&
+      normalizedProofText(claim.statement).toLocaleLowerCase("fr").includes(normalizedRequested)
+    );
+    return [{
+      label: String(label),
+      requested: requestedText,
+      status: confirmedByDiscriminator || confirmedByClaim ? "Confirmé" : "Non confirmé",
+    }];
+  });
 
   return (
     <section className="identity-panel" aria-labelledby="identity-title">
@@ -1142,6 +1184,19 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       <p className="identity-copy">
         {dossier.identity.resolution_reason}
       </p>
+      {contextAssessments.length === 0 ? null : (
+        <div className="context-assessment" aria-label="Évaluation des indices fournis">
+          <strong>Indices fournis</strong>
+          <ul>
+            {contextAssessments.map((item) => (
+              <li key={`${item.label}-${item.requested}`}>
+                <span>{item.label} : {item.requested}</span>
+                <span>{item.status}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {identityProof === undefined ? null : (
         <div className="identity-proof">
           <strong>Identité {confidenceForClaim(dossier, identityProof).label.toLocaleLowerCase("fr")}</strong>
@@ -1694,6 +1749,10 @@ function DossierResult({
 export function ResearchForm() {
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
+  const [city, setCity] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [role, setRole] = useState("");
+  const [industry, setIndustry] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("auto");
   const [identitySourceUrl, setIdentitySourceUrl] = useState<string>();
   const [status, setStatus] = useState<UiStatus>("idle");
@@ -1736,7 +1795,17 @@ export function ResearchForm() {
     status === "cancelled"
       ? "Recherche annulée"
       : status === "failed"
-        ? "Recherche interrompue"
+        ? requestError !== undefined
+          ? "Flux de recherche interrompu"
+          : failure?.receipt.category === "timeout"
+          ? "Délai de recherche dépassé"
+          : failure?.receipt.category === "source_metadata_missing"
+            ? "Métadonnées de sources invalides"
+            : failure?.receipt.category === "truth_contract_rejected"
+              ? "Contrôle de preuve échoué"
+              : failure?.receipt.failedStage === "stream_consumption"
+                ? "Flux de recherche interrompu"
+                : "Échec du fournisseur de recherche"
         : latestEvent !== undefined
           ? STEP_LABELS[latestEvent.state]
           : status === "running"
@@ -1785,6 +1854,17 @@ export function ResearchForm() {
           entityType,
           ...(context.trim() ? { context: context.trim() } : {}),
           ...(identitySourceUrl === undefined ? {} : { identitySourceUrl }),
+          ...([city, organization, role, industry, identitySourceUrl ?? ""].some((value) => value.trim())
+            ? {
+                hints: {
+                  ...(city.trim() ? { city: city.trim() } : {}),
+                  ...(organization.trim() ? { organization: organization.trim() } : {}),
+                  ...(role.trim() ? { role: role.trim() } : {}),
+                  ...(industry.trim() ? { industry: industry.trim() } : {}),
+                  ...(identitySourceUrl === undefined ? {} : { sourceUrl: identitySourceUrl }),
+                },
+              }
+            : {}),
         }),
         signal: controller.signal,
       });
@@ -1953,8 +2033,40 @@ export function ResearchForm() {
             <p id="name-error" className="field-error" role="alert">{nameError}</p>
           )}
 
+          <div className="structured-hints">
+            <div>
+              <label className="field-label" htmlFor="entity-city">Ville <span>facultatif</span></label>
+              <input id="entity-city" name="city" maxLength={100} value={city}
+                onChange={(event) => setCity(event.target.value)} placeholder="Ex. Bordeaux"
+                autoComplete="address-level2" disabled={status === "running"} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="entity-organization">Organisation <span>facultatif</span></label>
+              <input id="entity-organization" name="organization" maxLength={160} value={organization}
+                onChange={(event) => setOrganization(event.target.value)} placeholder="Ex. Synapse Medicine"
+                autoComplete="organization" disabled={status === "running"} />
+            </div>
+          </div>
+
+          <details className="optional-hints">
+            <summary>Ajouter un rôle, un secteur ou une URL source</summary>
+            <label className="field-label" htmlFor="entity-role">Rôle ou domaine <span>facultatif</span></label>
+            <input id="entity-role" name="role" maxLength={160} value={role}
+              onChange={(event) => setRole(event.target.value)} placeholder="Ex. Marketing Communication"
+              disabled={status === "running"} />
+            <label className="field-label" htmlFor="entity-industry">Secteur <span>facultatif</span></label>
+            <input id="entity-industry" name="industry" maxLength={160} value={industry}
+              onChange={(event) => setIndustry(event.target.value)} placeholder="Ex. Santé numérique"
+              disabled={status === "running"} />
+            <label className="field-label" htmlFor="entity-source-url">URL source publique <span>facultatif</span></label>
+            <input id="entity-source-url" name="sourceUrl" type="url" value={identitySourceUrl ?? ""}
+              onChange={(event) => setIdentitySourceUrl(event.target.value.trim() || undefined)}
+              placeholder={entityType === "auto" ? "Fixez d’abord le type d’entité" : "https://…"}
+              disabled={status === "running" || entityType === "auto"} />
+          </details>
+
           <label className="field-label" htmlFor="entity-context">
-            Contexte <span>facultatif, recommandé</span>
+            Autres indices utiles <span>facultatif</span>
           </label>
           <textarea
             id="entity-context"
@@ -1963,11 +2075,11 @@ export function ResearchForm() {
             rows={4}
             value={context}
             onChange={(event) => setContext(event.target.value)}
-            placeholder="Ville, secteur, employeur, pays, site officiel ou autre indice distinctif"
+            placeholder="Domaine, projet, relation professionnelle ou autre indice public"
             aria-describedby="context-help privacy-note"
             disabled={status === "running"}
           />
-          <p id="context-help" className="field-help">Le contexte sert réellement à distinguer l’entité recherchée.</p>
+          <p id="context-help" className="field-help">Chaque indice améliore la recherche sans devenir une obligation de correspondance.</p>
           <p id="privacy-note" className="privacy-note">
             Utilisez seulement des informations publiques. N’ajoutez aucune donnée privée ou sensible.
           </p>

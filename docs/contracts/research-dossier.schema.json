@@ -339,6 +339,12 @@
               "maxLength": 200,
               "pattern": ".*\\S.*"
             },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": ".*\\S.*"
+            },
             "employer": {
               "type": "string",
               "minLength": 1,

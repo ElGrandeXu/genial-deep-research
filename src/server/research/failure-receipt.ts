@@ -176,6 +176,16 @@ function errorName(error: unknown): string | null {
 
 function validationClassification(code: string): Classification {
   if (
+    code === "web_search_action_invalid" || code === "web_search_not_unique"
+  ) {
+    return {
+      category: "provider_request",
+      publicCode: code,
+      retryable: false,
+      failedStage: "metadata_extraction",
+    };
+  }
+  if (
     [
       "invalid_provider_shape",
       "invalid_claim_length",
@@ -196,8 +206,6 @@ function validationClassification(code: string): Classification {
       "source_not_in_provider_metadata",
       "source_excerpt_missing",
       "invalid_source_url",
-      "web_search_not_unique",
-      "web_search_action_invalid",
       "provider_citation_missing",
       "provider_citation_unbound",
       "provider_source_url_missing",

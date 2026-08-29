@@ -6,7 +6,19 @@ export interface ResearchInput {
   readonly context?: string;
   readonly entityType?: "auto" | "person" | "company";
   readonly identitySourceUrl?: string;
+  readonly hints?: ResearchHints;
 }
+
+export interface ResearchHints {
+  readonly city?: string;
+  readonly organization?: string;
+  readonly role?: string;
+  readonly industry?: string;
+  readonly sourceUrl?: string;
+}
+
+export const MAX_PROVIDER_HTTP_CALLS = 2;
+export const MAX_WEB_SEARCH_ACTIONS = 8;
 
 export interface ProviderCitation {
   readonly provider: "openai";
@@ -73,6 +85,7 @@ export interface ProviderWebSearchCall {
 export interface ProviderWebSearchAction {
   readonly toolCallId: string;
   readonly actionType: "search" | "open_page" | "find_in_page";
+  readonly queries?: readonly string[];
 }
 
 interface ProviderWebSearchInspectionBase {
@@ -282,6 +295,8 @@ export interface ProviderResearchResult {
   readonly providerDurationMs: number;
   readonly finishReason: string | null;
   readonly requestId: string | null;
+  readonly queryPlan?: readonly string[];
+  readonly executedQueries?: readonly string[];
 }
 
 export interface ResearchProvider {

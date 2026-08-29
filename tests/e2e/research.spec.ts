@@ -46,7 +46,7 @@ async function submit(
 ): Promise<void> {
   await page.getByLabel("Nom").fill(name);
   await page.getByLabel("Type d’entité").selectOption(name === "Thomas Martin" ? "person" : "company");
-  await page.getByLabel(/Contexte/).fill(context);
+  await page.getByLabel(/Autres indices utiles/).fill(context);
   await page.getByRole("button", { name: "Construire le dossier" }).click();
 }
 
@@ -190,7 +190,13 @@ test("768 px layout, keyboard order and reduced motion remain usable", async ({ 
   expect(focusOutline.style).not.toBe("none");
   expect(Number.parseFloat(focusOutline.width)).toBeGreaterThanOrEqual(3);
   await page.keyboard.press("Tab");
-  await expect(page.getByLabel(/Contexte/u)).toBeFocused();
+  await expect(page.getByLabel(/Ville/u)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel(/Organisation/u)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByText(/Ajouter un rôle/u)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel(/Autres indices utiles/u)).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Construire le dossier" })).toBeFocused();
 
@@ -229,7 +235,7 @@ test("ambiguity keeps candidates separate and clarification only prefills", asyn
   await expect(page.getByText("Candidat possible 2")).toBeVisible();
   await page.getByRole("button", { name: /Préremplir avec Thomas Martin/u }).first().click();
   await expect(page.getByLabel("Nom")).toHaveValue("Thomas Martin");
-  await expect(page.getByLabel(/Contexte/)).toHaveValue(
+  await expect(page.getByLabel(/Autres indices utiles/)).toHaveValue(
     "Source officielle https://official.public.org",
   );
   expect(submittedBodies).toHaveLength(1);
@@ -334,7 +340,7 @@ test("honest silence and technical failure remain distinct", async ({ page }) =>
   await submit(page, "Erreur technique");
   await expect(page.getByRole("heading", { name: "Aucun dossier produit" })).toBeVisible();
   await expect(page.getByText(/temporairement indisponible/u)).toBeVisible();
-  await expect(page.locator(".live-heading h2")).toHaveText("Recherche interrompue");
+  await expect(page.locator(".live-heading h2")).toHaveText("Échec du fournisseur de recherche");
 });
 
 test("fragmented SSE reaches completion without accepting obsolete phases", async ({ page }) => {

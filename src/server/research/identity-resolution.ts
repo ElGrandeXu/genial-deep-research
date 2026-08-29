@@ -5,6 +5,7 @@ import {
 import { publisherDomainForUrl } from "../../domain/publisher-domain";
 import { evaluateClaimQuality } from "./claim-quality";
 import { evaluateFactAttribution } from "./scope-policy";
+import { positiveContextText } from "./query-plan";
 import type {
   EntityScope,
   ProviderCandidateDiscriminators,
@@ -59,6 +60,7 @@ export interface ContextSignal {
     | "city"
     | "country"
     | "industry"
+    | "role"
     | "corroborated_context"
     | "year";
   readonly value: string;
@@ -1538,11 +1540,16 @@ function candidateIsEligible(
   item: VerifiedIdentityCandidate,
 ): boolean {
   const requestedType = input.entityType ?? "auto";
+  const identityProofAvailable = [
+    item.proof,
+    ...(item.corroboratingProofs ?? []),
+    ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
+  ].some((proof) => proofIdentifiesCandidate(proof, item.candidate));
   return CANDIDATE_KEY.test(item.candidate.candidateKey) &&
     (requestedType === "auto" || item.candidate.entityType === requestedType) &&
     scopeMatchesType(item.candidate.entityScope, item.candidate.entityType) &&
     requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) &&
-    proofIdentifiesCandidate(item.proof, item.candidate);
+    identityProofAvailable;
 }
 
 function preferRequestedNameWhenItIsTheProvenForm(
@@ -1574,6 +1581,32 @@ function preferRequestedNameWhenItIsTheProvenForm(
   };
 }
 
+function preferProofThatIdentifiesCandidate(
+  item: VerifiedIdentityCandidate,
+): VerifiedIdentityCandidate {
+  if (proofIdentifiesCandidate(item.proof, item.candidate)) return item;
+  const factProofs = (item.corroboratingFacts ?? []).map(({ proof }) => proof);
+  const alternative = [
+    ...factProofs,
+    ...(item.corroboratingProofs ?? []),
+  ].find((proof) => proofIdentifiesCandidate(proof, item.candidate));
+  if (alternative === undefined) return item;
+  return {
+    ...item,
+    proof: alternative,
+    corroboratingProofs: [...new Map(
+      [item.proof, ...(item.corroboratingProofs ?? [])]
+        .filter((proof) => proofKey(proof) !== proofKey(alternative))
+        .map((proof) => [proofKey(proof), proof] as const),
+    ).values()],
+    ...(factProofs.some((proof) => proofKey(proof) === proofKey(alternative))
+      ? { proofBasis: "verified_facts" as const }
+      : item.proofBasis === undefined
+        ? {}
+        : { proofBasis: item.proofBasis }),
+  };
+}
+
 function evaluatedEvidenceSet(
   input: ResearchInput,
   item: VerifiedIdentityCandidate,
@@ -1587,16 +1620,28 @@ function evaluatedEvidenceSet(
   readonly corroboratedContextEvidence: CorroboratedContextEvidence | null;
 } {
   const verifiedDiscriminators = verifiedDiscriminatorsFor(item);
-  const baseContextSignals = input.context === undefined
+  const positiveContext = positiveContextText(input);
+  const baseContextSignals = positiveContext === undefined
     ? []
-    : contextSignalsFor(input.context, item, verifiedDiscriminators);
+    : contextSignalsFor(positiveContext, item, verifiedDiscriminators);
+  if (
+    input.hints?.role !== undefined &&
+    [
+      ...proofsFor(item).map(({ verifiedExcerpt, title }) => `${verifiedExcerpt} ${title}`),
+      ...(item.corroboratingFacts ?? []).map(({ candidate, proof }) =>
+        `${candidate.statement} ${proof.verifiedExcerpt} ${proof.title}`
+      ),
+    ].some((text) => containsContext(text, input.hints?.role ?? ""))
+  ) {
+    baseContextSignals.push({ kind: "role", value: input.hints.role, strength: "medium" });
+  }
   const independent = proofsAreIndependent(proofsFor(item));
-  const corroboratedEvidence = input.context === undefined ||
+  const corroboratedEvidence = positiveContext === undefined ||
       item.candidate.entityType !== "person" ||
       normalizedName(input.name) !== normalizedName(item.candidate.displayName) ||
       !independent
     ? null
-    : corroboratedContextEvidence(input.context, item);
+    : corroboratedContextEvidence(positiveContext, item);
   const contextSignals = corroboratedEvidence === null
     ? baseContextSignals
     : [
@@ -1613,9 +1658,9 @@ function evaluatedEvidenceSet(
       contextSignals.filter(({ strength }) => strength === "medium").map(({ kind }) => kind),
     ).size,
     independent,
-    supportedContextEvidence: input.context === undefined
+    supportedContextEvidence: positiveContext === undefined
       ? []
-      : supportedContextEvidence(input.context, item),
+      : supportedContextEvidence(positiveContext, item),
     corroboratedContextEvidence: corroboratedEvidence,
   };
 }
@@ -1737,7 +1782,8 @@ export function resolveIdentity(options: {
 
   const normalizedCandidates = options.candidates
     .map(withDerivedScope)
-    .map((item) => preferRequestedNameWhenItIsTheProvenForm(options.input, item));
+    .map((item) => preferRequestedNameWhenItIsTheProvenForm(options.input, item))
+    .map(preferProofThatIdentifiesCandidate);
   const eligible = normalizedCandidates.filter((item) => candidateIsEligible(options.input, item));
   if (eligible.length === 0) {
     const requestedType = options.input.entityType ?? "auto";
@@ -1753,7 +1799,11 @@ export function resolveIdentity(options: {
       if (!requestedAndCandidateNamesMatch(options.input.name, item.candidate.displayName)) {
         eligibilityReasons.add("candidate_name_mismatch");
       }
-      if (!proofIdentifiesCandidate(item.proof, item.candidate)) {
+      if (![
+        item.proof,
+        ...(item.corroboratingProofs ?? []),
+        ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
+      ].some((proof) => proofIdentifiesCandidate(proof, item.candidate))) {
         eligibilityReasons.add("candidate_proof_name_missing");
       }
     }
@@ -1800,7 +1850,8 @@ export function resolveIdentity(options: {
       proofBasis: "dedicated",
     };
     const dedicatedEvaluation = evaluatedEvidenceSet(options.input, dedicatedItem);
-    const dedicatedMatched = options.input.context === undefined
+    const hasPositiveContext = positiveContextText(options.input) !== undefined;
+    const dedicatedMatched = !hasPositiveContext
       ? isDistinctiveWithoutContext(
           options.input,
           dedicatedItem,
@@ -1858,9 +1909,43 @@ export function resolveIdentity(options: {
     };
   });
   const matched = evaluated.filter((item) => item.matched);
+  const priorityFor = (signals: readonly ContextSignal[]): number => signals.reduce(
+    (total, signal) => total + (
+      signal.kind === "source_domain" || signal.kind === "official_site" || signal.kind === "legal_identifier"
+        ? 5
+        : signal.kind === "employer"
+          ? 4
+          : signal.kind === "city" || signal.kind === "role" || signal.kind === "corroborated_context"
+            ? 2
+            : 1
+    ),
+    0,
+  );
+  if (evaluated.length > 1) {
+    const ranked = evaluated
+      .map((entry) => ({ entry, priority: priorityFor(entry.contextSignals) }))
+      .sort((left, right) => right.priority - left.priority);
+    const first = ranked[0];
+    const second = ranked[1];
+    if (
+      first !== undefined && second !== undefined &&
+      first.priority - second.priority >= 2 &&
+      (first.entry.strong || first.entry.mediumKindCount >= 2)
+    ) {
+      return {
+        status: "resolved",
+        selected: first.entry.item,
+        candidates: [first.entry.item],
+        verifiedDiscriminators: first.entry.verifiedDiscriminators,
+        contextSignals: first.entry.contextSignals,
+        reasonCodes: ["unique_ranked_candidate"],
+        rationale: "Un candidat possède une priorité de classement nettement supérieure grâce à plusieurs indices corroborés ; les poids internes ne sont ni une probabilité ni un niveau de confiance.",
+      };
+    }
+  }
   if (
     matched.length === 1 &&
-    !(options.input.context === undefined && eligible.length > 1)
+    !(positiveContextText(options.input) === undefined && eligible.length > 1)
   ) {
     const only = matched[0];
     if (only === undefined) throw new Error("Unreachable identity decision.");
@@ -1895,7 +1980,19 @@ export function resolveIdentity(options: {
         uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content",
       )
     ) &&
-    options.input.context !== undefined
+    eligible.length === 1 &&
+    (
+      positiveContextText(options.input) !== undefined ||
+      (() => {
+        try {
+          const host = new URL(uniqueContextualCandidate.item.proof.finalUrl).hostname
+            .toLocaleLowerCase("en-US");
+          return host === "linkedin.com" || host.endsWith(".linkedin.com");
+        } catch {
+          return false;
+        }
+      })()
+    )
   ) {
     return {
       status: "resolved",
@@ -1908,7 +2005,7 @@ export function resolveIdentity(options: {
     };
   }
 
-  if (matched.length > 1 || (options.input.context === undefined && eligible.length > 1)) {
+  if (matched.length > 1 || (positiveContextText(options.input) === undefined && eligible.length > 1)) {
     return {
       status: "ambiguous",
       selected: null,
@@ -1928,6 +2025,6 @@ export function resolveIdentity(options: {
     verifiedDiscriminators: only?.verifiedDiscriminators ?? {},
     contextSignals: only?.contextSignals ?? [],
     reasonCodes: ["context_not_demonstrated"],
-    rationale: "Le contexte fourni n’est pas suffisamment démontré par les preuves vérifiées.",
+    rationale: "Plusieurs candidats restent compatibles et les indices corroborés ne permettent pas de les départager nettement.",
   };
 }
