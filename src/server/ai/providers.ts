@@ -462,6 +462,76 @@ function normalizeProviderDocument(
   };
 }
 
+function providerEntityKey(displayName: string, entityType: "person" | "company"): string {
+  return `${entityType}|${displayName.normalize("NFD").replace(/\p{M}+/gu, "")
+    .toLocaleLowerCase("fr").replace(/\s+/gu, " ").trim()}`;
+}
+
+function mergeProviderDocuments(
+  primary: z.infer<typeof providerDocumentSchema>,
+  supplement: z.infer<typeof providerDocumentSchema>,
+): z.infer<typeof providerDocumentSchema> {
+  const candidates = [...primary.candidates];
+  const supplementKeyMap = new Map<string, string>();
+  for (const candidate of supplement.candidates) {
+    const matchingIndex = candidates.findIndex((current) =>
+      providerEntityKey(current.displayName, current.entityType) ===
+        providerEntityKey(candidate.displayName, candidate.entityType)
+    );
+    if (matchingIndex >= 0) {
+      const matching = candidates[matchingIndex];
+      if (matching === undefined) continue;
+      supplementKeyMap.set(candidate.candidateKey, matching.candidateKey);
+      if (primary.identityStatus !== "resolved" && supplement.identityStatus === "resolved") {
+        candidates[matchingIndex] = { ...candidate, candidateKey: matching.candidateKey };
+      }
+      continue;
+    }
+    if (primary.candidates.length === 0 && candidates.length < 3) {
+      candidates.push(candidate);
+      supplementKeyMap.set(candidate.candidateKey, candidate.candidateKey);
+    }
+  }
+
+  const acceptedKeys = new Set(candidates.map(({ candidateKey }) => candidateKey));
+  const claims = [...primary.claims];
+  const claimKeys = new Set(claims.map(({ sourceUrl, excerpt }) =>
+    `${sourceUrl.trim()}|${excerpt.trim().toLocaleLowerCase("fr")}`
+  ));
+  for (const claim of supplement.claims) {
+    const subjectKey = supplementKeyMap.get(claim.subjectKey);
+    if (subjectKey === undefined || !acceptedKeys.has(subjectKey)) continue;
+    const key = `${claim.sourceUrl.trim()}|${claim.excerpt.trim().toLocaleLowerCase("fr")}`;
+    if (claimKeys.has(key)) continue;
+    claims.push({ ...claim, subjectKey });
+    claimKeys.add(key);
+    if (claims.length >= 6) break;
+  }
+
+  const identityStatus = candidates.length === 0
+    ? "not_found" as const
+    : candidates.length > 1 || primary.identityStatus === "ambiguous"
+      ? "ambiguous" as const
+      : primary.identityStatus === "resolved" || supplement.identityStatus === "resolved"
+        ? "resolved" as const
+        : "insufficient_context" as const;
+  return {
+    identityStatus,
+    entityType: primary.entityType ?? supplement.entityType,
+    candidates,
+    claims,
+    missingCategories: primary.missingCategories.filter((category) =>
+      supplement.missingCategories.includes(category)
+    ),
+  };
+}
+
+function needsRecallSupplement(document: z.infer<typeof providerDocumentSchema>): boolean {
+  if (document.identityStatus === "ambiguous" || document.candidates.length > 1) return false;
+  const factUrls = new Set(document.claims.map(({ sourceUrl }) => sourceUrl));
+  return document.claims.length < 3 || factUrls.size < 2;
+}
+
 export function recoverProviderDocument(text: string | undefined):
   z.infer<typeof providerDocumentOutputSchema> | null {
   if (text === undefined || text.trim().length === 0) return null;
@@ -579,7 +649,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
                 } satisfies OpenAIResponsesProviderOptions,
               },
             });
-            generatedText = repair.text;
+            generatedText = recoveredStep.text;
             rawDocument = repair.output;
             steps = capturedSteps;
             previousUsage = noObject.usage ?? recoveredStep.usage;
@@ -589,44 +659,123 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           }
         }
 
-        const finalStep = steps.at(-1);
-        if (finalStep === undefined) throw new Error("Provider returned no completed step.");
-        const document = normalizeProviderDocument(rawDocument);
-        const toolCalls: OpenAIWebSearchToolCall[] = steps.flatMap((step) =>
-          step.toolCalls.flatMap(
-          ({ toolName, toolCallId }) =>
-            toolName === "web_search"
-              ? [{ toolName: "web_search" as const, toolCallId }]
-              : [],
-          ),
-        );
-        const toolResults: OpenAIWebSearchToolResult[] =
-          steps.flatMap((step) => step.toolResults.flatMap((toolResult) =>
-            toolResult.toolName === "web_search" && toolResult.dynamic !== true
-              ? [{
-                  toolName: "web_search" as const,
-                  toolCallId: toolResult.toolCallId,
-                  output: toolResult.output,
-                }]
-              : [],
-          ));
-        const duplicateToolResults: OpenAIWebSearchToolResult[] =
-          steps.flatMap((step) =>
+        const normalizeMetadataFor = (
+          currentText: string,
+          currentSteps: readonly StepResult<typeof researchTools>[],
+        ) => {
+          const finalStep = currentSteps.at(-1);
+          if (finalStep === undefined) throw new Error("Provider returned no completed step.");
+          const toolCalls: OpenAIWebSearchToolCall[] = currentSteps.flatMap((step) =>
+            step.toolCalls.flatMap(({ toolName, toolCallId }) =>
+              toolName === "web_search"
+                ? [{ toolName: "web_search" as const, toolCallId }]
+                : []
+            )
+          );
+          const toolResults: OpenAIWebSearchToolResult[] = currentSteps.flatMap((step) =>
+            step.toolResults.flatMap((toolResult) =>
+              toolResult.toolName === "web_search" && toolResult.dynamic !== true
+                ? [{
+                    toolName: "web_search" as const,
+                    toolCallId: toolResult.toolCallId,
+                    output: toolResult.output,
+                  }]
+                : []
+            )
+          );
+          const duplicateToolResults: OpenAIWebSearchToolResult[] = currentSteps.flatMap((step) =>
             step.staticToolResults.map(({ toolName, toolCallId, output }) => ({
               toolName,
               toolCallId,
               output,
-            })),
+            }))
           );
-        const normalizedMetadata = normalizeOpenAIProviderMetadata({
-          generatedText,
-          content: finalStep.content,
-          sources: steps.flatMap((step) => step.sources.flatMap((source) =>
-            source.sourceType === "url" ? [source] : [])),
-          toolCalls,
-          toolResults,
-          duplicateToolResults,
-        });
+          return normalizeOpenAIProviderMetadata({
+            generatedText: currentText,
+            content: finalStep.content,
+            sources: currentSteps.flatMap((step) => step.sources.flatMap((source) =>
+              source.sourceType === "url" ? [source] : []
+            )),
+            toolCalls,
+            toolResults,
+            duplicateToolResults,
+          });
+        };
+
+        let document = normalizeProviderDocument(rawDocument);
+        let normalizedMetadata = normalizeMetadataFor(generatedText, steps);
+        const remainingWebActions = Math.max(
+          0,
+          4 - normalizedMetadata.webSearchActionCount,
+        );
+        if (
+          previousUsage === undefined &&
+          needsRecallSupplement(document) &&
+          normalizedMetadata.status === "supported" &&
+          normalizedMetadata.webSearchActionPolicyStatus === "supported" &&
+          remainingWebActions > 0
+        ) {
+          try {
+            const existingUrls = [...new Set([
+              ...document.candidates.map(({ sourceUrl }) => sourceUrl),
+              ...document.claims.map(({ sourceUrl }) => sourceUrl),
+            ])];
+            const supplement = await generateText({
+              model: provider.responses(PRIMARY_RESEARCH_MODEL),
+              instructions: [
+                PROVIDER_INSTRUCTIONS,
+                "Mission complémentaire bornée : effectue une recherche distincte pour trouver uniquement les faits et pages encore manquants.",
+                "Évite les URL déjà trouvées. Réutilise le candidateKey de la même entité ; ne fusionne aucun homonyme et ne complète rien sans extrait Web Search attribuable.",
+                "Si une autre page publique cohérente existe, vise au moins une nouvelle URL et jusqu’à trois nouveaux faits atomiques qui nomment explicitement la personne ou l’entreprise.",
+              ].join("\n"),
+              prompt: JSON.stringify({
+                researchInput: {
+                  name: input.name,
+                  entityType: input.entityType ?? "auto",
+                  context: input.context ?? null,
+                  identitySourceUrl: input.identitySourceUrl ?? null,
+                },
+                existingDocument: document,
+                urlsToAvoid: existingUrls,
+                missingGoal: {
+                  minimumFacts: 3,
+                  minimumDistinctFactUrls: 2,
+                },
+              }),
+              tools: researchTools,
+              toolChoice: { type: "tool", toolName: "web_search" },
+              output: Output.object({
+                schema: providerDocumentOutputSchema,
+                name: "supplemental_verified_public_dossier",
+                description: "Faits publics complémentaires sur des sources distinctes.",
+              }),
+              maxOutputTokens: 2_600,
+              maxRetries: 0,
+              timeout: PROVIDER_TIMEOUT_MS,
+              abortSignal: signal,
+              providerOptions: {
+                openai: {
+                  maxToolCalls: remainingWebActions,
+                  parallelToolCalls: false,
+                  reasoningEffort: "low",
+                  store: false,
+                  textVerbosity: "medium",
+                } satisfies OpenAIResponsesProviderOptions,
+              },
+            });
+            const supplementDocument = normalizeProviderDocument(supplement.output);
+            document = mergeProviderDocuments(document, supplementDocument);
+            steps = [...steps, ...supplement.steps];
+            generatedText = supplement.text;
+            previousUsage = usage;
+            usage = supplement.usage;
+            finishReason = supplement.finishReason;
+            responseHeaders = supplement.response.headers;
+            normalizedMetadata = normalizeMetadataFor(generatedText, steps);
+          } catch (supplementError) {
+            if (signal.aborted) throw supplementError;
+          }
+        }
 
         return {
           text: generatedText,
