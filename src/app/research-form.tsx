@@ -1438,14 +1438,22 @@ function ReceiptDetails({
         <strong>Critère d’arrêt</strong>
         <p>{dossier.receipt.search_scope.stop_reason}</p>
         {pipelineCounts === null ? null : (
-          <p className="pipeline-counts">
-            Pipeline — candidats {readFiniteNumber(pipelineCounts, "providerIdentityCandidates") ?? 0} ·
-            faits proposés {readFiniteNumber(pipelineCounts, "providerFactCandidates") ?? 0} ·
-            documents {(
-              (readFiniteNumber(pipelineCounts, "retrievedIdentityDocuments") ?? 0) +
-              (readFiniteNumber(pipelineCounts, "retrievedFactDocuments") ?? 0)
-            )} · faits affichés {readFiniteNumber(pipelineCounts, "displayedBusinessFacts") ?? 0}
-          </p>
+          <>
+            <p className="pipeline-counts">
+              Pipeline — candidats {readFiniteNumber(pipelineCounts, "providerIdentityCandidates") ?? 0} ·
+              faits proposés {readFiniteNumber(pipelineCounts, "providerFactCandidates") ?? 0} ·
+              documents {(
+                (readFiniteNumber(pipelineCounts, "retrievedIdentityDocuments") ?? 0) +
+                (readFiniteNumber(pipelineCounts, "retrievedFactDocuments") ?? 0)
+              )} · faits affichés {readFiniteNumber(pipelineCounts, "displayedBusinessFacts") ?? 0}
+            </p>
+            {isRecord(pipelineCounts.attributionRejections) ? (
+              <p className="pipeline-counts">
+                Filtres d’attribution — {Object.entries(pipelineCounts.attributionRejections)
+                  .map(([code, count]) => `${code}: ${String(count)}`).join(" · ") || "aucun"}
+              </p>
+            ) : null}
+          </>
         )}
       </div>
     </details>

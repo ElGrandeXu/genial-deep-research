@@ -342,6 +342,8 @@ export interface PublicReceipt {
     readonly retainedGroundedFactProofs: number;
     readonly discardedProofs: number;
     readonly displayedBusinessFacts: number;
+    readonly attributionRejections: Readonly<Record<string, number>>;
+    readonly qualityRejections: Readonly<Record<string, number>>;
   };
 }
 

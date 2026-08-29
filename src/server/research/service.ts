@@ -101,6 +101,11 @@ interface VerificationBatch<T extends ProviderClaimCandidate> {
   readonly excerptVerificationCount: number;
 }
 
+interface DossierBuildDiagnostics {
+  attributionRejections: Record<string, number>;
+  qualityRejections: Record<string, number>;
+}
+
 function proofVerificationMethod(
   proof: VerifiedSourceProof,
 ): "source_content" | "provider_annotation" | "search_snippet" {
@@ -688,6 +693,7 @@ function buildDossier(options: {
   readonly searchingMs: number;
   readonly sourceVerifyingMs: number;
   readonly estimatedCostUsd: number;
+  readonly diagnostics: DossierBuildDiagnostics;
 }): ResearchDossier {
   const requestedType = options.input.entityType ?? "auto";
   const verifiedIdentityCandidates = assembleVerifiedIdentityCandidates({
@@ -744,6 +750,12 @@ function buildDossier(options: {
     decision.accepted ? [fact] : [],
   );
   const attributionRejectedCount = attributionDecisions.length - eligibleFacts.length;
+  for (const { decision } of attributionDecisions) {
+    if (!decision.accepted) {
+      options.diagnostics.attributionRejections[decision.reasonCode] =
+        (options.diagnostics.attributionRejections[decision.reasonCode] ?? 0) + 1;
+    }
+  }
   const qualityDecisions = selected === null
     ? []
     : eligibleFacts.map((fact) => ({
@@ -762,6 +774,12 @@ function buildDossier(options: {
     decision.accepted ? [fact] : [],
   );
   const qualityRejectedCount = qualityDecisions.length - qualityAcceptedFacts.length;
+  for (const { decision } of qualityDecisions) {
+    if (!decision.accepted) {
+      options.diagnostics.qualityRejections[decision.reasonCode] =
+        (options.diagnostics.qualityRejections[decision.reasonCode] ?? 0) + 1;
+    }
+  }
   const deduplication = deduplicateVerifiedFacts(qualityAcceptedFacts);
   const businessFacts = deduplication.facts;
   const resolved = identityDecision.status === "resolved" && selected !== null;
@@ -1744,6 +1762,10 @@ export async function executeResearch(options: {
     const completedAt = now();
     const interimTotalMs = Math.max(0, Math.round(monotonicNow() - totalStart));
     failedStage = "receipt_construction";
+    const dossierDiagnostics: DossierBuildDiagnostics = {
+      attributionRejections: {},
+      qualityRejections: {},
+    };
     const dossier = buildDossier({
       input: options.input,
       result,
@@ -1760,6 +1782,7 @@ export async function executeResearch(options: {
       searchingMs,
       sourceVerifyingMs,
       estimatedCostUsd,
+      diagnostics: dossierDiagnostics,
     });
     pipelineCounts = {
       providerIdentityCandidates: result.document.candidates.length,
@@ -1778,6 +1801,8 @@ export async function executeResearch(options: {
       displayedBusinessFacts: dossier.claims.filter(({ predicate, presentation_decision }) =>
         presentation_decision === "display_fact" && !predicate.startsWith("identity.")
       ).length,
+      attributionRejections: dossierDiagnostics.attributionRejections,
+      qualityRejections: dossierDiagnostics.qualityRejections,
     };
     buildingMs = Math.max(
       0,
