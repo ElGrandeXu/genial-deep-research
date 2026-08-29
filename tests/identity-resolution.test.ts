@@ -1908,6 +1908,25 @@ describe("server identity resolution", () => {
     expect(decision.reasonCodes).toContain("unique_contextual_source_candidate");
   });
 
+  it("keeps one attributable provider-grounded identity with degraded confidence", () => {
+    const identity = personCandidate();
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
+      providerStatus: "insufficient_context",
+      candidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          verificationMethod: "provider_annotation",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("unique_contextual_source_candidate");
+  });
+
   it("keeps corroborated fact-backed exact-name homonyms ambiguous", () => {
     const firstIdentity = personCandidate({
       candidateKey: "alex-martin-architect",

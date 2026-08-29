@@ -1800,9 +1800,16 @@ export function resolveIdentity(options: {
   if (
     uniqueContextualCandidate !== undefined &&
     uniqueContextualCandidate.item.proofBasis === "dedicated" &&
-    (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
-      "source_content" &&
-    uniqueContextualCandidate.item.proof.retrievalStatus === "retrieved" &&
+    (
+      (
+        (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
+          "source_content" &&
+        uniqueContextualCandidate.item.proof.retrievalStatus === "retrieved"
+      ) ||
+      ["provider_annotation", "search_snippet"].includes(
+        uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content",
+      )
+    ) &&
     options.input.context !== undefined &&
     options.providerStatus !== "ambiguous" &&
     options.providerStatus !== "not_found"
