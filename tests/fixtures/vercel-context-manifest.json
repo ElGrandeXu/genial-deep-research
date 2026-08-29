@@ -3,7 +3,7 @@
     "slug": "nextjs"
   },
   "fileCount": 40,
-  "totalSize": 786070,
+  "totalSize": 788586,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -112,7 +112,7 @@
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 40088,
+      "size": 42604,
       "mode": 33188
     },
     {

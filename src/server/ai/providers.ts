@@ -782,14 +782,66 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               },
             });
             const supplementDocument = normalizeProviderDocument(supplement.output);
-            document = mergeProviderDocuments(document, supplementDocument);
-            steps = [...steps, ...supplement.steps];
-            generatedText = supplement.text;
+            const supplementMetadata = normalizeMetadataFor(
+              supplement.text,
+              supplement.steps,
+            );
             previousUsage = usage;
             usage = supplement.usage;
             finishReason = supplement.finishReason;
             responseHeaders = supplement.response.headers;
-            normalizedMetadata = normalizeMetadataFor(generatedText, steps);
+            const combinedActionCount = normalizedMetadata.webSearchActionCount +
+              supplementMetadata.webSearchActionCount;
+            if (
+              supplementMetadata.status === "supported" &&
+              supplementMetadata.webSearchActionPolicyStatus === "supported" &&
+              combinedActionCount <= 4
+            ) {
+              const supplementalToolCallId = (toolCallId: string): string =>
+                `supplement:${toolCallId}`;
+              document = mergeProviderDocuments(document, supplementDocument);
+              normalizedMetadata = {
+                status: "supported",
+                citations: normalizedMetadata.citations,
+                sources: [...new Map([
+                  ...normalizedMetadata.sources,
+                  ...supplementMetadata.sources.map((source) => ({
+                    ...source,
+                    sourceId: `supplement:${source.sourceId}`,
+                  })),
+                ].map((source) => [source.url, source] as const)).values()],
+                webSearchCalls: [
+                  ...normalizedMetadata.webSearchCalls,
+                  ...supplementMetadata.webSearchCalls.map((call) => ({
+                    ...call,
+                    toolCallId: supplementalToolCallId(call.toolCallId),
+                  })),
+                ],
+                webSearchActions: [
+                  ...normalizedMetadata.webSearchActions,
+                  ...supplementMetadata.webSearchActions.map((action) => ({
+                    ...action,
+                    toolCallId: supplementalToolCallId(action.toolCallId),
+                  })),
+                ],
+                webSearchInspections: [
+                  ...normalizedMetadata.webSearchInspections,
+                  ...supplementMetadata.webSearchInspections.map((inspection) => ({
+                    ...inspection,
+                    toolCallId: supplementalToolCallId(inspection.toolCallId),
+                  })),
+                ],
+                webSearchActionCount: combinedActionCount,
+                webSearchQueryCount: normalizedMetadata.webSearchQueryCount +
+                  supplementMetadata.webSearchQueryCount,
+                webSearchInspectionCount: normalizedMetadata.webSearchInspectionCount +
+                  supplementMetadata.webSearchInspectionCount,
+                webSearchUniqueCallCount: normalizedMetadata.webSearchUniqueCallCount +
+                  supplementMetadata.webSearchUniqueCallCount,
+                webSearchActionPolicyStatus: "supported",
+                webSearchActionPolicyCode: null,
+              };
+            }
           } catch (supplementError) {
             if (signal.aborted) throw supplementError;
           }
