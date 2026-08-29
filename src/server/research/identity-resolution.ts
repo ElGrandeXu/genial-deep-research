@@ -1800,7 +1800,6 @@ export function resolveIdentity(options: {
     : undefined;
   if (
     uniqueContextualCandidate !== undefined &&
-    uniqueContextualCandidate.item.proofBasis === "dedicated" &&
     (
       (
         (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
@@ -1822,7 +1821,7 @@ export function resolveIdentity(options: {
       verifiedDiscriminators: uniqueContextualCandidate.verifiedDiscriminators,
       contextSignals: uniqueContextualCandidate.contextSignals,
       reasonCodes: ["unique_contextual_source_candidate"],
-      rationale: "Un seul candidat au nom exact est retrouvé dans une page publique directement consultée, sans concurrent signalé par la recherche ciblée ; cette attribution reste graduée par la qualité de la source.",
+      rationale: "Un seul candidat au nom exact est retrouvé dans une source publique attribuable, sans concurrent signalé par la recherche ciblée ; cette attribution reste graduée par la qualité de la source.",
     };
   }
 
