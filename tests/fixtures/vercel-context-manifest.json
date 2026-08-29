@@ -3,11 +3,11 @@
     "slug": "nextjs"
   },
   "fileCount": 41,
-  "totalSize": 809695,
+  "totalSize": 870949,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
-      "size": 33760,
+      "size": 35059,
       "mode": 33188
     },
     {
@@ -42,7 +42,7 @@
     },
     {
       "path": "src/app/api/research/route.ts",
-      "size": 7376,
+      "size": 7383,
       "mode": 33188
     },
     {
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/app/research-form.tsx",
-      "size": 87492,
+      "size": 90698,
       "mode": 33188
     },
     {
@@ -97,7 +97,7 @@
     },
     {
       "path": "src/domain/research-dossier.generated.ts",
-      "size": 7434,
+      "size": 7821,
       "mode": 33188
     },
     {
@@ -107,22 +107,22 @@
     },
     {
       "path": "src/domain/runtime-invariants.ts",
-      "size": 30195,
+      "size": 33180,
       "mode": 33188
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 44514,
+      "size": 59960,
       "mode": 33188
     },
     {
       "path": "src/server/research/claim-quality.ts",
-      "size": 13812,
+      "size": 16526,
       "mode": 33188
     },
     {
       "path": "src/server/research/completeness.ts",
-      "size": 4402,
+      "size": 4449,
       "mode": 33188
     },
     {
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 62414,
+      "size": 65295,
       "mode": 33188
     },
     {
@@ -157,7 +157,7 @@
     },
     {
       "path": "src/server/research/request-guard.ts",
-      "size": 2979,
+      "size": 1103,
       "mode": 33188
     },
     {
@@ -167,12 +167,12 @@
     },
     {
       "path": "src/server/research/scope-policy.ts",
-      "size": 5924,
+      "size": 6565,
       "mode": 33188
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 82802,
+      "size": 114004,
       "mode": 33188
     },
     {
@@ -197,7 +197,7 @@
     },
     {
       "path": "src/server/research/types.ts",
-      "size": 14736,
+      "size": 17051,
       "mode": 33188
     },
     {

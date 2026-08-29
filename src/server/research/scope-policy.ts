@@ -19,7 +19,7 @@ export type FactAttributionRejectionCode =
   | "identity_evidence_mismatch";
 
 export type FactAttributionDecision =
-  | { readonly accepted: true; readonly anchor: "official_domain" | "excerpt" | "title" | "page" | "url" }
+  | { readonly accepted: true; readonly anchor: "official_domain" | "identity_source" | "excerpt" | "title" | "page" | "url" }
   | { readonly accepted: false; readonly reasonCode: FactAttributionRejectionCode };
 
 function normalized(value: string): string {
@@ -72,7 +72,7 @@ function pageAnchor(
   proof: VerifiedSourceProof,
   requestedName: string,
   verifiedOfficialSite: string | undefined,
-): "official_domain" | "excerpt" | "title" | "page" | "url" | null {
+): "official_domain" | "identity_source" | "excerpt" | "title" | "page" | "url" | null {
   const officialDomain = verifiedOfficialSite === undefined
     ? null
     : normalizeDomain(verifiedOfficialSite);
@@ -82,6 +82,23 @@ function pageAnchor(
     factDomain !== null &&
     sameDomain(officialDomain, factDomain)
   ) return "official_domain";
+  const canonicalPage = (value: string): string | null => {
+    try {
+      const parsed = new URL(value);
+      parsed.hash = "";
+      parsed.hostname = parsed.hostname.toLocaleLowerCase("en-US");
+      parsed.pathname = parsed.pathname.replace(/\/+$/u, "") || "/";
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  };
+  const factPage = canonicalPage(proof.finalUrl);
+  if (
+    factPage !== null &&
+    [selected.proof, ...(selected.corroboratingProofs ?? [])]
+      .some((identityProof) => canonicalPage(identityProof.finalUrl) === factPage)
+  ) return "identity_source";
   const labels = identityLabels(selected.candidate.displayName, requestedName);
   const containsSelectedName = (value: string, label: string): boolean =>
     containsEntityNameInText(value, label, selected.candidate.entityType);

@@ -73,24 +73,24 @@ describe("bounded same-origin research input", () => {
 
   it("normalizes structured positive hints and rejects conflicting source URLs", async () => {
     await expect(parseResearchRequest(json({
-      name: "Clémence Bertrand",
+      name: "Ariane Veldor",
       entityType: "person",
       context: "  autre indice  ",
       hints: {
-        city: "  Bordeaux ",
-        organization: " Synapse   Medicine ",
-        role: " Marketing Communication ",
+        city: "  Val-sur-Nacre ",
+        organization: " Atelier   Orbe Zéro ",
+        role: " Responsable Rayonnement Numérique ",
       },
     }))).resolves.toMatchObject({
       context: "autre indice",
       hints: {
-        city: "Bordeaux",
-        organization: "Synapse Medicine",
-        role: "Marketing Communication",
+        city: "Val-sur-Nacre",
+        organization: "Atelier Orbe Zéro",
+        role: "Responsable Rayonnement Numérique",
       },
     });
     await expect(parseResearchRequest(json({
-      name: "Clémence Bertrand",
+      name: "Ariane Veldor",
       entityType: "person",
       identitySourceUrl: "https://official.public.org/a",
       hints: { sourceUrl: "https://official.public.org/b" },

@@ -32,7 +32,7 @@ Les états d’attente correspondent à des événements serveur : demande reçu
 
 `src/app/api/research/route.ts` utilise le runtime Node, un plafond Vercel de 180 secondes et un abandon applicatif à 150 secondes. Le corps JSON est limité à 1 024 octets. `Origin` et `Sec-Fetch-Site` empêchent l’usage cross-site ; les réponses sont `no-store`. Les erreurs synchrones deviennent des statuts HTTP typés ; une exécution admise diffuse ensuite des événements SSE et un seul terminal `completed` ou `failed`.
 
-`src/server/research/request-guard.ts` accepte au plus huit requêtes par dix minutes et par empreinte IP, ainsi que deux exécutions simultanées par instance. L’IP brute n’est pas conservée : un SHA-256 avec sel éphémère sert de clé mémoire. Cette protection réduit l’abus du prototype ; elle n’est pas une limitation distribuée.
+Le mode explicite `waf_only` n’appelle aucun SDK de cadence. La règle WAF globale Vercel limite `POST /api/research` à vingt requêtes par IP et par fenêtre fixe de 600 secondes, avec action `rate_limit` et réponse `429`. Comme cette frontière précède l’application, elle compte aussi une éventuelle requête invalide et peut répondre sans corps JSON ; le client traite donc tout `429` et utilise `Retry-After` lorsqu’il existe, sinon un délai conservateur de dix minutes. La route parse et valide toujours le corps avant toute construction ou invocation fournisseur : une requête invalide admise par le WAF reste sans coût fournisseur. La mémoire de l’instance ne conserve aucun compteur de débit et limite uniquement la concurrence à deux exécutions.
 
 ## Fournisseur et recherche
 
@@ -44,9 +44,12 @@ Le seul chemin fournisseur est OpenAI `gpt-5.6-luna`, via AI SDK Core, le provid
 - un appel HTTP fournisseur ;
 - entre une et quatre actions Web Search distinctes ;
 - délai fournisseur de 90 secondes ;
-- cible de trois à six faits et deux pages distinctes lorsque la matière existe.
+- cible de huit à douze faits, plafond de douze et deux pages distinctes lorsque la matière existe ;
+- graphe personne–organisation additif, avec relations explicitement prouvées et faits organisationnels séparés.
 
 Le schéma de transport reste compatible avec Structured Outputs : les URL y sont des chaînes bornées, puis passent dans la validation locale stricte. Une sortie partielle n’est récupérée que si son JSON peut être normalisé sans inventer d’identité, de source, d’extrait ou de valeur. Toutes les autres anomalies échouent fermées.
+
+La validation LIVE d’un contexte enrichi compare les invariants d’exécution, pas une inclusion exacte entre deux sorties fournisseur indépendantes : même identité, mêmes variantes de base exécutées, rôle uniquement additif, aucun fait ni source accepté par le passage principal enrichi perdu pendant sa propre fusion, au moins quatre faits ou pistes et deux sources, rôle confirmé ou explicitement non confirmé, et jamais de résultat final vide après une recherche de base réussie. Aucun cache inter-requêtes, dossier témoin persistant ou cas particulier nominatif ne compense la variabilité du fournisseur.
 
 Les métadonnées des recherches, inspections et citations sont comptabilisées. Une URL structurée peut aider à retrouver une page, mais ne devient jamais une preuve par sa seule présence.
 
@@ -78,7 +81,7 @@ Le silence produit `not_found_within_scope`, zéro fait et zéro source. Une pag
 
 Le contrat canonique est `docs/contracts/research-dossier.schema.json`, validé par Ajv. Les types TypeScript sont générés et contrôlés contre ce schéma. `src/domain/runtime-invariants.ts` ajoute les règles qui traversent plusieurs objets : références existantes, correspondance entité/preuve/source, absence de fait sans preuve, visibilité des contradictions et cohérence des statuts.
 
-Un succès `complete_within_scope` exige trois à six faits métier uniques, deux catégories, deux pages, deux familles d’éditeurs et aucune contradiction ouverte. Un résultat prouvé mais plus pauvre devient `partial`. Les catégories manquantes et preuves rejetées sont affichées comme inconnues.
+Un succès `complete_within_scope` exige au moins trois faits personnels uniques, au plus douze, deux catégories, deux pages, deux familles d’éditeurs et aucune contradiction ouverte. La collecte vise huit à douze faits quand les sources le permettent. Un résultat prouvé mais plus pauvre devient `partial`. Les catégories manquantes et preuves rejetées sont affichées comme inconnues.
 
 Les contradictions regroupent uniquement des valeurs incompatibles pour le même sujet, le même prédicat, la même période, le même périmètre, la même unité, la même devise, la même définition et la même nature publiée ou estimée. La release limite cette qualification aux niveaux de `revenue` et `workforce` et à une période annuelle unique explicitement nommée civile ou fiscale. Chaque extrait doit relier, dans la même proposition, le libellé du sujet attendu, la métrique, sa valeur et son unité ou sa devise. Signature métrique, valeur numérique exacte et finie, devise reconnue (`EUR`, `USD`, `GBP`, `CHF`, `CAD`, `AUD`, `JPY`, `CNY`), portée explicite — entité, groupe consolidé, filiale ou maison-mère —, base d’observation de l’effectif et nature sont redérivées de l’extrait exact ; les métadonnées du modèle ne suffisent donc jamais à créer un conflit. Aucune conversion de devise n’est effectuée. Année nue, TTM/LTM, approximation, intervalle, taux, croissance, sous-période, population ou base d’effectif hors grammaire, métrique ou définition hors allowlist, devise différente ou dimension absente ou contredite deviennent `indetermination`. Toutes les versions et leurs pages restent visibles, aucune n’entre dans le résumé et aucune valeur n’est sélectionnée. La fraîcheur vaut `current` seulement si la formulation actuelle et la date d’observation exacte sont prouvées ; sinon elle reste `historical` ou `unknown`.
 

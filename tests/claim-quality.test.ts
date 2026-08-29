@@ -549,8 +549,8 @@ describe("business claim deduplication", () => {
     expect(deduplicateVerifiedFacts(verified).facts).toHaveLength(1);
   });
 
-  it("keeps at most six unique business facts", () => {
-    const inputs = Array.from({ length: 7 }, (_, index) => {
+  it("keeps at most twelve unique business facts", () => {
+    const inputs = Array.from({ length: 13 }, (_, index) => {
       const excerpt = `Acme SAS exerce une activité autonome numéro ${index + 1} dans son secteur.`;
       const candidate = fact({
         predicate: `activity_${index + 1}`,
@@ -560,6 +560,6 @@ describe("business claim deduplication", () => {
       });
       return { candidate, proof: proof(candidate) };
     });
-    expect(deduplicateVerifiedFacts(inputs).facts).toHaveLength(6);
+    expect(deduplicateVerifiedFacts(inputs).facts).toHaveLength(12);
   });
 });

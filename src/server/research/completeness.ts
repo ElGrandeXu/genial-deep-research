@@ -79,7 +79,7 @@ export function evaluateCompleteness(options: {
   };
   const reasonCodes: CompletenessReasonCode[] = [];
   if (!criteria.identityResolved) reasonCodes.push("identity_unresolved");
-  if (criteria.uniqueBusinessClaims < 3 || criteria.uniqueBusinessClaims > 6) {
+  if (criteria.uniqueBusinessClaims < 3 || criteria.uniqueBusinessClaims > 12) {
     reasonCodes.push("business_claim_count_out_of_range");
   }
   if (criteria.coveredBusinessCategories < 2) {
@@ -96,7 +96,7 @@ export function evaluateCompleteness(options: {
   if (criteria.criticalUnknowns > 0) reasonCodes.push("critical_unknown");
 
   const stopReason = [
-    `faits uniques: ${criteria.uniqueBusinessClaims}/3 minimum (6 maximum)`,
+    `faits uniques: ${criteria.uniqueBusinessClaims}/3 minimum (12 maximum ; cible 8 à 12 lorsque les preuves existent)`,
     `catégories: ${criteria.coveredBusinessCategories}/2 minimum`,
     `pages: ${criteria.canonicalSourcePages}/2 minimum`,
     `éditeurs: ${criteria.publisherDomains}/2 minimum`,

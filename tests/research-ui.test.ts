@@ -6,6 +6,8 @@ import {
   confidenceForClaim,
   decodeSseBlock,
   dossierDisplayIssue,
+  researchHttpErrorMessage,
+  researchHttpErrorMessageForResponse,
   shouldDisplayEvidenceExcerpt,
 } from "../src/app/research-form";
 import type { ResearchDossier } from "../src/domain/research-dossier";
@@ -45,6 +47,48 @@ function claim(predicate: string): ResearchDossier["claims"][number] {
 }
 
 describe("research UI truth mapping", () => {
+  it("uses Retry-After for every 429 and keeps a real 403 distinct", () => {
+    expect(researchHttpErrorMessage({
+      status: 429,
+      retryAfter: "42",
+    })).toBe("Limite temporaire atteinte. Réessayez dans 42 secondes.");
+    expect(researchHttpErrorMessage({
+      status: 429,
+      retryAfter: null,
+    })).toBe("Limite temporaire atteinte. Réessayez dans environ 10 minutes.");
+    const securityMessage = researchHttpErrorMessage({
+      status: 403,
+      retryAfter: null,
+      applicationMessage: "Forbidden",
+    });
+    expect(securityMessage).toContain("protection de sécurité");
+    expect(securityMessage).not.toContain("Forbidden");
+  });
+
+  it("maps a JSON 429 without leaking its application body", async () => {
+    const response = Response.json(
+      { error: { message: "Message interne à ne pas afficher" } },
+      { status: 429, headers: { "retry-after": "125" } },
+    );
+    await expect(researchHttpErrorMessageForResponse(response)).resolves.toBe(
+      "Limite temporaire atteinte. Réessayez dans 125 secondes.",
+    );
+  });
+
+  it("maps a bodyless 429 to the conservative ten-minute delay", async () => {
+    const response = new Response(null, { status: 429 });
+    await expect(researchHttpErrorMessageForResponse(response)).resolves.toBe(
+      "Limite temporaire atteinte. Réessayez dans environ 10 minutes.",
+    );
+  });
+
+  it("interprets an HTTP-date Retry-After", () => {
+    expect(researchHttpErrorMessage({
+      status: 429,
+      retryAfter: "Sat, 29 Aug 2026 18:02:00 GMT",
+      now: Date.parse("Sat, 29 Aug 2026 18:00:00 GMT"),
+    })).toBe("Limite temporaire atteinte. Réessayez dans 120 secondes.");
+  });
   it("accepts the combined real research/resolution progress state", () => {
     expect(decodeSseBlock([
       "event: researching_and_resolving",

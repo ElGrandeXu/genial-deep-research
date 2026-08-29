@@ -2306,6 +2306,41 @@ describe("server identity resolution", () => {
     expect(decision.reasonCodes).toContain("unique_verified_candidate");
   });
 
+  it("accepts one exact name-only candidate supported by an independently attributable fact", () => {
+    const identity = personCandidate({
+      candidateKey: "arthur-mensch",
+      displayName: "Arthur Mensch",
+      statement: "Arthur Mensch a cofondé Mistral AI.",
+      excerpt: "Arthur Mensch a cofondé Mistral AI.",
+    });
+    const supportingFact = personFact({
+      subjectKey: identity.candidateKey,
+      category: "activity",
+      predicate: "cofounder",
+      statement: "Arthur Mensch a cofondé Mistral AI.",
+      excerpt: "Arthur Mensch a cofondé Mistral AI.",
+      scopeType: "person",
+      scopeLabel: "Arthur Mensch",
+    });
+    const supportingProof = proof(supportingFact, {
+      verificationMethod: "provider_annotation",
+      retrievalStatus: "unavailable",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Arthur Mensch", entityType: "person" },
+      providerStatus: "resolved",
+      candidates: [{
+        candidate: identity,
+        proof: supportingProof,
+        corroboratingFacts: [{ candidate: supportingFact, proof: supportingProof }],
+        proofBasis: "verified_facts",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("unique_attributable_fact_candidate");
+  });
+
   it("accepts a unique full three-part person name without context", () => {
     const historian = candidate({
       candidateKey: "thomas-henri-martin",
@@ -2489,6 +2524,40 @@ describe("server identity resolution", () => {
 
     expect(assembled[0]?.proof.finalUrl).toBe(activity.structuredUrl);
     expect(assembled[0]?.proofBasis).toBe("verified_facts");
+  });
+
+  it("uses the exact requested person name proven by a fact when the provider candidate label is expanded", () => {
+    const identity = personCandidate({
+      displayName: "Camille Durand — chercheuse IA",
+      statement: "Profil public de recherche.",
+      excerpt: "Profil public de recherche.",
+      structuredUrl: "https://profiles.example.org/researcher-42",
+    });
+    const role = personFact();
+    const assembled = assembleVerifiedIdentityCandidates({
+      requestedName: "Camille Durand",
+      candidates: [identity],
+      verifiedCandidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          title: "Profil public de recherche",
+          verificationMethod: "search_snippet",
+          retrievalStatus: "unavailable",
+        }),
+      }],
+      verifiedFacts: [{ candidate: role, proof: proof(role) }],
+    });
+
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person" },
+      providerStatus: "resolved",
+      candidates: assembled,
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.displayName).toBe("Camille Durand");
+    expect(decision.selected?.proof.verifiedExcerpt).toContain("Camille Durand");
+    expect(decision.reasonCodes).toContain("unique_attributable_fact_candidate");
   });
 
   it("requires context before resolving a common-word brand", () => {

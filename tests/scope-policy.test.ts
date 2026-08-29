@@ -259,6 +259,42 @@ describe("fact subject and scope policy", () => {
     })).toEqual({ accepted: true, anchor: "url" });
   });
 
+  it("accepts a fact from the exact document that independently proved the identity", () => {
+    const personIdentity = {
+      ...identity,
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person" as const,
+      entityScope: "person" as const,
+      structuredUrl: "https://profiles.example.org/camille-durand",
+      excerpt: "Camille Durand dirige Atelier Nord.",
+      statement: "Camille Durand dirige Atelier Nord.",
+    };
+    const providerFact = fact({
+      subjectKey: "camille-durand",
+      entityType: "person",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+      excerpt: "Elle accompagne des entreprises dans leur transformation numérique.",
+      statement: "Elle accompagne des entreprises dans leur transformation numérique.",
+      structuredUrl: personIdentity.structuredUrl,
+    });
+
+    expect(evaluateFactAttribution({
+      selected: { candidate: personIdentity, proof: proof(personIdentity) },
+      fact: {
+        candidate: providerFact,
+        proof: proof(providerFact, {
+          title: "Profil public",
+          documentText: providerFact.excerpt,
+          verificationMethod: "search_snippet",
+          retrievalStatus: "unavailable",
+        }),
+      },
+      requestedName: "Camille Durand",
+    })).toEqual({ accepted: true, anchor: "identity_source" });
+  });
+
   it.each(["Joann Lee", "Jo Ann Lee", "jo Ann Lee", "Jo-Ann Lee", "jo-Ann Lee"])(
     "does not use the longer person name %s as the requested-name page anchor",
     (longerName) => {

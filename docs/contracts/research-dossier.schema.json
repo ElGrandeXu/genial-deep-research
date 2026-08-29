@@ -27,7 +27,10 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "1.0.0"
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ]
     },
     "dossier_id": {
       "$ref": "#/$defs/id"
@@ -43,6 +46,18 @@
     },
     "identity": {
       "$ref": "#/$defs/identity"
+    },
+    "related_subjects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
     },
     "sources": {
       "type": "array",
@@ -440,6 +455,14 @@
             "not_found_within_scope"
           ]
         },
+        "resolution_level": {
+          "enum": [
+            "confirmed",
+            "supported",
+            "lead",
+            null
+          ]
+        },
         "selected_subject_id": {
           "oneOf": [
             {
@@ -528,6 +551,46 @@
           }
         }
       ]
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation_id",
+        "from_subject_id",
+        "to_subject_id",
+        "relation_type",
+        "evidence_ids"
+      ],
+      "properties": {
+        "relation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "from_subject_id": {
+          "$ref": "#/$defs/id"
+        },
+        "to_subject_id": {
+          "$ref": "#/$defs/id"
+        },
+        "relation_type": {
+          "enum": [
+            "employed_by",
+            "leads",
+            "founded",
+            "created",
+            "member_of",
+            "affiliated_with"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
     },
     "scope": {
       "type": "object",
