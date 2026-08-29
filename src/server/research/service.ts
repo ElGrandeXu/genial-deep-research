@@ -104,6 +104,8 @@ interface VerificationBatch<T extends ProviderClaimCandidate> {
 interface DossierBuildDiagnostics {
   attributionRejections: Record<string, number>;
   qualityRejections: Record<string, number>;
+  identityStatus: string;
+  identityReasonCodes: readonly string[];
 }
 
 function proofVerificationMethod(
@@ -706,6 +708,8 @@ function buildDossier(options: {
     providerStatus: options.result.document.identityStatus,
     candidates: verifiedIdentityCandidates,
   });
+  options.diagnostics.identityStatus = identityDecision.status;
+  options.diagnostics.identityReasonCodes = identityDecision.reasonCodes;
   const selected = identityDecision.selected;
   const identityPublisherDomains = selected === null
     ? new Set<string>()
@@ -1765,6 +1769,8 @@ export async function executeResearch(options: {
     const dossierDiagnostics: DossierBuildDiagnostics = {
       attributionRejections: {},
       qualityRejections: {},
+      identityStatus: "pending",
+      identityReasonCodes: [],
     };
     const dossier = buildDossier({
       input: options.input,
@@ -1803,6 +1809,8 @@ export async function executeResearch(options: {
       ).length,
       attributionRejections: dossierDiagnostics.attributionRejections,
       qualityRejections: dossierDiagnostics.qualityRejections,
+      identityStatus: dossierDiagnostics.identityStatus,
+      identityReasonCodes: dossierDiagnostics.identityReasonCodes,
     };
     buildingMs = Math.max(
       0,

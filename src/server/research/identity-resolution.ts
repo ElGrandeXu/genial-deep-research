@@ -1700,18 +1700,35 @@ export function resolveIdentity(options: {
     };
   }
 
-  const eligible = options.candidates
+  const normalizedCandidates = options.candidates
     .map(withDerivedScope)
-    .map((item) => preferRequestedNameWhenItIsTheProvenForm(options.input, item))
-    .filter((item) => candidateIsEligible(options.input, item));
+    .map((item) => preferRequestedNameWhenItIsTheProvenForm(options.input, item));
+  const eligible = normalizedCandidates.filter((item) => candidateIsEligible(options.input, item));
   if (eligible.length === 0) {
+    const requestedType = options.input.entityType ?? "auto";
+    const eligibilityReasons = new Set<string>(["no_verified_candidate"]);
+    for (const item of normalizedCandidates) {
+      if (!CANDIDATE_KEY.test(item.candidate.candidateKey)) eligibilityReasons.add("candidate_key_invalid");
+      if (requestedType !== "auto" && item.candidate.entityType !== requestedType) {
+        eligibilityReasons.add("candidate_type_mismatch");
+      }
+      if (!scopeMatchesType(item.candidate.entityScope, item.candidate.entityType)) {
+        eligibilityReasons.add("candidate_scope_mismatch");
+      }
+      if (!requestedAndCandidateNamesMatch(options.input.name, item.candidate.displayName)) {
+        eligibilityReasons.add("candidate_name_mismatch");
+      }
+      if (!proofContainsDisplayName(item.proof, item.candidate)) {
+        eligibilityReasons.add("candidate_proof_name_missing");
+      }
+    }
     return {
       status: "not_found_within_scope",
       selected: null,
       candidates: [],
       verifiedDiscriminators: {},
       contextSignals: [],
-      reasonCodes: ["no_verified_candidate"],
+      reasonCodes: [...eligibilityReasons],
       rationale: "Aucun candidat directement vérifiable n’a été trouvé dans le périmètre.",
     };
   }

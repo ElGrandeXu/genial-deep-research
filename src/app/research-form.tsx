@@ -1447,6 +1447,13 @@ function ReceiptDetails({
                 (readFiniteNumber(pipelineCounts, "retrievedFactDocuments") ?? 0)
               )} · faits affichés {readFiniteNumber(pipelineCounts, "displayedBusinessFacts") ?? 0}
             </p>
+            {typeof pipelineCounts.identityStatus === "string" ? (
+              <p className="pipeline-counts">
+                Identité — {pipelineCounts.identityStatus} · {Array.isArray(pipelineCounts.identityReasonCodes)
+                  ? pipelineCounts.identityReasonCodes.join(" · ")
+                  : "raison non documentée"}
+              </p>
+            ) : null}
             {isRecord(pipelineCounts.attributionRejections) ? (
               <p className="pipeline-counts">
                 Filtres d’attribution — {Object.entries(pipelineCounts.attributionRejections)

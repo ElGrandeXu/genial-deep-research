@@ -344,6 +344,8 @@ export interface PublicReceipt {
     readonly displayedBusinessFacts: number;
     readonly attributionRejections: Readonly<Record<string, number>>;
     readonly qualityRejections: Readonly<Record<string, number>>;
+    readonly identityStatus: string;
+    readonly identityReasonCodes: readonly string[];
   };
 }
 
