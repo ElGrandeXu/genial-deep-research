@@ -2291,6 +2291,8 @@ describe("server identity resolution", () => {
       scopeLabel: "Camille Durand",
     });
     const weakProof = proof(identity, {
+      finalUrl: "https://profiles.example.org/team",
+      citationUrl: "https://profiles.example.org/team",
       verifiedExcerpt: identity.excerpt,
       documentText: identity.excerpt,
       verificationMethod: "provider_annotation",
@@ -2327,6 +2329,33 @@ describe("server identity resolution", () => {
           verifiedExcerpt: identity.excerpt,
           documentText: identity.excerpt,
           verificationMethod: "provider_annotation",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+  });
+
+  it("accepts a provider-grounded identity name carried by the source URL", () => {
+    const identity = personCandidate({
+      statement: "Chief executive of a technology company.",
+      excerpt: "Chief executive of a technology company.",
+      structuredUrl: "https://profiles.example.org/camille-durand",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "technologie" },
+      providerStatus: "resolved",
+      candidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          finalUrl: identity.structuredUrl,
+          citationUrl: identity.structuredUrl,
+          title: "Profil public",
+          verifiedExcerpt: identity.excerpt,
+          documentText: identity.excerpt,
+          verificationMethod: "search_snippet",
           retrievalStatus: "unavailable",
         }),
         proofBasis: "dedicated",

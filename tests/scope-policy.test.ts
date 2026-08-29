@@ -225,6 +225,40 @@ describe("fact subject and scope policy", () => {
     })).toEqual({ accepted: false, reasonCode: "page_identity_anchor_missing" });
   });
 
+  it("accepts a provider-grounded person fact when the exact name is anchored in the URL", () => {
+    const personIdentity = {
+      ...identity,
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person" as const,
+      entityScope: "person" as const,
+    };
+    const providerFact = fact({
+      subjectKey: "camille-durand",
+      entityType: "person",
+      scopeType: "person",
+      scopeLabel: "Camille Durand",
+      excerpt: "Elle accompagne des entreprises dans leur transformation numérique.",
+      statement: "Elle accompagne des entreprises dans leur transformation numérique.",
+      structuredUrl: "https://profiles.example.org/camille-durand",
+    });
+    expect(evaluateFactAttribution({
+      selected: { candidate: personIdentity, proof: proof(personIdentity) },
+      fact: {
+        candidate: providerFact,
+        proof: proof(providerFact, {
+          finalUrl: providerFact.structuredUrl,
+          citationUrl: providerFact.structuredUrl,
+          title: "Profil public",
+          documentText: providerFact.excerpt,
+          verificationMethod: "search_snippet",
+          retrievalStatus: "unavailable",
+        }),
+      },
+      requestedName: "Camille Durand",
+    })).toEqual({ accepted: true, anchor: "url" });
+  });
+
   it.each(["Joann Lee", "Jo Ann Lee", "jo Ann Lee", "Jo-Ann Lee", "jo-Ann Lee"])(
     "does not use the longer person name %s as the requested-name page anchor",
     (longerName) => {

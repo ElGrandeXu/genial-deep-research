@@ -109,7 +109,21 @@ function proofIdentifiesCandidate(
 ): boolean {
   if (proofContainsDisplayName(proof, candidate)) return true;
   const method = proof.verificationMethod ?? "source_content";
-  return method !== "source_content" && containsContext(proof.title, candidate.displayName);
+  return method !== "source_content" && (
+    containsContext(proof.title, candidate.displayName) ||
+    urlContainsIdentityName(proof.finalUrl, candidate.displayName)
+  );
+}
+
+function urlContainsIdentityName(url: string, displayName: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const identityText = decodeURIComponent(`${parsed.hostname} ${parsed.pathname}`)
+      .replace(/[-_.]+/gu, " ");
+    return containsContext(identityText, displayName);
+  } catch {
+    return false;
+  }
 }
 
 function proofKey(proof: VerifiedSourceProof): string {

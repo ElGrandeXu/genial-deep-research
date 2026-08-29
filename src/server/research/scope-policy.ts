@@ -19,7 +19,7 @@ export type FactAttributionRejectionCode =
   | "identity_evidence_mismatch";
 
 export type FactAttributionDecision =
-  | { readonly accepted: true; readonly anchor: "official_domain" | "excerpt" | "title" | "page" }
+  | { readonly accepted: true; readonly anchor: "official_domain" | "excerpt" | "title" | "page" | "url" }
   | { readonly accepted: false; readonly reasonCode: FactAttributionRejectionCode };
 
 function normalized(value: string): string {
@@ -72,7 +72,7 @@ function pageAnchor(
   proof: VerifiedSourceProof,
   requestedName: string,
   verifiedOfficialSite: string | undefined,
-): "official_domain" | "excerpt" | "title" | "page" | null {
+): "official_domain" | "excerpt" | "title" | "page" | "url" | null {
   const officialDomain = verifiedOfficialSite === undefined
     ? null
     : normalizeDomain(verifiedOfficialSite);
@@ -88,6 +88,17 @@ function pageAnchor(
   if (labels.some((label) => containsSelectedName(proof.verifiedExcerpt, label))) return "excerpt";
   if (labels.some((label) => containsSelectedName(proof.title, label))) return "title";
   if (labels.some((label) => containsSelectedName(proof.documentText, label))) return "page";
+  if ((proof.verificationMethod ?? "source_content") !== "source_content") {
+    try {
+      const parsed = new URL(proof.finalUrl);
+      const identityText = normalizeVisibleText(
+        decodeURIComponent(`${parsed.hostname} ${parsed.pathname}`).replace(/[-_.]+/gu, " "),
+      );
+      if (labels.some((label) => containsSelectedName(identityText, label))) return "url";
+    } catch {
+      // A malformed URL cannot become an identity anchor.
+    }
+  }
   return null;
 }
 
