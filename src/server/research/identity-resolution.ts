@@ -103,6 +103,15 @@ function proofContainsDisplayName(
   );
 }
 
+function proofIdentifiesCandidate(
+  proof: VerifiedSourceProof,
+  candidate: ProviderIdentityCandidate,
+): boolean {
+  if (proofContainsDisplayName(proof, candidate)) return true;
+  const method = proof.verificationMethod ?? "source_content";
+  return method !== "source_content" && containsContext(proof.title, candidate.displayName);
+}
+
 function proofKey(proof: VerifiedSourceProof): string {
   return [
     proof.finalUrl,
@@ -182,7 +191,7 @@ export function assembleVerifiedIdentityCandidates(options: {
       ] as const),
     ).values()];
     const directNamesCandidate = direct !== undefined &&
-      proofContainsDisplayName(direct.proof, candidate);
+      proofIdentifiesCandidate(direct.proof, candidate);
     const primaryProof = directNamesCandidate
       ? direct.proof
       : factProofs[0] ?? direct?.proof ?? proofs[0];
@@ -1513,7 +1522,7 @@ function candidateIsEligible(
     (requestedType === "auto" || item.candidate.entityType === requestedType) &&
     scopeMatchesType(item.candidate.entityScope, item.candidate.entityType) &&
     requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) &&
-    proofContainsDisplayName(item.proof, item.candidate);
+    proofIdentifiesCandidate(item.proof, item.candidate);
 }
 
 function preferRequestedNameWhenItIsTheProvenForm(
@@ -1724,7 +1733,7 @@ export function resolveIdentity(options: {
       if (!requestedAndCandidateNamesMatch(options.input.name, item.candidate.displayName)) {
         eligibilityReasons.add("candidate_name_mismatch");
       }
-      if (!proofContainsDisplayName(item.proof, item.candidate)) {
+      if (!proofIdentifiesCandidate(item.proof, item.candidate)) {
         eligibilityReasons.add("candidate_proof_name_missing");
       }
     }

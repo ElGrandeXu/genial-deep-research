@@ -2311,6 +2311,31 @@ describe("server identity resolution", () => {
     expect(assembled[0]?.proofBasis).toBe("verified_facts");
   });
 
+  it("accepts a provider-grounded identity name carried by the source title", () => {
+    const identity = personCandidate({
+      statement: "Chief executive of Tesla and SpaceX.",
+      excerpt: "Chief executive of Tesla and SpaceX.",
+      structuredUrl: "https://example.org/elon-musk",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Tesla, SpaceX" },
+      providerStatus: "resolved",
+      candidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          title: "Camille Durand — Tesla and SpaceX",
+          verifiedExcerpt: identity.excerpt,
+          documentText: identity.excerpt,
+          verificationMethod: "provider_annotation",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+  });
+
   it("requires context before resolving a common-word brand", () => {
     const orange = candidate({
       candidateKey: "orange-brand",
