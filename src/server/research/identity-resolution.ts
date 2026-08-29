@@ -1794,6 +1794,30 @@ export function resolveIdentity(options: {
     };
   }
 
+  const uniqueContextualCandidate = matched.length === 0 && evaluated.length === 1
+    ? evaluated[0]
+    : undefined;
+  if (
+    uniqueContextualCandidate !== undefined &&
+    uniqueContextualCandidate.item.proofBasis === "dedicated" &&
+    (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
+      "source_content" &&
+    options.input.context !== undefined &&
+    uniqueContextualCandidate.supportedContextEvidence.length > 0 &&
+    options.providerStatus !== "ambiguous" &&
+    options.providerStatus !== "not_found"
+  ) {
+    return {
+      status: "resolved",
+      selected: uniqueContextualCandidate.item,
+      candidates: [uniqueContextualCandidate.item],
+      verifiedDiscriminators: uniqueContextualCandidate.verifiedDiscriminators,
+      contextSignals: uniqueContextualCandidate.contextSignals,
+      reasonCodes: ["unique_contextual_source_candidate"],
+      rationale: "Un seul candidat au nom exact est retrouvé dans une page qui contient aussi un indice du contexte fourni ; cette attribution reste graduée par la qualité de la source.",
+    };
+  }
+
   if (matched.length > 1 || (options.input.context === undefined && eligible.length > 1)) {
     return {
       status: "ambiguous",

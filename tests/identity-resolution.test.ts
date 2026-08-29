@@ -1880,6 +1880,30 @@ describe("server identity resolution", () => {
     ]));
   });
 
+  it("resolves one exact-name dedicated page when it also contains supplied context", () => {
+    const identity = personCandidate({
+      excerpt: "Camille Durand intervient à Rennes dans le design numérique.",
+      statement: "Camille Durand intervient à Rennes dans le design numérique.",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+    });
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person", context: "Rennes" },
+      providerStatus: "insufficient_context",
+      candidates: [{ candidate: identity, proof: proof(identity) }],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("unique_contextual_source_candidate");
+  });
+
   it("keeps corroborated fact-backed exact-name homonyms ambiguous", () => {
     const firstIdentity = personCandidate({
       candidateKey: "alex-martin-architect",
