@@ -1810,9 +1810,7 @@ export function resolveIdentity(options: {
         uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content",
       )
     ) &&
-    options.input.context !== undefined &&
-    options.providerStatus !== "ambiguous" &&
-    options.providerStatus !== "not_found"
+    options.input.context !== undefined
   ) {
     return {
       status: "resolved",
