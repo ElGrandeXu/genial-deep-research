@@ -130,6 +130,7 @@ function factCanCorroborateCandidate(
   if (
     item.candidate.subjectKey !== candidate.candidateKey ||
     item.candidate.entityType !== candidate.entityType ||
+    (candidate.entityScope === "person" && item.candidate.scopeType !== "person") ||
     !proofContainsDisplayName(item.proof, candidate)
   ) {
     return false;

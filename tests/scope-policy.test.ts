@@ -151,6 +151,60 @@ describe("fact subject and scope policy", () => {
     })).toMatchObject({ accepted: true });
   });
 
+  it("keeps a non-metric person relation that explicitly names the selected person", () => {
+    const personIdentity = {
+      ...identity,
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person" as const,
+      entityScope: "person" as const,
+      excerpt: "Camille Durand dirige Atelier Nord.",
+      statement: "Camille Durand dirige Atelier Nord.",
+    };
+    const relationalRole = fact({
+      subjectKey: "camille-durand",
+      entityType: "person",
+      category: "role",
+      scopeType: "company",
+      scopeLabel: "Atelier Nord",
+      excerpt: "Camille Durand est directrice d’Atelier Nord.",
+      statement: "Camille Durand est directrice d’Atelier Nord.",
+    });
+
+    expect(evaluateFactAttribution({
+      selected: { candidate: personIdentity, proof: proof(personIdentity) },
+      fact: { candidate: relationalRole, proof: proof(relationalRole) },
+      requestedName: "Camille Durand",
+    })).toMatchObject({ accepted: true });
+  });
+
+  it("still rejects an organization metric even when it names a selected person", () => {
+    const personIdentity = {
+      ...identity,
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person" as const,
+      entityScope: "person" as const,
+      excerpt: "Camille Durand dirige Atelier Nord.",
+      statement: "Camille Durand dirige Atelier Nord.",
+    };
+    const companyMetric = fact({
+      subjectKey: "camille-durand",
+      entityType: "person",
+      category: "metric",
+      scopeType: "company",
+      scopeLabel: "Atelier Nord",
+      excerpt: "L’entreprise dirigée par Camille Durand publie un chiffre d’affaires de 2 M€.",
+      statement: "L’entreprise dirigée par Camille Durand publie un chiffre d’affaires de 2 M€.",
+    });
+
+    expect(evaluateFactAttribution({
+      selected: { candidate: personIdentity, proof: proof(personIdentity) },
+      fact: { candidate: companyMetric, proof: proof(companyMetric) },
+      requestedName: "Camille Durand",
+    })).toEqual({ accepted: false, reasonCode: "scope_incompatible" });
+  });
+
   it("rejects a same-type fact from a page with no selected-subject anchor", () => {
     const other = fact({
       structuredUrl: "https://registry.example.org/company",

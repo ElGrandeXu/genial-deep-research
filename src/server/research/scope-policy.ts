@@ -108,21 +108,38 @@ export function evaluateFactAttribution(options: {
   readonly verifiedOfficialSite?: string | undefined;
 }): FactAttributionDecision {
   const candidate = options.fact.candidate;
+  const directlyNamesSelectedPerson =
+    options.selected.candidate.entityScope === "person" &&
+    candidate.entityType === "person" &&
+    candidate.category !== "metric" &&
+    containsEntityNameInText(
+      options.fact.proof.verifiedExcerpt,
+      options.selected.candidate.displayName,
+      "person",
+    );
   if (candidate.subjectKey !== options.selected.candidate.candidateKey) {
     return { accepted: false, reasonCode: "subject_key_mismatch" };
   }
   if (candidate.entityType !== options.selected.candidate.entityType) {
     return { accepted: false, reasonCode: "entity_type_mismatch" };
   }
-  if (!scopeCompatible(options.selected.candidate.entityScope, candidate)) {
+  if (
+    !scopeCompatible(options.selected.candidate.entityScope, candidate) &&
+    !directlyNamesSelectedPerson
+  ) {
     return { accepted: false, reasonCode: "scope_incompatible" };
   }
-  if (SCOPE_LABEL_REQUIRED.has(candidate.category) && candidate.scopeLabel === null) {
+  if (
+    SCOPE_LABEL_REQUIRED.has(candidate.category) &&
+    candidate.scopeLabel === null &&
+    !directlyNamesSelectedPerson
+  ) {
     return { accepted: false, reasonCode: "scope_label_required" };
   }
   if (
     candidate.scopeLabel !== null &&
-    !labelsCompatible(options.selected.candidate.displayName, candidate.scopeLabel)
+    !labelsCompatible(options.selected.candidate.displayName, candidate.scopeLabel) &&
+    !directlyNamesSelectedPerson
   ) {
     return { accepted: false, reasonCode: "scope_label_mismatch" };
   }
