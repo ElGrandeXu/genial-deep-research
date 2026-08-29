@@ -1458,6 +1458,74 @@ describe("verified dossier service", () => {
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
+  it("keeps attributable Web Search result titles as bounded weak leads", async () => {
+    const identityUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
+    const profileUrl = "https://directory.public.net/camille-durand-design";
+    const interviewUrl = "https://media.public.com/camille-durand-rennes";
+    const candidate: ProviderIdentityCandidate = {
+      candidateKey: "camille-durand",
+      displayName: "Camille Durand",
+      entityType: "person",
+      entityScope: "person",
+      discriminators: {
+        city: null,
+        country: null,
+        industry: null,
+        employer: null,
+        officialSite: null,
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Camille Durand",
+      structuredUrl: identityUrl,
+      excerpt: "Camille Durand",
+      prefix: null,
+      suffix: null,
+    };
+    const document: ProviderResearchDocument = {
+      identityStatus: "resolved",
+      entityType: "person",
+      candidates: [candidate],
+      claims: [],
+      missingCategories: ["activity", "role"],
+    };
+    const result = providerResult(document, {
+      sources: [
+        { sourceId: "identity", url: identityUrl, title: "Équipe — Atelier Nordique" },
+        { sourceId: "profile", url: profileUrl, title: "Camille Durand — profil Atelier Nordique" },
+        { sourceId: "interview", url: interviewUrl, title: "Entretien Atelier Nordique avec Camille Durand" },
+      ],
+    });
+
+    const terminal = completed(await executeWith({
+      result,
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        context: "Atelier Nordique",
+        identitySourceUrl: identityUrl,
+      },
+      sourceVerifier: exactSourceVerifier({
+        documentText: "Camille Durand\nDirectrice de l’Atelier Nordique",
+      }),
+    }));
+    const titleClaims = terminal.dossier.claims.filter(
+      ({ predicate }) => predicate === "other.provider_source_title",
+    );
+    expect(titleClaims.map(({ statement }) => statement)).toEqual([
+      "Camille Durand — profil Atelier Nordique",
+      "Entretien Atelier Nordique avec Camille Durand",
+    ]);
+    expect(titleClaims).toHaveLength(2);
+    expect(terminal.dossier.evidence.filter(({ claim_id }) =>
+      titleClaims.some(({ claim_id: candidateId }) => candidateId === claim_id)
+    ).every(({ verification_method }) => verification_method === "provider_annotation")).toBe(true);
+    expect(terminal.dossier.sources.map(({ provider_url }) => provider_url)).toEqual(
+      expect.arrayContaining([profileUrl, interviewUrl]),
+    );
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
   it("still rejects a fact whose URL is not an admissible attributable source", async () => {
     const unsupported = "Airbus has a model-only unsupported statement.";
     const document = resolvedDocument({

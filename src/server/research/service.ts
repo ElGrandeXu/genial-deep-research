@@ -570,6 +570,7 @@ function deriveSourceFirstRoleFacts(
 ): readonly VerifiedCandidate<ProviderFactCandidate>[] {
   return candidates.flatMap((item) => {
     if (item.candidate.entityType !== "person") return [];
+    const derived: VerifiedCandidate<ProviderFactCandidate>[] = [];
     for (const excerpt of sourceFirstRoleExcerptCandidates(
       item.proof,
       item.candidate.displayName,
@@ -602,41 +603,133 @@ function deriveSourceFirstRoleFacts(
               attributedDisplayNames: [item.candidate.displayName],
             });
         if (isTraceableSingleSourcePersonRoleProof(item.candidate, proof)) {
-          return [{ candidate, proof }];
+          derived.push({ candidate, proof });
+          break;
         }
       } catch {
         // A non-atomic or ambiguous nearby block is not source-first evidence.
       }
     }
-    const excerpt = item.proof.verifiedExcerpt;
-    const activityCandidate: ProviderFactCandidate = {
-      subjectKey: item.candidate.candidateKey,
-      entityType: "person",
-      category: "activity",
-      predicate: "public_professional_profile",
-      scopeType: "person",
-      scopeLabel: item.candidate.displayName,
-      factPeriodLabel: null,
-      factDate: null,
-      normalizedValue: null,
-      unit: null,
-      currency: null,
-      contradictionKey: null,
-      statement: excerpt,
-      structuredUrl: item.proof.finalUrl,
-      excerpt,
-      prefix: item.proof.locator.prefix,
-      suffix: item.proof.locator.suffix,
-    };
-    if (evaluateClaimQuality({
-      candidate: activityCandidate,
-      proof: item.proof,
-      selectedDisplayName: item.candidate.displayName,
-    }).accepted) {
-      return [{ candidate: activityCandidate, proof: item.proof }];
+    for (const excerpt of sourceFirstRoleExcerptCandidates(
+      item.proof,
+      item.candidate.displayName,
+    )) {
+      if (derived.some(({ proof }) =>
+        normalizeVisibleText(proof.verifiedExcerpt) === normalizeVisibleText(excerpt)
+      )) continue;
+      const activityCandidate: ProviderFactCandidate = {
+        subjectKey: item.candidate.candidateKey,
+        entityType: "person",
+        category: "activity",
+        predicate: "public_professional_profile",
+        scopeType: "person",
+        scopeLabel: item.candidate.displayName,
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        statement: excerpt,
+        structuredUrl: item.proof.finalUrl,
+        excerpt,
+        prefix: null,
+        suffix: null,
+      };
+      try {
+        const proof = excerpt === item.proof.verifiedExcerpt
+          ? item.proof
+          : reverifyExcerptWithinProof({
+              proof: item.proof,
+              candidate: activityCandidate,
+              attributedDisplayNames: [item.candidate.displayName],
+            });
+        if (evaluateClaimQuality({
+          candidate: activityCandidate,
+          proof,
+          selectedDisplayName: item.candidate.displayName,
+        }).accepted) {
+          derived.push({ candidate: activityCandidate, proof });
+          break;
+        }
+      } catch {
+        // A nearby block that cannot be reverified remains a candidate document only.
+      }
     }
-    return [];
+    return derived.slice(0, 2);
   });
+}
+
+function deriveProviderSourceTitleFacts(options: {
+  readonly result: ProviderResearchResult;
+  readonly identityCandidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
+  readonly existingFacts: readonly VerifiedCandidate<ProviderFactCandidate>[];
+}): readonly VerifiedCandidate<ProviderFactCandidate>[] {
+  const existingUrls = new Set([
+    ...options.identityCandidates.map(({ proof }) => proof.finalUrl),
+    ...options.existingFacts.map(({ proof }) => proof.finalUrl),
+  ]);
+  const existingSourceCount = new Set(existingUrls).size;
+  const missingFactCount = Math.max(0, 3 - options.existingFacts.length);
+  const missingSourceCount = Math.max(0, 2 - existingSourceCount);
+  const limit = Math.min(2, Math.max(missingFactCount, missingSourceCount));
+  if (limit === 0) return [];
+
+  const derived: VerifiedCandidate<ProviderFactCandidate>[] = [];
+  for (const item of options.identityCandidates) {
+    const displayName = normalizeVisibleText(item.candidate.displayName).toLocaleLowerCase("fr");
+    const employer = normalizeVisibleText(item.candidate.discriminators.employer ?? "")
+      .toLocaleLowerCase("fr");
+    const identityDomain = publisherDomainForUrl(item.proof.finalUrl);
+    for (const source of options.result.sources) {
+      if (derived.length >= limit || existingUrls.has(source.url)) continue;
+      const title = normalizeVisibleText(source.title ?? "");
+      if (title.length < 8) continue;
+      const normalizedTitle = title.toLocaleLowerCase("fr");
+      const sourceDomain = publisherDomainForUrl(source.url);
+      const attributable = normalizedTitle.includes(displayName) ||
+        (employer.length >= 3 && (
+          normalizedTitle.includes(employer) || sourceDomain?.includes(employer) === true
+        )) ||
+        (identityDomain !== null && sourceDomain === identityDomain);
+      if (!attributable) continue;
+
+      const candidate: ProviderFactCandidate = {
+        subjectKey: item.candidate.candidateKey,
+        entityType: item.candidate.entityType,
+        category: "other",
+        predicate: "provider_source_title",
+        scopeType: item.candidate.entityScope,
+        scopeLabel: item.candidate.displayName,
+        factPeriodLabel: null,
+        factDate: null,
+        normalizedValue: null,
+        unit: null,
+        currency: null,
+        contradictionKey: null,
+        statement: title,
+        structuredUrl: source.url,
+        excerpt: title,
+        prefix: null,
+        suffix: null,
+      };
+      const proof = providerGroundedProof({
+        result: options.result,
+        candidate,
+        citation: {
+          provider: "openai",
+          bindingType: "provider_source",
+          url: source.url,
+          sourceId: source.sourceId,
+        },
+      });
+      if (proof === null) continue;
+      derived.push({ candidate, proof });
+      existingUrls.add(source.url);
+    }
+    if (derived.length >= limit) break;
+  }
+  return derived;
 }
 
 async function reconstructIdentityFromDocuments(options: {
@@ -1773,7 +1866,13 @@ export async function executeResearch(options: {
         )
       ),
     ];
-    const verifiedFacts = [...factBatch.verified, ...sourceFirstFacts, ...factBatch.grounded];
+    const preFallbackFacts = [...factBatch.verified, ...sourceFirstFacts, ...factBatch.grounded];
+    const providerSourceTitleFacts = deriveProviderSourceTitleFacts({
+      result,
+      identityCandidates: verifiedIdentityCandidates,
+      existingFacts: preFallbackFacts,
+    });
+    const verifiedFacts = [...preFallbackFacts, ...providerSourceTitleFacts];
     sourceVerifyingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
@@ -1825,7 +1924,7 @@ export async function executeResearch(options: {
       directIdentityProofs: candidateBatch.verified.length,
       reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
       directFactProofs: factBatch.verified.length,
-      sourceFirstFacts: sourceFirstFacts.length,
+      sourceFirstFacts: sourceFirstFacts.length + providerSourceTitleFacts.length,
       retainedGroundedIdentityProofs: candidateBatch.grounded.length,
       retainedGroundedFactProofs: factBatch.grounded.length,
       discardedProofs:
