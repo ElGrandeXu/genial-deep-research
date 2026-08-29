@@ -494,8 +494,8 @@ function mergeProviderDocuments(
   }
 
   const acceptedKeys = new Set(candidates.map(({ candidateKey }) => candidateKey));
-  const claims = [...primary.claims];
-  const claimKeys = new Set(claims.map(({ sourceUrl, excerpt }) =>
+  const mergedClaims = [...primary.claims];
+  const claimKeys = new Set(mergedClaims.map(({ sourceUrl, excerpt }) =>
     `${sourceUrl.trim()}|${excerpt.trim().toLocaleLowerCase("fr")}`
   ));
   for (const claim of supplement.claims) {
@@ -503,9 +503,27 @@ function mergeProviderDocuments(
     if (subjectKey === undefined || !acceptedKeys.has(subjectKey)) continue;
     const key = `${claim.sourceUrl.trim()}|${claim.excerpt.trim().toLocaleLowerCase("fr")}`;
     if (claimKeys.has(key)) continue;
-    claims.push({ ...claim, subjectKey });
+    mergedClaims.push({ ...claim, subjectKey });
     claimKeys.add(key);
+  }
+  const claims: typeof mergedClaims = [];
+  const selectedClaimKeys = new Set<string>();
+  const selectedSourceUrls = new Set<string>();
+  for (const claim of mergedClaims) {
+    if (selectedSourceUrls.has(claim.sourceUrl)) continue;
+    claims.push(claim);
+    selectedSourceUrls.add(claim.sourceUrl);
+    selectedClaimKeys.add(
+      `${claim.sourceUrl.trim()}|${claim.excerpt.trim().toLocaleLowerCase("fr")}`,
+    );
     if (claims.length >= 6) break;
+  }
+  for (const claim of mergedClaims) {
+    const key = `${claim.sourceUrl.trim()}|${claim.excerpt.trim().toLocaleLowerCase("fr")}`;
+    if (claims.length >= 6) break;
+    if (selectedClaimKeys.has(key)) continue;
+    claims.push(claim);
+    selectedClaimKeys.add(key);
   }
 
   const identityStatus = candidates.length === 0
@@ -710,7 +728,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
         );
         if (
           previousUsage === undefined &&
-          needsRecallSupplement(document) &&
+          (needsRecallSupplement(document) || normalizedMetadata.webSearchQueryCount < 2) &&
           normalizedMetadata.status === "supported" &&
           normalizedMetadata.webSearchActionPolicyStatus === "supported" &&
           remainingWebActions > 0
