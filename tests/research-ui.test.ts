@@ -100,9 +100,21 @@ describe("research UI truth mapping", () => {
     lead.evidence.find(({ claim_id }) => claim_id === leadClaim.claim_id)!.verification_method =
       "search_snippet";
     lead.sources[0]!.accessibility_status = "unknown";
+    lead.sources[0]!.title = "Résultat de recherche générique";
     expect(confidenceForClaim(lead, leadClaim)).toMatchObject({
       level: "lead",
       label: "Piste à vérifier",
+    });
+
+    const titledSnippet = partialDossier();
+    const titledClaim = titledSnippet.claims.find((item) => !item.predicate.startsWith("identity."))!;
+    titledSnippet.evidence.find(({ claim_id }) => claim_id === titledClaim.claim_id)!.verification_method =
+      "search_snippet";
+    titledSnippet.sources[0]!.accessibility_status = "unknown";
+    expect(confidenceForClaim(titledSnippet, titledClaim)).toMatchObject({
+      level: "supported",
+      label: "Étayé",
+      score: 68,
     });
   });
 

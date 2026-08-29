@@ -618,6 +618,35 @@ export function confidenceForClaim(
         : "Citation Web Search attribuable ; vérification directe incomplète.",
     };
   }
+  const selectedName = dossier.identity.candidates.find(
+    ({ subject_id }) => subject_id === dossier.identity.selected_subject_id,
+  )?.display_name;
+  const normalizedSelectedName = selectedName === undefined
+    ? null
+    : normalizedProofText(selectedName).toLocaleLowerCase("fr");
+  const stronglyAttributedSearchSnippet = records.some(({ evidence, source }) => {
+    if (evidence.verification_method !== "search_snippet") return false;
+    const titleNamesSubject = normalizedSelectedName !== null &&
+      normalizedProofText(source.title).toLocaleLowerCase("fr").includes(normalizedSelectedName);
+    let institutionalDomain = false;
+    try {
+      const hostname = new URL(
+        source.resolved_url ?? source.canonical_url ?? source.provider_url,
+      ).hostname.toLocaleLowerCase("en-US");
+      institutionalDomain = /(?:\.gouv\.fr|\.gov|\.gov\.[a-z]{2})$/u.test(hostname);
+    } catch {
+      // An invalid URL cannot strengthen confidence.
+    }
+    return titleNamesSubject || institutionalDomain;
+  });
+  if (stronglyAttributedSearchSnippet) {
+    return {
+      level: "supported",
+      label: "Étayé",
+      score: 68,
+      explanation: "Citation Web Search attribuable dont le titre ou le domaine institutionnel identifie le sujet ; contenu direct non confirmé.",
+    };
+  }
   return {
     level: "lead",
     label: "Piste à vérifier",
