@@ -2365,6 +2365,48 @@ describe("server identity resolution", () => {
     expect(decision.status).toBe("resolved");
   });
 
+  it("assembles identity from a provider-grounded fact whose URL carries the full name", () => {
+    const identity = personCandidate({
+      statement: "Profil professionnel public.",
+      excerpt: "Profil professionnel public.",
+      structuredUrl: "https://profiles.example.org/team",
+    });
+    const activity = personFact({
+      category: "activity",
+      predicate: "accompagne",
+      statement: "Elle accompagne des entreprises technologiques.",
+      excerpt: "Elle accompagne des entreprises technologiques.",
+      structuredUrl: "https://profiles.example.org/camille-durand",
+    });
+    const assembled = assembleVerifiedIdentityCandidates({
+      candidates: [identity],
+      verifiedCandidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          finalUrl: identity.structuredUrl,
+          citationUrl: identity.structuredUrl,
+          title: "Équipe",
+          verificationMethod: "search_snippet",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+      verifiedFacts: [{
+        candidate: activity,
+        proof: proof(activity, {
+          finalUrl: activity.structuredUrl,
+          citationUrl: activity.structuredUrl,
+          title: "Profil public",
+          verificationMethod: "search_snippet",
+          retrievalStatus: "unavailable",
+        }),
+      }],
+    });
+
+    expect(assembled[0]?.proof.finalUrl).toBe(activity.structuredUrl);
+    expect(assembled[0]?.proofBasis).toBe("verified_facts");
+  });
+
   it("requires context before resolving a common-word brand", () => {
     const orange = candidate({
       candidateKey: "orange-brand",

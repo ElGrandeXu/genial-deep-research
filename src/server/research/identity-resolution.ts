@@ -154,7 +154,7 @@ function factCanCorroborateCandidate(
     item.candidate.subjectKey !== candidate.candidateKey ||
     item.candidate.entityType !== candidate.entityType ||
     (candidate.entityScope === "person" && item.candidate.scopeType !== "person") ||
-    !proofContainsDisplayName(item.proof, candidate)
+    !proofIdentifiesCandidate(item.proof, candidate)
   ) {
     return false;
   }
@@ -170,16 +170,22 @@ function factCanCorroborateCandidate(
     proof: item.proof,
     proofBasis: "verified_facts",
   };
+  const providerGroundedQuality = (item.proof.verificationMethod ?? "source_content") !==
+      "source_content" &&
+    item.candidate.category !== "identity" &&
+    item.candidate.category !== "metric" &&
+    normalizeVisibleText(item.proof.verifiedExcerpt).length >= 8 &&
+    !/[?？]\s*$/u.test(item.proof.verifiedExcerpt);
   return evaluateFactAttribution({
     selected,
     fact: item,
     requestedName: candidate.displayName,
     verifiedOfficialSite: undefined,
-  }).accepted && evaluateClaimQuality({
-    candidate: item.candidate,
-    proof: item.proof,
-    selectedDisplayName: candidate.displayName,
-  }).accepted;
+  }).accepted && (providerGroundedQuality || evaluateClaimQuality({
+      candidate: item.candidate,
+      proof: item.proof,
+      selectedDisplayName: candidate.displayName,
+    }).accepted);
 }
 
 export function assembleVerifiedIdentityCandidates(options: {
