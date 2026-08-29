@@ -269,6 +269,7 @@ describe("provider multi-fact contract", () => {
       "citation ou un extrait attribuable",
       "snippet réellement fourni par Web Search",
       "recherche du nom exact",
+      "au moins une deuxième action Web Search",
       "Ne fusionne jamais des homonymes",
       "identityStatus=ambiguous",
       "identityStatus=not_found",
