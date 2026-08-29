@@ -608,6 +608,33 @@ function deriveSourceFirstRoleFacts(
         // A non-atomic or ambiguous nearby block is not source-first evidence.
       }
     }
+    const excerpt = item.proof.verifiedExcerpt;
+    const activityCandidate: ProviderFactCandidate = {
+      subjectKey: item.candidate.candidateKey,
+      entityType: "person",
+      category: "activity",
+      predicate: "public_professional_profile",
+      scopeType: "person",
+      scopeLabel: item.candidate.displayName,
+      factPeriodLabel: null,
+      factDate: null,
+      normalizedValue: null,
+      unit: null,
+      currency: null,
+      contradictionKey: null,
+      statement: excerpt,
+      structuredUrl: item.proof.finalUrl,
+      excerpt,
+      prefix: item.proof.locator.prefix,
+      suffix: item.proof.locator.suffix,
+    };
+    if (evaluateClaimQuality({
+      candidate: activityCandidate,
+      proof: item.proof,
+      selectedDisplayName: item.candidate.displayName,
+    }).accepted) {
+      return [{ candidate: activityCandidate, proof: item.proof }];
+    }
     return [];
   });
 }
