@@ -1521,7 +1521,7 @@ function isDistinctiveWithoutContext(
   if (item.candidate.entityScope === "brand") return false;
   if (item.candidate.entityType === "person") {
     return normalizedName(input.name) === normalizedName(item.candidate.displayName) &&
-      tokens(item.candidate.displayName).length >= 3;
+      tokens(item.candidate.displayName).length >= 2;
   }
   if (verified.legalIdentifier !== undefined) return true;
   const officialDomain = verified.officialSite;
@@ -1858,7 +1858,10 @@ export function resolveIdentity(options: {
     };
   });
   const matched = evaluated.filter((item) => item.matched);
-  if (matched.length === 1) {
+  if (
+    matched.length === 1 &&
+    !(options.input.context === undefined && eligible.length > 1)
+  ) {
     const only = matched[0];
     if (only === undefined) throw new Error("Unreachable identity decision.");
     const signalLabels = only.contextSignals.map(({ kind, value }) => `${kind}: ${value}`);

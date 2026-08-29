@@ -845,7 +845,7 @@ function buildDossier(options: {
         const supportingFacts = new Set(selected.corroboratingFacts ?? []);
         const factDomain = publisherDomainForUrl(fact.proof.finalUrl);
         const selectedTexts = [selected.proof, ...(selected.corroboratingProofs ?? [])]
-          .map(({ verifiedExcerpt }) => verifiedExcerpt)
+          .map(({ verifiedExcerpt, title }) => `${verifiedExcerpt} ${title}`)
           .join(" ");
         const selectedAnchors = identityAnchorTokens(selectedTexts, selected.candidate.displayName);
         const factAnchors = identityAnchorTokens(

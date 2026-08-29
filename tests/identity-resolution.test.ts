@@ -2222,6 +2222,29 @@ describe("server identity resolution", () => {
     expect(decision.selected).toBeNull();
   });
 
+  it("accepts one exact two-part person name from an attributable public source", () => {
+    const identity = personCandidate({
+      statement: "Camille Durand dirige l’Atelier Nordique.",
+      excerpt: "Camille Durand dirige l’Atelier Nordique.",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Camille Durand", entityType: "person" },
+      providerStatus: "resolved",
+      candidates: [{
+        candidate: identity,
+        proof: proof(identity, {
+          title: "Camille Durand | Atelier Nordique",
+          verificationMethod: "provider_annotation",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.reasonCodes).toContain("unique_verified_candidate");
+  });
+
   it("accepts a unique full three-part person name without context", () => {
     const historian = candidate({
       candidateKey: "thomas-henri-martin",
