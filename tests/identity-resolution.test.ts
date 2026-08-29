@@ -2251,6 +2251,32 @@ describe("server identity resolution", () => {
     expect(decision.selected?.candidate.candidateKey).toBe("thomas-henri-martin");
   });
 
+  it("uses the requested two-part name when the provider middle name is not in the proof", () => {
+    const expanded = personCandidate({
+      candidateKey: "elon-reeve-musk",
+      displayName: "Elon Reeve Musk",
+      statement: "Elon Musk dirige Tesla et SpaceX.",
+      excerpt: "Elon Musk dirige Tesla et SpaceX.",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Elon Musk", entityType: "person", context: "Tesla, SpaceX" },
+      providerStatus: "ambiguous",
+      candidates: [{
+        candidate: expanded,
+        proof: proof(expanded, {
+          verifiedExcerpt: "Elon Musk dirige Tesla et SpaceX.",
+          documentText: "Elon Musk dirige Tesla et SpaceX.",
+          verificationMethod: "provider_annotation",
+          retrievalStatus: "unavailable",
+        }),
+        proofBasis: "dedicated",
+      }],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.displayName).toBe("Elon Musk");
+  });
+
   it("requires context before resolving a common-word brand", () => {
     const orange = candidate({
       candidateKey: "orange-brand",

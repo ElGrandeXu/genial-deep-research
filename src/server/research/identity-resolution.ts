@@ -1510,6 +1510,35 @@ function candidateIsEligible(
     proofContainsDisplayName(item.proof, item.candidate);
 }
 
+function preferRequestedNameWhenItIsTheProvenForm(
+  input: ResearchInput,
+  item: VerifiedIdentityCandidate,
+): VerifiedIdentityCandidate {
+  if (
+    containsContext(item.proof.verifiedExcerpt, item.candidate.displayName) ||
+    !requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) ||
+    !containsEntityNameInText(
+      item.proof.verifiedExcerpt,
+      input.name,
+      item.candidate.entityType,
+    )
+  ) {
+    return item;
+  }
+  return {
+    ...item,
+    candidate: {
+      ...item.candidate,
+      displayName: input.name.trim(),
+      statement: item.proof.verifiedExcerpt,
+      structuredUrl: item.proof.finalUrl,
+      excerpt: item.proof.verifiedExcerpt,
+      prefix: item.proof.locator.prefix,
+      suffix: item.proof.locator.suffix,
+    },
+  };
+}
+
 function evaluatedEvidenceSet(
   input: ResearchInput,
   item: VerifiedIdentityCandidate,
@@ -1673,6 +1702,7 @@ export function resolveIdentity(options: {
 
   const eligible = options.candidates
     .map(withDerivedScope)
+    .map((item) => preferRequestedNameWhenItIsTheProvenForm(options.input, item))
     .filter((item) => candidateIsEligible(options.input, item));
   if (eligible.length === 0) {
     return {
