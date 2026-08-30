@@ -37,4 +37,9 @@
 - Lot 2 livraison et UX : terminé ; 741 tests, lint, typecheck et build réussis.
 - Gate candidat : 128 fichiers ; manifeste Vercel : 41 fichiers, 811 027 octets ; tests négatifs réussis.
 - Correctifs lot 2 : smoke 4 200 octets, documents portables, frontière Vercel, SHA public optionnel, suppression du diagnostic de requêtes, messages/accords/contrastes UI.
-- Prochaine action : commit du lot 2 puis validation complète et clone propre.
+- Validation complète avant Preview : `pnpm verify` réussi ; clone propre installé, 741 tests, build, démarrage et health réussis.
+- Preview v1 : `https://genial-deep-research-d43ceenoj-el-grande-xue.vercel.app`, cible Preview et smoke public réussi.
+- Matrice v1 : Thomas Pesquet → clarification sûre, 30 852 ms ; Erwan Simon → `partial`, 3 faits/3 sources, 14 995 ms ; Airbus SE → échec `web_search_action_invalid`, 5 actions, 30 387 ms.
+- Correctif Preview : `max_tool_calls=4` conservé ; plafond de télémétrie porté à 6 actions observées, 7 restant rejetées ; 742 tests, lint, typecheck, build et gate candidat réussis.
+- Budget de soumissions réelles restant : 2 sur 6, réservées aux cas ambigu et peu documenté.
+- Prochaine action : commit, pousser la branche, redéployer la Preview, puis terminer la matrice.

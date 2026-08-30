@@ -29,6 +29,7 @@ import type {
 } from "../research/types";
 import {
   MAX_PROVIDER_HTTP_CALLS,
+  MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS,
   MAX_WEB_SEARCH_ACTIONS,
 } from "../research/types";
 import { buildSearchQueryPlan } from "../research/query-plan";
@@ -344,7 +345,7 @@ export const PROVIDER_INSTRUCTIONS = [
     "Pour cette release, réserve une contradiction quantitative aux niveaux de revenue ou workforce sur une année civile ou fiscale unique, nommée comme telle dans chaque EXCERPT et factPeriodLabel ; une année nue est insuffisante. Écarte taux, croissance, valeurs approximatives, intervalles et sous-périodes ; pour workforce, exige la même base explicite (moyenne ou fin d’année), et pour toute métrique la même portée explicite (entité, groupe consolidé, filiale ou maison-mère).",
     "missingCategories liste uniquement les catégories utiles recherchées mais non prouvées.",
     "N’ajoute aucune synthèse, opinion, inférence, causalité ni information absente des extraits.",
-    "Tu peux effectuer jusqu’à quatre actions Web Search au total, recherches et inspections comprises. Préserve du budget pour inspecter les pages utiles. Arrête dès que le dossier est démontrable ou que l’insuffisance est établie.",
+    "Tu peux effectuer jusqu’à six actions Web Search observables au total, recherches et inspections comprises. Préserve du budget pour inspecter les pages utiles. Arrête dès que le dossier est démontrable ou que l’insuffisance est établie.",
     "Respecte strictement le schéma de sortie fourni.",
   ].join("\n");
 
@@ -731,7 +732,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           },
           providerOptions: {
             openai: {
-              maxToolCalls: MAX_WEB_SEARCH_ACTIONS,
+              maxToolCalls: MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS,
               parallelToolCalls: false,
               reasoningEffort: "low",
               store: false,

@@ -359,7 +359,7 @@ describe("provider multi-fact contract", () => {
       "identityStatus=ambiguous",
       "identityStatus=not_found",
       "aucune claim",
-      "jusqu’à quatre actions Web Search",
+      "jusqu’à six actions Web Search",
       "candidateKey",
       "subjectKey",
       "entityScope",
@@ -1877,7 +1877,7 @@ describe("verified dossier service", () => {
     expect(JSON.stringify(records)).not.toContain("Airbus SE");
   });
 
-  it("fails technically when provider accounting exceeds the four-action ceiling", async () => {
+  it("admits five observed actions under the bounded telemetry ceiling", async () => {
     const result = providerResult(resolvedDocument(), {
       webSearchCalls: Array.from({ length: 5 }, (_, index) => ({
         toolCallId: `search-${index}`,
@@ -1902,12 +1902,39 @@ describe("verified dossier service", () => {
       },
     });
     const events = await executeWith({ result });
+    expect(events.at(-1)).toMatchObject({ state: "completed" });
+  });
+
+  it("fails technically when provider accounting exceeds six observed actions", async () => {
+    const result = providerResult(resolvedDocument(), {
+      webSearchCalls: Array.from({ length: 7 }, (_, index) => ({
+        toolCallId: `search-${index}`,
+        sources: [{ url: sourceA }],
+      })),
+      webSearchActions: Array.from({ length: 7 }, (_, index) => ({
+        toolCallId: `search-${index}`,
+        actionType: "search" as const,
+      })),
+      webSearchActionCount: 7,
+      webSearchQueryCount: 7,
+      webSearchUniqueCallCount: 7,
+      toolCalls: 7,
+      orchestration: {
+        primaryOutcome: "succeeded",
+        primaryAccounting: {
+          webSearchActionCount: 7,
+          webSearchQueryCount: 7,
+          webSearchInspectionCount: 0,
+        },
+        secondCall: null,
+      },
+    });
+    const events = await executeWith({ result });
     expect(events.map(({ state }) => state)).toEqual([
       "accepted",
       "researching_and_resolving",
       "failed",
     ]);
-    expect(events.at(-1)).toMatchObject({ state: "failed" });
   });
 
   it("fails technically before a third provider call can be admitted", async () => {

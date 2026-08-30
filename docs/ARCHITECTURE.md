@@ -42,7 +42,7 @@ Le seul chemin fournisseur est OpenAI `gpt-5.6-luna`, via AI SDK Core, le provid
 - raisonnement bas ;
 - sortie structurée ;
 - un appel HTTP fournisseur ;
-- entre une et quatre actions Web Search distinctes ;
+- `max_tool_calls=4` côté fournisseur et au plus six actions Web Search observées côté serveur ;
 - délai fournisseur de 90 secondes ;
 - cible de trois à six faits et deux pages distinctes lorsque la matière existe.
 

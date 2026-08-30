@@ -7,6 +7,7 @@ import {
 } from "../src/server/ai/providers";
 import {
   MAX_PROVIDER_HTTP_CALLS,
+  MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS,
   MAX_WEB_SEARCH_ACTIONS,
 } from "../src/server/research/types";
 
@@ -162,6 +163,7 @@ describe("bounded provider orchestration", () => {
     expect(() => beginSecondProviderCall(selected, "recall_supplement"))
       .toThrow("already been selected");
     expect(MAX_PROVIDER_HTTP_CALLS).toBe(2);
-    expect(MAX_WEB_SEARCH_ACTIONS).toBe(4);
+    expect(MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS).toBe(4);
+    expect(MAX_WEB_SEARCH_ACTIONS).toBe(6);
   });
 });

@@ -18,7 +18,8 @@ export interface ResearchHints {
 }
 
 export const MAX_PROVIDER_HTTP_CALLS = 2;
-export const MAX_WEB_SEARCH_ACTIONS = 4;
+export const MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS = 4;
+export const MAX_WEB_SEARCH_ACTIONS = 6;
 
 export interface ProviderAttemptAccounting {
   readonly webSearchActionCount: number;
