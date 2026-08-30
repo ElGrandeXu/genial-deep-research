@@ -41,6 +41,8 @@ Critères de sortie : baseline reproductible, surfaces protégées cartographié
 
 ## R3 — Simplification ciblée des blocages observés
 
+Baseline fonctionnelle de R3 : le commit Production `8b778b1efe82161653319d729b18c9d27a6f49f0` est fusionné sans correctif ; 725 tests, lint, typecheck et build passent localement.
+
 Simplifier en place le moteur existant en retirant uniquement les blocages prouvés par R2. Chaque correctif doit être isolé et validé par un test métier réel. Aucune réécriture ni aucun moteur parallèle ne sont autorisés sans décision explicite après R2.
 
 ## R4 — Tests métier locaux

@@ -1,17 +1,18 @@
 # État du sauvetage
 
-- Mission courante : R2.1 — baseline live Erwan terminée.
+- Mission courante : R3 — alignement sur la Production réelle terminé.
 - Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
 - Branche : `rescue/minimal-recall`.
-- Base applicative : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
+- Baseline historique R2.1 : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
+- Baseline fonctionnelle : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
 - Worktree original `GENIAL` : isolé et non modifié par ce sauvetage.
 - MVP : recherche personne/entreprise, contexte facultatif, dossier lisible et sourcé.
 - Régression obligatoire : `Erwan Simon` + `GENIAL` + `Bordeaux`.
 - Surfaces gelées : UI, SSE, Vercel, citations et sécurité serveur.
 - Moteur actuel : préservé par défaut.
 - R2 : tester `f776313` sans changement de code ni de comportement.
-- R3 : simplifier en place uniquement les blocages observés en R2.
+- R3 : `8b778` fusionné ; toute simplification ultérieure reste ciblée sur un blocage observé.
 - Réécriture ou moteur parallèle : interdits sans décision explicite après R2.
 - Correctifs : isolés et prouvés chacun par un test métier réel.
 - Autorité : brief et comportement métier réel avant les anciens tests.
@@ -19,10 +20,11 @@
 - Production : gelée jusqu'à validation explicite d'une Preview.
 - Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
 - Déploiement : non effectué.
+- Vérifications `8b778` : 725 tests, lint, typecheck et build réussis.
 - Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
 - Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
 - Mesure : 26 356 ms ; 2 appels fournisseur ; 4 actions Web Search (2 recherches, 2 inspections).
 - Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
 - Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
 - Correction : aucune commencée.
-- Prochaine action autorisée : attendre une décision explicite pour R3.
+- Prochaine action autorisée : attendre une nouvelle mission explicite.
