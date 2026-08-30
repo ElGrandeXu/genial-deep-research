@@ -91,8 +91,8 @@ describe("research UI truth mapping", () => {
       "provider_annotation";
     supported.sources[0]!.accessibility_status = "unknown";
     expect(confidenceForClaim(supported, supportedClaim)).toMatchObject({
-      level: "supported",
-      label: "Étayé",
+      level: "lead",
+      label: "Piste à vérifier",
     });
 
     const lead = partialDossier();

@@ -88,4 +88,4 @@ Grille issue exclusivement de `PROJECT.md` et du comportement observé :
 3. **Validation** : suite complète, lint, typecheck, build, secrets, clone propre, dry-run Vercel, Preview seulement, puis cinq cas métier uniques.
 4. **Contre-examen** : regard neuf sur le commit et la Preview ; tout P0/P1 démontré sera corrigé et revérifié.
 
-Avancement : lot 1 terminé — 740 tests, lint et typecheck passent. Une preuve fournisseur rejetée ne peut plus produire un fait ni résoudre une identité ; les pannes systémiques redeviennent des échecs techniques ; le contexte vérifié et les seuils de complétude sont cohérents.
+Avancement : lots 1 et 2 terminés — 741 tests, lint, typecheck et build passent. Une preuve fournisseur rejetée ne peut plus produire un fait ni résoudre une identité ; les pannes systémiques redeviennent des échecs techniques ; le contexte vérifié et les seuils de complétude sont cohérents. La gate candidat, le manifeste Vercel, le smoke de taille, la frontière d'upload et les P2 UX ciblés sont corrigés.

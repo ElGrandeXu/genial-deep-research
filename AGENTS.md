@@ -2,7 +2,7 @@
 
 ## Mode de travail
 
-- Travailler uniquement dans `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
+- Travailler uniquement dans la racine de ce dépôt de sauvetage (`GENIAL_RESCUE`).
 - Exécuter une seule mission explicitement demandée à la fois.
 - Ne pas anticiper, préparer ou commencer la mission suivante.
 - Vérifier branche, HEAD et statut avant et après chaque mission.

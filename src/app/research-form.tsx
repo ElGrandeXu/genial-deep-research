@@ -613,16 +613,11 @@ export function confidenceForClaim(
       explanation: "Extrait retrouvé dans une page directement consultée et source forte.",
     };
   }
-  if (
-    direct.length > 0 ||
-    records.some(({ evidence }) => evidence.verification_method === "provider_annotation")
-  ) {
+  if (direct.length > 0) {
     return {
       level: "supported",
       label: "Étayé",
-      explanation: direct.length > 0
-        ? "Extrait retrouvé dans une page consultée, avec corroboration limitée."
-        : "Citation Web Search attribuable ; vérification directe incomplète.",
+      explanation: "Extrait retrouvé dans une page consultée, avec corroboration limitée.",
     };
   }
   const selectedName = dossier.identity.candidates.find(
@@ -665,6 +660,13 @@ export function confidenceForClaim(
     label: "Piste à vérifier",
     explanation: "Résultat Web Search attribuable, à confirmer avant utilisation comme fait établi.",
   };
+}
+
+function identityConfidenceLabel(dossier: ResearchDossier, claim: DossierClaim): string {
+  const level = confidenceForClaim(dossier, claim).level;
+  if (level === "confirmed") return "confirmée";
+  if (level === "supported") return "étayée";
+  return "fragile";
 }
 
 function evidenceVerificationLabel(
@@ -1199,7 +1201,7 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       )}
       {identityProof === undefined ? null : (
         <div className="identity-proof">
-          <strong>Identité {confidenceForClaim(dossier, identityProof).label.toLocaleLowerCase("fr")}</strong>
+          <strong>Identité {identityConfidenceLabel(dossier, identityProof)}</strong>
           <p>{identityProof.statement}</p>
           <EvidenceList
             dossier={dossier}
@@ -1796,7 +1798,7 @@ export function ResearchForm() {
       ? "Recherche annulée"
       : status === "failed"
         ? requestError !== undefined
-          ? "Flux de recherche interrompu"
+          ? "Recherche impossible"
           : failure?.receipt.category === "timeout"
           ? "Délai de recherche dépassé"
           : failure?.receipt.category === "source_metadata_missing"
@@ -2079,7 +2081,7 @@ export function ResearchForm() {
             aria-describedby="context-help privacy-note"
             disabled={status === "running"}
           />
-          <p id="context-help" className="field-help">Chaque indice améliore la recherche sans devenir une obligation de correspondance.</p>
+          <p id="context-help" className="field-help">Les indices fournis doivent pouvoir être corroborés par les sources pour résoudre l’identité.</p>
           <p id="privacy-note" className="privacy-note">
             Utilisez seulement des informations publiques. N’ajoutez aucune donnée privée ou sensible.
           </p>

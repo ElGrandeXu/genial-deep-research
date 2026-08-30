@@ -121,7 +121,7 @@ test("complete dossier renders extractive summary, adjacent sources and final fo
   await expect(page.locator(".result-focus")).toBeFocused();
   expect(await page.locator(".result-focus").evaluate((node) => node.getBoundingClientRect().top)).toBeLessThanOrEqual(24);
   const identityProof = page.locator(".identity-proof");
-  await expect(identityProof.locator("strong")).toHaveText("Identité confirmé");
+  await expect(identityProof.locator("strong")).toHaveText("Identité confirmée");
   await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(1);
   await identityProof.locator(".additional-evidence").click();
   await expect(identityProof.locator(".evidence-card:visible")).toHaveCount(2);

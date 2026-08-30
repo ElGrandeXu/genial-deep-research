@@ -1726,38 +1726,6 @@ function safeLogFailure(logger: SafeLogger, receipt: FailureReceipt): void {
   }
 }
 
-function safeLogQueryDiagnostics(options: {
-  readonly logger: SafeLogger;
-  readonly executionId: string;
-  readonly result: ProviderResearchResult;
-}): void {
-  if (process.env.RESEARCH_QUERY_DIAGNOSTICS !== "1") return;
-  try {
-    options.logger.info({
-      event: "research_query_diagnostics",
-      executionId: options.executionId,
-      queryPlanCandidates: options.result.queryPlan ?? [],
-      executedQueries: options.result.executedQueries ?? [],
-      searchesExecuted: options.result.webSearchQueryCount,
-      inspectionsExecuted: options.result.webSearchInspectionCount,
-      actionsTotal: options.result.webSearchActionCount,
-      providerCalls: options.result.providerHttpCalls,
-      primaryOutcome: options.result.orchestration?.primaryOutcome ?? "unknown",
-      secondCallReason: options.result.orchestration?.secondCall?.reason ?? null,
-      secondCallOutcome: options.result.orchestration?.secondCall?.outcome ?? null,
-      primaryActions:
-        options.result.orchestration?.primaryAccounting.webSearchActionCount ?? null,
-      secondCallActions:
-        options.result.orchestration?.secondCall?.accounting.webSearchActionCount ?? null,
-      planDeviation: (options.result.executedQueries ?? []).filter(
-        (query) => !(options.result.queryPlan ?? []).includes(query),
-      ),
-    });
-  } catch {
-    // Diagnostics opt-in cannot alter research behavior.
-  }
-}
-
 export async function executeResearch(options: {
   readonly input: ResearchInput;
   readonly provider: ResearchProvider;
@@ -1830,7 +1798,6 @@ export async function executeResearch(options: {
       Math.round(monotonicNow() - totalStart) - searchingStartMs,
     );
     failedStage = "metadata_extraction";
-    safeLogQueryDiagnostics({ logger: options.logger, executionId, result });
     assertProviderAdmission(result);
     const estimatedCostUsd = requireMeasuredCost(result);
     result = withSelectedIdentitySource(result, options.input);

@@ -3,7 +3,7 @@
     "slug": "nextjs"
   },
   "fileCount": 41,
-  "totalSize": 809695,
+  "totalSize": 811027,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -37,7 +37,7 @@
     },
     {
       "path": "src/app/api/health/route.ts",
-      "size": 217,
+      "size": 408,
       "mode": 33188
     },
     {
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/app/research-form.tsx",
-      "size": 87492,
+      "size": 87533,
       "mode": 33188
     },
     {
@@ -107,12 +107,12 @@
     },
     {
       "path": "src/domain/runtime-invariants.ts",
-      "size": 30195,
+      "size": 28418,
       "mode": 33188
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 44514,
+      "size": 48603,
       "mode": 33188
     },
     {
@@ -122,7 +122,7 @@
     },
     {
       "path": "src/server/research/completeness.ts",
-      "size": 4402,
+      "size": 5464,
       "mode": 33188
     },
     {
@@ -132,12 +132,12 @@
     },
     {
       "path": "src/server/research/failure-receipt.ts",
-      "size": 15834,
+      "size": 15804,
       "mode": 33188
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 62414,
+      "size": 61715,
       "mode": 33188
     },
     {
@@ -147,7 +147,7 @@
     },
     {
       "path": "src/server/research/provider-metadata.ts",
-      "size": 28991,
+      "size": 28795,
       "mode": 33188
     },
     {
@@ -172,7 +172,7 @@
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 82802,
+      "size": 80692,
       "mode": 33188
     },
     {
@@ -197,7 +197,7 @@
     },
     {
       "path": "src/server/research/types.ts",
-      "size": 14736,
+      "size": 15497,
       "mode": 33188
     },
     {

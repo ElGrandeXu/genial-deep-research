@@ -2,7 +2,7 @@
 
 - Mission courante : examen final autonome — correction, Preview et contre-examen.
 - Statut R1 : cadre installé et stratégie clarifiée.
-- Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
+- Worktree : racine du dépôt `GENIAL_RESCUE`.
 - Branche : `exam/final-correction`.
 - Baseline historique R2.1 : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
 - Baseline fonctionnelle d'entrée : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
@@ -34,4 +34,7 @@
 - P1 démontrés : contexte fourni non corroboré, panne globale absorbée, complétude incohérente, gate portable et manifeste Vercel obsolètes.
 - Lot 1 vérité métier : terminé ; 740 tests, lint et typecheck réussis.
 - Correctifs lot 1 : preuve fournisseur rejetée supprimée du dossier et de l'identité ; panne systémique non absorbée ; contexte significatif corroboré ; complétude à 3 faits, 2 catégories, 2 pages et 2 familles d'éditeurs.
-- Prochaine action : lot 2, livraison et UX ciblée.
+- Lot 2 livraison et UX : terminé ; 741 tests, lint, typecheck et build réussis.
+- Gate candidat : 128 fichiers ; manifeste Vercel : 41 fichiers, 811 027 octets ; tests négatifs réussis.
+- Correctifs lot 2 : smoke 4 200 octets, documents portables, frontière Vercel, SHA public optionnel, suppression du diagnostic de requêtes, messages/accords/contrastes UI.
+- Prochaine action : commit du lot 2 puis validation complète et clone propre.

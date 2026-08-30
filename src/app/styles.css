@@ -6,7 +6,7 @@
   --paper-raised: #fffefa;
   --line: #c9cbbf;
   --line-dark: #566157;
-  --muted: #697168;
+  --muted: #5f675e;
   --acid: #caff45;
   --acid-soft: #efffc4;
   --success: #176a49;
@@ -308,7 +308,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #858b83;
+  color: #6f756d;
   opacity: 1;
 }
 

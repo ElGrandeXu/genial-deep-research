@@ -1863,30 +1863,18 @@ describe("verified dossier service", () => {
     },
   );
 
-  it("admits a successful structural repair and logs its distinct reason", async () => {
-    const previousDiagnostics = process.env.RESEARCH_QUERY_DIAGNOSTICS;
-    process.env.RESEARCH_QUERY_DIAGNOSTICS = "1";
+  it("admits a successful structural repair without logging names or queries", async () => {
     const records: Array<Readonly<Record<string, unknown>>> = [];
-    try {
-      const terminal = completed(await executeWith({
-        result: providerResult(resolvedDocument(), {
-          providerHttpCalls: 2,
-          orchestration: twoCallOrchestration("structural_repair", "succeeded"),
-        }),
-        logger: { info: (record) => records.push(record) },
-      }));
-      expect(terminal.receipt.providerHttpCalls).toBe(2);
-      expect(records).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          event: "research_query_diagnostics",
-          secondCallReason: "structural_repair",
-          secondCallOutcome: "succeeded",
-        }),
-      ]));
-    } finally {
-      if (previousDiagnostics === undefined) delete process.env.RESEARCH_QUERY_DIAGNOSTICS;
-      else process.env.RESEARCH_QUERY_DIAGNOSTICS = previousDiagnostics;
-    }
+    const terminal = completed(await executeWith({
+      result: providerResult(resolvedDocument(), {
+        providerHttpCalls: 2,
+        orchestration: twoCallOrchestration("structural_repair", "succeeded"),
+      }),
+      logger: { info: (record) => records.push(record) },
+    }));
+    expect(terminal.receipt.providerHttpCalls).toBe(2);
+    expect(records.some(({ event }) => event === "research_query_diagnostics")).toBe(false);
+    expect(JSON.stringify(records)).not.toContain("Airbus SE");
   });
 
   it("fails technically when provider accounting exceeds the four-action ceiling", async () => {
