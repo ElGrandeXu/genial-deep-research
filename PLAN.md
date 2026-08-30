@@ -95,3 +95,5 @@ Validation Preview, correctif intermédiaire : le cas entreprise a observé cinq
 Matrice finale terminée avec six soumissions réelles au total, régression initiale comprise : personne documentée → clarification sûre ; Erwan Simon contextualisé → identité résolue, 3 faits/3 sources ; entreprise → échec borné qui a déclenché le correctif de télémétrie ; personne ambiguë → silence sûr ; nom sans données → silence sûr. Aucun test inchangé n'a été répété.
 
 Contre-examen initial : 82/100, NOT_READY sur un P1 résiduel — une page récupérée dont l'extrait est absent pouvait encore alimenter un fait `search_snippet`. Ce fallback factuel est supprimé intégralement ; un test dédié `web_search_source` + page récupérée + extrait absent prouve désormais 0 claim/evidence/source et un silence sûr. 743 tests, lint, typecheck, build et gate candidat passent avant la vérification précise.
+
+Contre-examen final : P1 FIXED, aucun nouveau P0/P1, note indépendante 94/100, `READY_TO_SHIP`. La gate publique complète finale passe avec 743 tests et 11 parcours Playwright ; la Preview finale est publique et demeure distincte de Production.

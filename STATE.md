@@ -41,10 +41,12 @@
 - Preview v1 : `https://genial-deep-research-d43ceenoj-el-grande-xue.vercel.app`, cible Preview et smoke public réussi.
 - Matrice v1 : Thomas Pesquet → clarification sûre, 30 852 ms ; Erwan Simon → `partial`, 3 faits/3 sources, 14 995 ms ; Airbus SE → échec `web_search_action_invalid`, 5 actions, 30 387 ms.
 - Correctif Preview : `max_tool_calls=4` conservé ; plafond de télémétrie porté à 6 actions observées, 7 restant rejetées ; 742 tests, lint, typecheck, build et gate candidat réussis.
-- Preview finale : `https://genial-deep-research-ozvoodsbl-el-grande-xue.vercel.app`, cible Preview, `Ready`, dry-run et smoke public réussis.
+- Preview finale : `https://genial-deep-research-ob9qtw9cd-el-grande-xue.vercel.app`, cible Preview, `Ready`, dry-run et smoke public réussis.
 - Matrice finale complémentaire : Thomas Martin → silence sûr, 0 fait/source, 18 767 ms, 4 actions ; Apolline Zéphyr-Nébuleuse → silence sûr, 0 fait/source, 7 929 ms, 3 actions.
 - Budget de soumissions réelles restant : 0 sur 6 ; aucune autre recherche réelle n'est autorisée dans cette mission.
 - Contre-examen neuf : 82/100, `NOT_READY` sur un P1 de fallback `search_snippet` après extrait absent.
 - Correction contre-examen : suppression complète des preuves fournisseur dégradées du runtime factuel ; une vérification échouée produit uniquement rejet, inconnue ou silence.
 - Preuve ciblée : page `web_search_source` récupérée mais extrait absent → 0 claim, 0 evidence, 0 source ; 743 tests, lint, typecheck, build et gate candidat réussis.
-- Prochaine action : commit, Preview finale sans nouvelle recherche, puis vérification précise du P1 par le contre-examinateur.
+- Contre-examen final : `P1 FIXED`, aucun nouveau P0/P1, 94/100, `READY_TO_SHIP`.
+- Gate publique finale : `PROJECT_VERIFY_OK`, 743 tests, 11 E2E, audit sans vulnérabilité connue.
+- Prochaine action : validation explicite de cette Preview par le propriétaire avant toute publication Production.
