@@ -41,5 +41,7 @@
 - Preview v1 : `https://genial-deep-research-d43ceenoj-el-grande-xue.vercel.app`, cible Preview et smoke public réussi.
 - Matrice v1 : Thomas Pesquet → clarification sûre, 30 852 ms ; Erwan Simon → `partial`, 3 faits/3 sources, 14 995 ms ; Airbus SE → échec `web_search_action_invalid`, 5 actions, 30 387 ms.
 - Correctif Preview : `max_tool_calls=4` conservé ; plafond de télémétrie porté à 6 actions observées, 7 restant rejetées ; 742 tests, lint, typecheck, build et gate candidat réussis.
-- Budget de soumissions réelles restant : 2 sur 6, réservées aux cas ambigu et peu documenté.
-- Prochaine action : commit, pousser la branche, redéployer la Preview, puis terminer la matrice.
+- Preview finale : `https://genial-deep-research-ozvoodsbl-el-grande-xue.vercel.app`, cible Preview, `Ready`, dry-run et smoke public réussis.
+- Matrice finale complémentaire : Thomas Martin → silence sûr, 0 fait/source, 18 767 ms, 4 actions ; Apolline Zéphyr-Nébuleuse → silence sûr, 0 fait/source, 7 929 ms, 3 actions.
+- Budget de soumissions réelles restant : 0 sur 6 ; aucune autre recherche réelle n'est autorisée dans cette mission.
+- Prochaine action : contre-examen neuf read-only du commit final et de la Preview.
