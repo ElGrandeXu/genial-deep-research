@@ -77,6 +77,7 @@ export interface Request {
     city?: string;
     country?: string;
     industry?: string;
+    role?: string;
     employer?: string;
     official_site?: HttpUrl;
     discriminating_hint?: string;

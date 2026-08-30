@@ -2,12 +2,12 @@
   "framework": {
     "slug": "nextjs"
   },
-  "fileCount": 40,
-  "totalSize": 788586,
+  "fileCount": 41,
+  "totalSize": 809695,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
-      "size": 33594,
+      "size": 33760,
       "mode": 33188
     },
     {
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/app/research-form.tsx",
-      "size": 81213,
+      "size": 87492,
       "mode": 33188
     },
     {
@@ -77,7 +77,7 @@
     },
     {
       "path": "src/app/styles.css",
-      "size": 26503,
+      "size": 27382,
       "mode": 33188
     },
     {
@@ -97,7 +97,7 @@
     },
     {
       "path": "src/domain/research-dossier.generated.ts",
-      "size": 7415,
+      "size": 7434,
       "mode": 33188
     },
     {
@@ -112,7 +112,7 @@
     },
     {
       "path": "src/server/ai/providers.ts",
-      "size": 42604,
+      "size": 44514,
       "mode": 33188
     },
     {
@@ -132,12 +132,12 @@
     },
     {
       "path": "src/server/research/failure-receipt.ts",
-      "size": 15660,
+      "size": 15834,
       "mode": 33188
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 58550,
+      "size": 62414,
       "mode": 33188
     },
     {
@@ -147,7 +147,12 @@
     },
     {
       "path": "src/server/research/provider-metadata.ts",
-      "size": 28165,
+      "size": 28991,
+      "mode": 33188
+    },
+    {
+      "path": "src/server/research/query-plan.ts",
+      "size": 1671,
       "mode": 33188
     },
     {
@@ -157,7 +162,7 @@
     },
     {
       "path": "src/server/research/request.ts",
-      "size": 5905,
+      "size": 8298,
       "mode": 33188
     },
     {
@@ -167,7 +172,7 @@
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 80305,
+      "size": 82802,
       "mode": 33188
     },
     {
@@ -192,7 +197,7 @@
     },
     {
       "path": "src/server/research/types.ts",
-      "size": 14305,
+      "size": 14736,
       "mode": 33188
     },
     {

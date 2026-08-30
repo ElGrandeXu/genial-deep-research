@@ -37,6 +37,7 @@ import {
   type NumericRelationship,
 } from "./numeric-normalization";
 import { evaluateFactAttribution } from "./scope-policy";
+import { positiveContextText } from "./query-plan";
 import {
   normalizeVisibleText,
   reverifyExcerptWithinProof,
@@ -60,6 +61,10 @@ import type {
   SafeLogger,
   SourceVerifier,
   VerifiedSourceProof,
+} from "./types";
+import {
+  MAX_PROVIDER_HTTP_CALLS,
+  MAX_WEB_SEARCH_ACTIONS,
 } from "./types";
 
 const PRICING = Object.freeze({
@@ -199,7 +204,7 @@ function estimateCost(result: ProviderResearchResult): {
     ((input - cachedTokens) * PRICING.inputUsdPerMillion) / 1_000_000 +
     (cachedTokens * PRICING.cachedInputUsdPerMillion) / 1_000_000 +
     (output * PRICING.outputUsdPerMillion) / 1_000_000 +
-    result.toolCalls * PRICING.webSearchUsdPerCall;
+    result.webSearchActionCount * PRICING.webSearchUsdPerCall;
   return { amount: Number(amount.toFixed(8)), limitations };
 }
 
@@ -217,14 +222,15 @@ function assertProviderAdmission(result: ProviderResearchResult): void {
     ({ actionType }) => actionType === "open_page" || actionType === "find_in_page",
   ).length;
   const coherent =
-    result.providerHttpCalls === 1 &&
+    result.providerHttpCalls >= 1 &&
+    result.providerHttpCalls <= MAX_PROVIDER_HTTP_CALLS &&
     result.providerMetadataStatus === "supported" &&
     result.webSearchActionPolicyStatus === "supported" &&
     result.webSearchActionPolicyCode === null &&
     counts.every((count) => Number.isSafeInteger(count) && count >= 0) &&
     result.webSearchQueryCount >= 1 &&
     result.webSearchActionCount >= 1 &&
-    result.webSearchActionCount <= 4 &&
+    result.webSearchActionCount <= MAX_WEB_SEARCH_ACTIONS &&
     result.webSearchUniqueCallCount === result.webSearchActionCount &&
     result.toolCalls === result.webSearchActionCount &&
     actions.length === result.webSearchActionCount &&
@@ -379,6 +385,23 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
         citation = bindProviderSource(options.result, candidate);
       } catch (error) {
         return { status: "rejected" as const, error, candidate };
+      }
+      let citationHost = "";
+      try {
+        citationHost = new URL(candidate.structuredUrl).hostname.toLocaleLowerCase("en-US");
+      } catch {
+        // The source binding already performs the authoritative URL validation.
+      }
+      if (citationHost === "linkedin.com" || citationHost.endsWith(".linkedin.com")) {
+        return {
+          status: "rejected" as const,
+          error: new ResearchPipelineError(
+            "source_retrieval_failed",
+            "LinkedIn reste une piste fournisseur non récupérée directement.",
+          ),
+          candidate,
+          grounded: providerGroundedProof({ result: options.result, candidate, citation }),
+        };
       }
       const attributedDisplayNames = options.attributedDisplayNames?.(candidate);
       if (
@@ -852,8 +875,7 @@ function buildDossier(options: {
           fact.proof.verifiedExcerpt,
           selected.candidate.displayName,
         );
-        const requiresAnchorContinuity = options.input.context !== undefined &&
-          selected.proofBasis === "verified_facts" &&
+        const requiresAnchorContinuity = selected.proofBasis === "verified_facts" &&
           !supportingFacts.has(fact) &&
           !identityPublisherDomains.has(factDomain ?? "");
         const anchorContinuous = !requiresAnchorContinuity ||
@@ -1500,7 +1522,7 @@ function buildDossier(options: {
   const clarificationFields: ResearchDossier["identity"]["clarification_fields"] =
     identityStatus === "resolved" || identityStatus === "not_found_within_scope"
       ? []
-      : options.input.context === undefined
+       : positiveContextText(options.input) === undefined
         ? ["city", "industry", "employer", "discriminating_hint"]
         : ["official_site", "discriminating_hint"];
   const scopeDescription = searchedCategories.length > 0
@@ -1516,8 +1538,19 @@ function buildDossier(options: {
       submitted_at: options.startedAt.toISOString(),
       name: options.input.name,
       suggested_type: requestedType === "auto" ? "unknown" : requestedType,
-      context: options.input.context === undefined ? {} : { discriminating_hint: options.input.context },
-      total_character_count: Array.from(options.input.name + (options.input.context ?? "")).length,
+      context: {
+        ...(options.input.hints?.city === undefined ? {} : { city: options.input.hints.city }),
+        ...(options.input.hints?.organization === undefined
+          ? {}
+          : { employer: options.input.hints.organization }),
+        ...(options.input.hints?.industry === undefined ? {} : { industry: options.input.hints.industry }),
+        ...(options.input.hints?.role === undefined ? {} : { role: options.input.hints.role }),
+        ...(options.input.hints?.sourceUrl === undefined
+          ? {}
+          : { official_site: options.input.hints.sourceUrl }),
+        ...(options.input.context === undefined ? {} : { discriminating_hint: options.input.context }),
+      },
+      total_character_count: Array.from(options.input.name + (positiveContextText(options.input) ?? "")).length,
     },
     identity: {
       status: identityStatus,
@@ -1726,6 +1759,31 @@ function safeLogFailure(logger: SafeLogger, receipt: FailureReceipt): void {
   }
 }
 
+function safeLogQueryDiagnostics(options: {
+  readonly logger: SafeLogger;
+  readonly executionId: string;
+  readonly result: ProviderResearchResult;
+}): void {
+  if (process.env.RESEARCH_QUERY_DIAGNOSTICS !== "1") return;
+  try {
+    options.logger.info({
+      event: "research_query_diagnostics",
+      executionId: options.executionId,
+      queryPlanCandidates: options.result.queryPlan ?? [],
+      executedQueries: options.result.executedQueries ?? [],
+      searchesExecuted: options.result.webSearchQueryCount,
+      inspectionsExecuted: options.result.webSearchInspectionCount,
+      actionsTotal: options.result.webSearchActionCount,
+      providerCalls: options.result.providerHttpCalls,
+      planDeviation: (options.result.executedQueries ?? []).filter(
+        (query) => !(options.result.queryPlan ?? []).includes(query),
+      ),
+    });
+  } catch {
+    // Diagnostics opt-in cannot alter research behavior.
+  }
+}
+
 export async function executeResearch(options: {
   readonly input: ResearchInput;
   readonly provider: ResearchProvider;
@@ -1798,6 +1856,7 @@ export async function executeResearch(options: {
       Math.round(monotonicNow() - totalStart) - searchingStartMs,
     );
     failedStage = "metadata_extraction";
+    safeLogQueryDiagnostics({ logger: options.logger, executionId, result });
     assertProviderAdmission(result);
     const estimatedCostUsd = requireMeasuredCost(result);
     result = withSelectedIdentitySource(result, options.input);

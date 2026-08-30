@@ -1183,7 +1183,7 @@ describe("M5-R3 action-aware Web Search accounting", () => {
     });
   });
 
-  it("rejects more than four observed actions", () => {
+  it("rejects more than eight observed actions", () => {
     const normalized = normalizeWebSearchActions({
       results: [
         webSearchToolResult("search-1", "search"),
@@ -1191,12 +1191,16 @@ describe("M5-R3 action-aware Web Search accounting", () => {
         webSearchToolResult("search-3", "search"),
         webSearchToolResult("search-4", "search"),
         webSearchToolResult("search-5", "search"),
+        webSearchToolResult("search-6", "search"),
+        webSearchToolResult("search-7", "search"),
+        webSearchToolResult("search-8", "search"),
+        webSearchToolResult("search-9", "search"),
       ],
     });
     expect(normalized).toMatchObject({
       webSearchActionPolicyStatus: "rejected",
       webSearchActionPolicyCode: "web_search_action_invalid",
-      webSearchActionCount: 5,
+      webSearchActionCount: 9,
     });
   });
 
@@ -1234,7 +1238,7 @@ describe("M5-R3 action-aware Web Search accounting", () => {
     });
   });
 
-  it("normalizes actions without query, URL or raw output", () => {
+  it("retains only the normalized query needed for private diagnostics", () => {
     const normalized = normalizeWebSearchActions({
       results: [
         webSearchToolResult("search-1", "search"),
@@ -1242,11 +1246,11 @@ describe("M5-R3 action-aware Web Search accounting", () => {
       ],
     });
     expect(normalized.webSearchActions).toEqual([
-      { toolCallId: "search-1", actionType: "search" },
+      { toolCallId: "search-1", actionType: "search", queries: ["SYNTHETIC_QUERY_NOT_RETAINED"] },
       { toolCallId: "inspect-1", actionType: "find_in_page" },
     ]);
     const actions = JSON.stringify(normalized.webSearchActions);
-    expect(actions).not.toContain("SYNTHETIC_QUERY_NOT_RETAINED");
+    expect(actions).toContain("SYNTHETIC_QUERY_NOT_RETAINED");
     expect(actions).not.toContain("SYNTHETIC_PATTERN_NOT_RETAINED");
     expect(actions).not.toContain("https://");
     expect(actions).not.toContain("output");

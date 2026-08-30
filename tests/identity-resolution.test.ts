@@ -136,6 +136,67 @@ function personFact(
 }
 
 describe("server identity resolution", () => {
+  it("keeps a candidate when a corroborating fact identifies the exact subject", () => {
+    const identity = personCandidate({
+      excerpt: "Profil professionnel public.",
+      statement: "Profil professionnel public.",
+      structuredUrl: "https://profiles.public.org/profile-42",
+    });
+    const weakProof = proof(identity, {
+      title: "Profil professionnel public",
+      verificationMethod: "search_snippet",
+      retrievalStatus: "unavailable",
+    });
+    const role = personFact();
+    const roleProof = proof(role, { title: "Atelier Nordique | Équipe" });
+    const decision = resolveIdentity({
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        hints: { city: "Rennes", organization: "Atelier Nordique" },
+      },
+      providerStatus: "resolved",
+      candidates: [{
+        candidate: identity,
+        proof: weakProof,
+        corroboratingProofs: [roleProof],
+        corroboratingFacts: [{ candidate: role, proof: roleProof }],
+        proofBasis: "dedicated",
+      }],
+    });
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.proof.verifiedExcerpt).toContain("Camille Durand");
+  });
+  it("keeps a compatible candidate when an added role is not corroborated", () => {
+    const identity = personCandidate();
+    const candidates = [verified(identity)];
+    const base = resolveIdentity({
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        hints: { city: "Rennes", organization: "Atelier Nordique" },
+      },
+      providerStatus: "resolved",
+      candidates,
+    });
+    const enriched = resolveIdentity({
+      input: {
+        name: "Camille Durand",
+        entityType: "person",
+        hints: {
+          city: "Rennes",
+          organization: "Atelier Nordique",
+          role: "Marketing Communication",
+        },
+      },
+      providerStatus: "resolved",
+      candidates,
+    });
+    expect(base.status).toBe("resolved");
+    expect(enriched.status).toBe("resolved");
+    expect(enriched.selected?.candidate.candidateKey).toBe(base.selected?.candidate.candidateKey);
+    expect(enriched.contextSignals.some(({ kind }) => kind === "role")).toBe(false);
+  });
   it("resolves a person from one traceable organization page containing the exact name and role", () => {
     const excerpt = "Camille Durand\nDirectrice de l’Atelier Nordique";
     const sourceUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
