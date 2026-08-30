@@ -28,7 +28,11 @@
 ## Frontières de modification
 
 - Préserver l'UI, le protocole SSE, Vercel, les citations et la sécurité serveur.
-- Le moteur de recherche est la seule zone fonctionnelle autorisée à être simplifiée ou remplacée.
+- Le moteur de recherche actuel est préservé par défaut.
+- R2 teste et observe la base `f776313` sans changer le code ni le comportement.
+- R3 simplifie le moteur existant en retirant uniquement les blocages observés en R2.
+- Aucune réécriture ni aucun moteur parallèle n'est autorisé sans décision explicite après R2.
+- Chaque correctif doit être isolé et prouvé par un test métier réel.
 - Conserver les secrets côté serveur, la validation des entrées et les protections réseau et d'abus.
 - Le comportement métier réel conforme au brief prime sur les anciens tests.
 - Mettre à jour ou retirer un test historique s'il impose un comportement hors brief.

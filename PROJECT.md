@@ -36,9 +36,11 @@ Ce cas doit traverser le vrai moteur de recherche. Aucun fixture, résultat fig�
 - **Citations** : chaque fait affiché conserve sa preuve et son URL publique.
 - **Sécurité serveur** : secrets non exposés, entrées validées, URL contrôlées, protections SSRF et abus conservées.
 
-## Zone remplaçable
+## Stratégie de sauvetage en place
 
-Le moteur de recherche et sa stratégie interne de collecte, sélection et synthèse constituent la seule zone fonctionnelle à simplifier. La simplification doit réduire la complexité tout en conservant le contrat du MVP et les surfaces ci-dessus.
+Le moteur de recherche actuel est préservé par défaut. R2 teste la base `f776313` sans changement applicatif afin d'identifier des blocages réels. R3 peut ensuite simplifier ce moteur existant en retirant uniquement les blocages observés et documentés en R2.
+
+Aucune réécriture et aucun moteur parallèle ne sont autorisés sans décision explicite prise après R2. Chaque correctif doit rester isolé, conserver les surfaces protégées et être prouvé par un test métier réel. La simplification du moteur existant est la seule zone fonctionnelle ouverte ; elle n'autorise pas son remplacement implicite.
 
 ## Priorité des exigences
 

@@ -1,7 +1,7 @@
 # État du sauvetage
 
-- Mission courante : R1 — cadre de sauvetage.
-- Statut R1 : cadre installé dans ce commit.
+- Mission courante : R1.1 — correction de la stratégie.
+- Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
 - Branche : `rescue/minimal-recall`.
 - Base applicative : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
@@ -9,7 +9,11 @@
 - MVP : recherche personne/entreprise, contexte facultatif, dossier lisible et sourcé.
 - Régression obligatoire : `Erwan Simon` + `GENIAL` + `Bordeaux`.
 - Surfaces gelées : UI, SSE, Vercel, citations et sécurité serveur.
-- Zone simplifiable : moteur de recherche uniquement.
+- Moteur actuel : préservé par défaut.
+- R2 : tester `f776313` sans changement de code ni de comportement.
+- R3 : simplifier en place uniquement les blocages observés en R2.
+- Réécriture ou moteur parallèle : interdits sans décision explicite après R2.
+- Correctifs : isolés et prouvés chacun par un test métier réel.
 - Autorité : brief et comportement métier réel avant les anciens tests.
 - Archives : anciens README, contrats, tests et preuves non prescriptifs hors brief.
 - Production : gelée jusqu'à validation explicite d'une Preview.
