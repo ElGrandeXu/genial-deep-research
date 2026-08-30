@@ -25,7 +25,19 @@ Entrée : branche `rescue/minimal-recall` au commit `f77631346f00c7ccf5c90792dc6
 9. Consigner les commandes, résultats, durées et limites sans corriger le code.
 10. Terminer R2 avec un worktree propre ou avec les seuls artefacts explicitement demandés par cette mission.
 
-Critères de sortie : baseline reproductible, surfaces protégées cartographiées, blocages observés documentés, aucune recherche réelle lancée, aucun changement de code ou de comportement et aucune action Vercel.
+Critères de sortie : baseline reproductible, surfaces protégées cartographiées, blocages observés documentés, aucune recherche réelle hors mission explicitement autorisée, aucun changement de code ou de comportement et aucune action Vercel.
+
+### Baseline live R2.1 — Erwan Simon
+
+- Entrée unique : `Erwan Simon`, type `auto`, contexte exact `GENIAL, Bordeaux`.
+- Résultat : `TECHNICAL_FAILURE`, identité non produite, 0 fait, 0 source et 0 domaine.
+- Échec : `web_search_action_invalid`, étape `source_verification`, catégorie `source_metadata_missing`, non réessayable.
+- Durée : 26 356 ms dans le reçu ; 26 372 ms muraux.
+- Fournisseur : 2 appels HTTP internes dans l'unique exécution, 4 appels outil.
+- Web Search : 2 recherches, 2 inspections ; 0 récupération et 0 vérification de source.
+- Usage : 41 890 tokens d'entrée, 2 334 de sortie, 683 de raisonnement, 44 224 au total.
+- Coût : inconnu ; le reçu d'échec expose `estimatedCostUsd: null`.
+- Aucun retry manuel, aucune correction, aucun déploiement.
 
 ## R3 — Simplification ciblée des blocages observés
 

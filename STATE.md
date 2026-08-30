@@ -1,6 +1,6 @@
 # État du sauvetage
 
-- Mission courante : R1.1 — correction de la stratégie.
+- Mission courante : R2.1 — baseline live Erwan terminée.
 - Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
 - Branche : `rescue/minimal-recall`.
@@ -17,7 +17,12 @@
 - Autorité : brief et comportement métier réel avant les anciens tests.
 - Archives : anciens README, contrats, tests et preuves non prescriptifs hors brief.
 - Production : gelée jusqu'à validation explicite d'une Preview.
-- Installation : non effectuée.
+- Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
 - Déploiement : non effectué.
-- R2 : non commencé.
-- Prochaine action autorisée : attendre une instruction explicite pour R2.
+- Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
+- Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
+- Mesure : 26 356 ms ; 2 appels fournisseur ; 4 actions Web Search (2 recherches, 2 inspections).
+- Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
+- Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
+- Correction : aucune commencée.
+- Prochaine action autorisée : attendre une décision explicite pour R3.
