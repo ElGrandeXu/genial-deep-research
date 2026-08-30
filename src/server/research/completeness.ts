@@ -4,6 +4,10 @@ import { publisherDomainForUrl } from "../../domain/publisher-domain";
 export type CompletenessReasonCode =
   | "identity_unresolved"
   | "no_admissible_business_fact"
+  | "insufficient_business_facts"
+  | "insufficient_category_diversity"
+  | "insufficient_source_pages"
+  | "insufficient_publisher_diversity"
   | "visible_contradiction"
   | "subject_scope_violation"
   | "critical_unknown";
@@ -86,6 +90,10 @@ export function evaluateCompleteness(options: {
   const reasonCodes: CompletenessReasonCode[] = [];
   if (!criteria.identityResolved) reasonCodes.push("identity_unresolved");
   if (criteria.uniqueBusinessClaims === 0) reasonCodes.push("no_admissible_business_fact");
+  else if (criteria.uniqueBusinessClaims < 3) reasonCodes.push("insufficient_business_facts");
+  if (criteria.coveredBusinessCategories < 2) reasonCodes.push("insufficient_category_diversity");
+  if (criteria.canonicalSourcePages < 2) reasonCodes.push("insufficient_source_pages");
+  if (criteria.publisherDomains < 2) reasonCodes.push("insufficient_publisher_diversity");
   if (criteria.visibleContradictions > 0) reasonCodes.push("visible_contradiction");
   if (criteria.subjectScopeViolations > 0) reasonCodes.push("subject_scope_violation");
   if (criteria.criticalUnknowns > 0) reasonCodes.push("critical_unknown");

@@ -61,6 +61,7 @@ export interface ContextSignal {
     | "country"
     | "industry"
     | "role"
+    | "context"
     | "corroborated_context"
     | "year";
   readonly value: string;
@@ -109,23 +110,8 @@ function proofIdentifiesCandidate(
   proof: VerifiedSourceProof,
   candidate: ProviderIdentityCandidate,
 ): boolean {
-  if (proofContainsDisplayName(proof, candidate)) return true;
   const method = proof.verificationMethod ?? "source_content";
-  return method !== "source_content" && (
-    containsContext(proof.title, candidate.displayName) ||
-    urlContainsIdentityName(proof.finalUrl, candidate.displayName)
-  );
-}
-
-function urlContainsIdentityName(url: string, displayName: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const identityText = decodeURIComponent(`${parsed.hostname} ${parsed.pathname}`)
-      .replace(/[-_.]+/gu, " ");
-    return containsContext(identityText, displayName);
-  } catch {
-    return false;
-  }
+  return method === "source_content" && proofContainsDisplayName(proof, candidate);
 }
 
 function proofKey(proof: VerifiedSourceProof): string {
@@ -1624,6 +1610,15 @@ function evaluatedEvidenceSet(
   const baseContextSignals = positiveContext === undefined
     ? []
     : contextSignalsFor(positiveContext, item, verifiedDiscriminators);
+  if (positiveContext !== undefined && item.proofBasis === "dedicated") {
+    for (const evidence of supportedContextEvidence(positiveContext, item)) {
+      if (!baseContextSignals.some(({ value }) =>
+        normalizedContext(value) === normalizedContext(evidence.value)
+      )) {
+        baseContextSignals.push({ kind: "context", value: evidence.value, strength: "medium" });
+      }
+    }
+  }
   if (
     input.hints?.role !== undefined &&
     [
@@ -1857,7 +1852,7 @@ export function resolveIdentity(options: {
           dedicatedItem,
           dedicatedEvaluation.verifiedDiscriminators,
         )
-      : dedicatedEvaluation.strong || dedicatedEvaluation.mediumKindCount >= 2;
+      : dedicatedEvaluation.strong || dedicatedEvaluation.mediumKindCount >= 1;
     if (dedicatedMatched) {
       return {
         item: dedicatedItem,
@@ -1971,6 +1966,7 @@ export function resolveIdentity(options: {
   if (
     uniqueVerifiedCandidate !== undefined &&
     eligible.length === 1 &&
+    positiveContextText(options.input) === undefined &&
     uniqueVerifiedCandidate.item.proofBasis === "dedicated" &&
     normalizedName(options.input.name) ===
       normalizedName(uniqueVerifiedCandidate.item.candidate.displayName)
@@ -1982,7 +1978,7 @@ export function resolveIdentity(options: {
       verifiedDiscriminators: uniqueVerifiedCandidate.verifiedDiscriminators,
       contextSignals: uniqueVerifiedCandidate.contextSignals,
       reasonCodes: ["unique_verified_source_candidate"],
-      rationale: "Un seul candidat au nom exact est retrouvé dans une source publique attribuable ; les indices de contexte complètent l’identité sans devenir obligatoires.",
+      rationale: "Un seul candidat au nom exact est retrouvé dans une page publique directement vérifiée.",
     };
   }
 

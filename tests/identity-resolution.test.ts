@@ -228,7 +228,7 @@ describe("server identity resolution", () => {
     expect(decision.selected?.corroboratingFacts).toHaveLength(1);
   });
 
-  it("does not require the publisher title or URL to repeat a sourced role organization", () => {
+  it("does not resolve when supplied context is absent from a sourced role", () => {
     const excerpt = "Camille Durand\nDirectrice de l’Atelier Nordique";
     const sourceUrl = "https://chronique.example/article";
     const identity = personCandidate({
@@ -266,11 +266,11 @@ describe("server identity resolution", () => {
       candidates: assembled,
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.selected?.candidate.displayName).toBe("Camille Durand");
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
   });
 
-  it("does not treat an organization different from the publisher as a contradiction", () => {
+  it("does not use an unrelated publisher organization as supplied context", () => {
     const excerpt = "Camille Durand\nDirectrice de Rival Systems";
     const sourceUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
     const identity = personCandidate({ statement: excerpt, structuredUrl: sourceUrl, excerpt });
@@ -288,8 +288,8 @@ describe("server identity resolution", () => {
       candidates: assembled,
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.selected?.candidate.displayName).toBe("Camille Durand");
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
   });
 
   it("resolves an exact-name person from independent facts and two supported context signals", () => {
@@ -856,10 +856,9 @@ describe("server identity resolution", () => {
     });
 
     expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("fact_corroborated_identity");
+    expect(decision.reasonCodes).toContain("unique_verified_candidate");
     expect(decision.selected?.proof.finalUrl).toBe(identity.structuredUrl);
-    expect(decision.selected?.corroboratingProofs).toHaveLength(1);
-    expect(decision.selected?.corroboratingProofs?.[0]?.finalUrl).toBe(activity.structuredUrl);
+    expect(decision.selected?.corroboratingProofs).toHaveLength(0);
   });
 
   it("resolves an exact-name person from an uppercase context token corroborated across fact evidence", () => {
@@ -1966,10 +1965,10 @@ describe("server identity resolution", () => {
     });
 
     expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("unique_verified_source_candidate");
+    expect(decision.reasonCodes).toContain("unique_verified_candidate");
   });
 
-  it("keeps one attributable provider-grounded identity with degraded confidence", () => {
+  it("rejects one provider-grounded identity without a directly verified page", () => {
     const identity = personCandidate();
     const decision = resolveIdentity({
       input: { name: "Camille Durand", entityType: "person", context: "Rennes, design" },
@@ -1984,8 +1983,8 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("unique_verified_source_candidate");
+    expect(decision.status).toBe("not_found_within_scope");
+    expect(decision.selected).toBeNull();
   });
 
   it("keeps corroborated fact-backed exact-name homonyms ambiguous", () => {
@@ -2099,7 +2098,7 @@ describe("server identity resolution", () => {
     expect(decision.selected).toBeNull();
   });
 
-  it("ID-02 treats supplied context absent from verified evidence as neutral", () => {
+  it("ID-02 requires supplied context to appear in verified evidence", () => {
     const decision = resolveIdentity({
       input: {
         name: "Airbus SAS",
@@ -2110,8 +2109,8 @@ describe("server identity resolution", () => {
       candidates: [verified()],
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.selected?.candidate.candidateKey).toBe("airbus-sas");
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
     expect(decision.contextSignals).toEqual([]);
   });
 
@@ -2172,7 +2171,7 @@ describe("server identity resolution", () => {
       candidates: [verified(unproved)],
     });
 
-    expect(decision.status).toBe("resolved");
+    expect(decision.status).toBe("insufficient_context");
     expect(decision.verifiedDiscriminators).toEqual({ officialSite: "airbus.com" });
   });
 
@@ -2199,8 +2198,8 @@ describe("server identity resolution", () => {
       candidates: [verified()],
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.selected?.candidate.candidateKey).toBe("airbus-sas");
+    expect(decision.status).toBe("insufficient_context");
+    expect(decision.selected).toBeNull();
   });
 
   it("keeps Thomas Martin candidates separate without context", () => {
@@ -2283,7 +2282,7 @@ describe("server identity resolution", () => {
     expect(decision.selected).toBeNull();
   });
 
-  it("accepts one exact two-part person name from an attributable public source", () => {
+  it("rejects an exact two-part name from provider annotation only", () => {
     const identity = personCandidate({
       statement: "Camille Durand dirige l’Atelier Nordique.",
       excerpt: "Camille Durand dirige l’Atelier Nordique.",
@@ -2302,8 +2301,8 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("unique_verified_candidate");
+    expect(decision.status).toBe("not_found_within_scope");
+    expect(decision.selected).toBeNull();
   });
 
   it("accepts a unique full three-part person name without context", () => {
@@ -2357,11 +2356,11 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
-    expect(decision.selected?.candidate.displayName).toBe("Elon Musk");
+    expect(decision.status).toBe("not_found_within_scope");
+    expect(decision.selected).toBeNull();
   });
 
-  it("prefers an attributable fact proof when the dedicated identity snippet omits the name", () => {
+  it("does not replace a weak provider identity with a weak provider fact", () => {
     const identity = personCandidate({
       statement: "Chief executive of a technology company.",
       excerpt: "Chief executive of a technology company.",
@@ -2393,11 +2392,11 @@ describe("server identity resolution", () => {
     });
 
     expect(assembled).toHaveLength(1);
-    expect(assembled[0]?.proof.verifiedExcerpt).toContain("Camille Durand");
+    expect(assembled[0]?.proof.verifiedExcerpt).toBe(identity.excerpt);
     expect(assembled[0]?.proofBasis).toBe("verified_facts");
   });
 
-  it("accepts a provider-grounded identity name carried by the source title", () => {
+  it("does not identify a person from a provider title", () => {
     const identity = personCandidate({
       statement: "Chief executive of Tesla and SpaceX.",
       excerpt: "Chief executive of Tesla and SpaceX.",
@@ -2419,10 +2418,10 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
+    expect(decision.status).toBe("not_found_within_scope");
   });
 
-  it("accepts a provider-grounded identity name carried by the source URL", () => {
+  it("does not identify a person from a provider URL", () => {
     const identity = personCandidate({
       statement: "Chief executive of a technology company.",
       excerpt: "Chief executive of a technology company.",
@@ -2446,10 +2445,10 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
+    expect(decision.status).toBe("not_found_within_scope");
   });
 
-  it("assembles identity from a provider-grounded fact whose URL carries the full name", () => {
+  it("does not assemble identity from provider URLs", () => {
     const identity = personCandidate({
       statement: "Profil professionnel public.",
       excerpt: "Profil professionnel public.",
@@ -2487,7 +2486,7 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(assembled[0]?.proof.finalUrl).toBe(activity.structuredUrl);
+    expect(assembled[0]?.proof.finalUrl).toBe(identity.structuredUrl);
     expect(assembled[0]?.proofBasis).toBe("verified_facts");
   });
 
@@ -2543,7 +2542,7 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("resolved");
+    expect(decision.status).toBe("insufficient_context");
     expect(decision.contextSignals).toEqual([]);
   });
 });

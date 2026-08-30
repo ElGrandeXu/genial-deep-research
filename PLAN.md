@@ -60,3 +60,32 @@ Retirer sur instruction le moteur remplacé et les contraintes historiques deven
 ## R7 — Livraison
 
 Préparer la livraison finale et n'agir sur Production qu'après validation Preview et autorisation explicite.
+
+## Mission finale — examen et correction
+
+### Examen initial — 60/100
+
+Grille issue exclusivement de `PROJECT.md` et du comportement observé :
+
+| Exigence | Verdict initial | Preuve décisive |
+|---|---|---|
+| Nom de personne ou d'entreprise | PASS | Formulaire et validation serveur couvrent les deux types. |
+| Contexte facultatif | PARTIAL | L'entrée est complète, mais une voie d'identité accepte un nom exact sans corroborer le contexte fourni. |
+| Recherche Web réelle non préparée | PASS | Le checkpoint a exécuté la régression réelle sans branchement nominatif. |
+| Attente longue compréhensible | PASS | Étapes SSE, chronomètre et annulation sont fonctionnels. |
+| Dossier utile dont chaque fait est sourcé | FAIL | Un extrait fournisseur explicitement rejeté peut encore devenir un fait affiché. |
+| Lien affirmation, preuve et URL jusqu'à l'écran | PARTIAL | La chaîne structurelle est solide, mais une empreinte synthétique peut remplacer une preuve relue. |
+| Ambiguïté, manque, contradiction, péremption et panne signalés sûrement | FAIL | Une panne globale du vérificateur peut être absorbée comme rejet local ou silence. |
+| Application en ligne et README relançable | PARTIAL | Production et README existent, mais le checkpoint n'est ni publié ni couvert par la gate portable courante. |
+| Régression Erwan Simon + GENIAL + Bordeaux | PASS | Exécution locale réelle : `partial`, identité résolue, 2 faits métier, 2 sources, 27 315 ms. |
+
+Écarts initiaux : local `b606284`, GitHub `main` `ab5b53c`, Production accessible mais sans SHA public. La branche locale et `main` divergent depuis `8b778b1`.
+
+### Lots de correction ordonnés
+
+1. **Vérité métier** : supprimer toute promotion factuelle d'une preuve fournisseur rejetée, faire remonter les pannes systémiques, exiger une corroboration lorsqu'un contexte significatif est fourni et réaligner la complétude sur la documentation.
+2. **Livraison et UX ciblée** : remettre la gate portable au vert, corriger le smoke de taille, rendre les documents de pilotage portables, borner l'upload Vercel et corriger les défauts UX P2 sans refonte.
+3. **Validation** : suite complète, lint, typecheck, build, secrets, clone propre, dry-run Vercel, Preview seulement, puis cinq cas métier uniques.
+4. **Contre-examen** : regard neuf sur le commit et la Preview ; tout P0/P1 démontré sera corrigé et revérifié.
+
+Avancement : lot 1 terminé — 740 tests, lint et typecheck passent. Une preuve fournisseur rejetée ne peut plus produire un fait ni résoudre une identité ; les pannes systémiques redeviennent des échecs techniques ; le contexte vérifié et les seuils de complétude sont cohérents.

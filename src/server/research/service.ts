@@ -126,8 +126,13 @@ function canRetainProviderGrounding(
   citation: ProviderSourceBinding,
   document: RetrievedSourceDocument | undefined,
 ): boolean {
-  return !("bindingType" in citation && citation.bindingType === "structured_output_url") ||
-    document !== undefined;
+  return document !== undefined &&
+    "bindingType" in citation &&
+    citation.bindingType === "web_search_source";
+}
+
+function rethrowSystemicVerificationFailure(error: unknown, signal: AbortSignal): void {
+  if (signal.aborted || !(error instanceof ResearchPipelineError)) throw error;
 }
 
 function providerGroundedProof(options: {
@@ -443,6 +448,7 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
             signal: options.signal,
           });
         } catch (error) {
+          rethrowSystemicVerificationFailure(error, options.signal);
           return {
             status: "rejected" as const,
             error,
@@ -462,6 +468,7 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
           });
           return { status: "verified" as const, candidate, proof, document };
         } catch (error) {
+          rethrowSystemicVerificationFailure(error, options.signal);
           return {
             status: "rejected" as const,
             error,
@@ -485,6 +492,7 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
         });
         return { status: "verified" as const, candidate, proof };
       } catch (error) {
+        rethrowSystemicVerificationFailure(error, options.signal);
         return {
           status: "rejected" as const,
           error,

@@ -1,9 +1,9 @@
 # État du sauvetage
 
-- Mission courante : R5 — admission, identité et sources nettoyées.
+- Mission courante : examen final autonome — correction, Preview et contre-examen.
 - Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
-- Branche : `rescue/minimal-recall`.
+- Branche : `exam/final-correction`.
 - Baseline historique R2.1 : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
 - Baseline fonctionnelle d'entrée : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
 - Worktree original `GENIAL` : isolé et non modifié par ce sauvetage.
@@ -19,7 +19,7 @@
 - Archives : anciens README, contrats, tests et preuves non prescriptifs hors brief.
 - Production : gelée jusqu'à validation explicite d'une Preview.
 - Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
-- Déploiement : non effectué.
+- Déploiement de la mission finale : non effectué ; Production reste gelée.
 - Vérifications R5 : 739 tests, lint, typecheck et build réussis.
 - Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
 - Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
@@ -27,4 +27,11 @@
 - Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
 - Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
 - Corrections : R4 borne l’orchestration ; R5 admet un fait sourcé et transforme zéro fait en insuffisance métier.
-- Prochaine action autorisée : attendre une nouvelle mission explicite.
+- Examen initial : 60/100 ; exigences PASS/PARTIAL/FAIL consignées dans `PLAN.md`.
+- Régression initiale réelle du checkpoint : `partial`, identité résolue, 2 faits métier, 2 sources, 27 315 ms, 2 appels fournisseur, 3 actions Web Search, coût estimé 0,0393742 USD.
+- Budget de soumissions réelles restant : 5 sur 6, toutes réservées à la matrice Preview.
+- P0 démontré : un extrait fournisseur rejeté peut être reconstruit en preuve synthétique puis affiché comme fait ou servir à l'identité.
+- P1 démontrés : contexte fourni non corroboré, panne globale absorbée, complétude incohérente, gate portable et manifeste Vercel obsolètes.
+- Lot 1 vérité métier : terminé ; 740 tests, lint et typecheck réussis.
+- Correctifs lot 1 : preuve fournisseur rejetée supprimée du dossier et de l'identité ; panne systémique non absorbée ; contexte significatif corroboré ; complétude à 3 faits, 2 catégories, 2 pages et 2 familles d'éditeurs.
+- Prochaine action : lot 2, livraison et UX ciblée.

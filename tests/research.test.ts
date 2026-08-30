@@ -560,7 +560,7 @@ describe("verified dossier service", () => {
     expect(terminal.dossier.global_status).not.toBe("technical_failure");
   });
 
-  it("treats an absent context hint as neutral for one verified candidate", async () => {
+  it("requests clarification when supplied context is absent from the only verified candidate", async () => {
     const url = "https://profiles.public.org/erwan-simon";
     const excerpt = "Erwan Simon accompagne des équipes commerciales en France.";
     const candidate = erwanCandidate({ organization: "GENIAL", url, excerpt });
@@ -588,8 +588,9 @@ describe("verified dossier service", () => {
       },
     }));
 
-    expect(terminal.dossier.identity).toMatchObject({ status: "resolved" });
-    expect(terminal.dossier.claims.some(({ statement }) => statement === excerpt)).toBe(true);
+    expect(terminal.dossier.identity).toMatchObject({ status: "insufficient_context" });
+    expect(terminal.dossier.claims.filter(({ predicate }) => !predicate.startsWith("identity."))).toHaveLength(0);
+    expect(terminal.dossier.global_status).toBe("needs_clarification");
   });
 
   it("keeps explicit Erwan Simon homonyms unresolved without discarding the whole execution", async () => {
@@ -1239,7 +1240,7 @@ describe("verified dossier service", () => {
       ({ predicate }) => !predicate.startsWith("identity."),
     );
     expect(businessClaims).toHaveLength(2);
-    expect(terminal.dossier.global_status).toBe("complete_within_scope");
+    expect(terminal.dossier.global_status).toBe("partial");
   });
 
   it("merges one exact fact from two pages into one claim with two proofs", async () => {
@@ -1295,14 +1296,14 @@ describe("verified dossier service", () => {
 
     expect(businessClaims).toHaveLength(1);
     expect(businessClaims[0]?.evidence_ids).toHaveLength(3);
-    expect(terminal.dossier.global_status).toBe("complete_within_scope");
+    expect(terminal.dossier.global_status).toBe("partial");
     expect(terminal.dossier.receipt.search_scope.stop_reason).toContain(
       "faits admissibles: 1",
     );
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
-  it("does not impose a publisher-domain minimum", async () => {
+  it("keeps a dossier from one publisher family partial", async () => {
     const urls = [
       "https://www.publisher.org/activity",
       "https://press.publisher.org/location",
@@ -1326,7 +1327,7 @@ describe("verified dossier service", () => {
       ],
     });
     const terminal = completed(await executeWith({ result: providerResult(document) }));
-    expect(terminal.dossier.global_status).toBe("complete_within_scope");
+    expect(terminal.dossier.global_status).toBe("partial");
     expect(terminal.dossier.receipt.search_scope.stop_reason).toContain("domaines éditeurs: 1");
   });
 
@@ -1704,7 +1705,7 @@ describe("verified dossier service", () => {
     });
   });
 
-  it("retains an attributable Web Search citation when direct excerpt verification fails", async () => {
+  it("drops a provider statement when direct excerpt verification fails", async () => {
     const rejected = "Airbus has a synthetic unsupported secret fact.";
     const document = resolvedDocument({
       claims: [
@@ -1719,18 +1720,13 @@ describe("verified dossier service", () => {
       result: providerResult(document),
       sourceVerifier: exactSourceVerifier({ rejectExcerpt: rejected }),
     }));
-    expect(JSON.stringify(terminal.dossier)).toContain(rejected);
+    expect(JSON.stringify(terminal.dossier)).not.toContain(rejected);
     const retainedClaim = terminal.dossier.claims.find(({ statement }) => statement === rejected);
-    expect(retainedClaim).toBeDefined();
-    const retainedEvidence = terminal.dossier.evidence.find(
-      ({ claim_id }) => claim_id === retainedClaim?.claim_id,
-    );
-    expect(retainedEvidence?.verification_method).toBe("provider_annotation");
+    expect(retainedClaim).toBeUndefined();
     expect(terminal.dossier.unknowns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ description: expect.stringContaining("confiance dégradée") }),
+      expect.objectContaining({ description: expect.stringContaining("écartées") }),
     ]));
-    expect(terminal.dossier.claims.length).toBeGreaterThanOrEqual(3);
-    expect(terminal.dossier.global_status).toBe("partial");
+    expect(terminal.dossier.global_status).toBe("complete_within_scope");
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 

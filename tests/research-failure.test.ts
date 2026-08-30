@@ -310,7 +310,7 @@ describe("safe failure classification with installed AI SDK errors", () => {
     },
   );
 
-  it("retains attributable provider evidence after a direct source rejection without leaking failures", async () => {
+  it("drops rejected provider evidence without leaking failures", async () => {
     const marker = "PRIVATE_SOURCE_REJECTION_MARKER";
     const events = await executeWith({
         result: providerResult(),
@@ -329,10 +329,31 @@ describe("safe failure classification with installed AI SDK errors", () => {
       dossier: {
         result_mode: "silence",
         global_status: "insufficient_evidence",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        claims: [],
         unknowns: expect.arrayContaining([
-          expect.objectContaining({ category: "not_verified" }),
+          expect.objectContaining({ category: "source_inaccessible" }),
         ]),
+      },
+    });
+    expect(JSON.stringify(events)).not.toContain(marker);
+  });
+
+  it("reports a systemic verifier failure instead of disguising it as documentary silence", async () => {
+    const marker = "PRIVATE_SYSTEMIC_VERIFIER_FAILURE";
+    const events = await executeWith({
+      result: providerResult(),
+      sourceVerifier: {
+        async verify() {
+          throw new TypeError(marker);
+        },
+      },
+    });
+
+    expect(events.at(-1)).toMatchObject({
+      state: "failed",
+      receipt: {
+        category: "internal_unknown",
+        failedStage: "source_verification",
       },
     });
     expect(JSON.stringify(events)).not.toContain(marker);
@@ -616,7 +637,7 @@ describe("terminal failure guarantees", () => {
     });
   });
 
-  it("keeps attributable unresolved identity evidence when every direct excerpt check fails", async () => {
+  it("keeps no factual identity evidence when every direct excerpt check fails", async () => {
     const events: ResearchProgressEvent[] = [];
     await executeResearch({
       input: { name: "Airbus SE" },
@@ -639,10 +660,10 @@ describe("terminal failure guarantees", () => {
       dossier: {
         result_mode: "silence",
         global_status: "insufficient_evidence",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
-        evidence: expect.arrayContaining([expect.objectContaining({ verification_method: "provider_annotation" })]),
-        sources: expect.arrayContaining([expect.objectContaining({ collection_method: "provider_search" })]),
-        unknowns: expect.arrayContaining([expect.objectContaining({ category: "not_verified" })]),
+        claims: [],
+        evidence: [],
+        sources: [],
+        unknowns: expect.arrayContaining([expect.objectContaining({ category: "source_inaccessible" })]),
       },
       receipt: { sourceFetchCount: 2 },
     });

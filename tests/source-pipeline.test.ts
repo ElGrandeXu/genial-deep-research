@@ -1511,7 +1511,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("allows bounded %s accounting and retains attributable provider evidence", async (_case, results) => {
+  ] as const)("allows bounded %s accounting and reports systemic verifier failure", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1530,17 +1530,12 @@ describe("G3-R3 inspection action URL binding", () => {
       "accepted",
       "researching_and_resolving",
       "source_verifying",
-      "building",
-      "validating",
-      "completed",
+      "failed",
     ]);
     expect(events.at(-1)).toMatchObject({
-      state: "completed",
-      dossier: {
-        global_status: "insufficient_evidence",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
-      },
+      state: "failed",
       receipt: {
+        category: "internal_unknown",
         webSearchQueryCount: 1,
         webSearchInspectionCount: 2,
       },
@@ -1573,7 +1568,7 @@ describe("G3-R3 inspection action URL binding", () => {
       okHtml("<html><head><title>Airbus</title></head><body><p>Different text.</p></body></html>"),
       "source_excerpt_missing",
     ],
-  ] as const)("retains provider-grounded identity without retry after %s rejection", async (
+  ] as const)("returns safe silence without provider identity after %s rejection", async (
     _case,
     response,
     expectedCode,
@@ -1605,7 +1600,7 @@ describe("G3-R3 inspection action URL binding", () => {
       dossier: {
         global_status: "insufficient_evidence",
         result_mode: "silence",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        claims: [],
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1902,7 +1897,7 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("retains provider-grounded identity when direct title validation fails", async () => {
+  it("returns safe silence when direct title validation fails", async () => {
     const source = realSyntheticVerifier(
       `<html><head></head><body><p>${claim}</p></body></html>`,
     );
@@ -1925,7 +1920,7 @@ describe("M5-R3 verified document title binding", () => {
       dossier: {
         global_status: "insufficient_evidence",
         result_mode: "silence",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        claims: [],
       },
     });
     expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
@@ -4113,7 +4108,7 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       sourceMediaTypeClass: "application_pdf",
     },
   ] as const)(
-    "degrades $name proof to provider grounding without retaining raw header data",
+    "drops $name proof without retaining raw header data",
     async ({ response: createResponse, reasonCode, sourceMediaTypeClass }) => {
       const response = createResponse();
       const source = contentTypeDiagnosticVerifier(response);
@@ -4128,9 +4123,9 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
         dossier: {
           global_status: "insufficient_evidence",
           result_mode: "silence",
-          claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+          claims: [],
           unknowns: expect.arrayContaining([
-            expect.objectContaining({ category: "not_verified" }),
+            expect.objectContaining({ category: "source_inaccessible" }),
           ]),
         },
       });

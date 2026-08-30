@@ -31,7 +31,7 @@ describe("server completeness decision", () => {
     });
   });
 
-  it("admits one sourced business fact without publisher or category minima", () => {
+  it("keeps one sourced business fact as a useful partial result", () => {
     const result = evaluateCompleteness({
       identityResolved: true,
       businessClaims: claims(["official.example", "official.example"]).slice(0, 1),
@@ -39,8 +39,13 @@ describe("server completeness decision", () => {
       subjectScopeViolationCount: 0,
       criticalUnknownCount: 0,
     });
-    expect(result.status).toBe("complete_within_scope");
-    expect(result.reasonCodes).toEqual([]);
+    expect(result.status).toBe("partial");
+    expect(result.reasonCodes).toEqual(expect.arrayContaining([
+      "insufficient_business_facts",
+      "insufficient_category_diversity",
+      "insufficient_source_pages",
+      "insufficient_publisher_diversity",
+    ]));
     expect(result.stopReason).toContain("faits admissibles: 1");
   });
 
@@ -52,8 +57,9 @@ describe("server completeness decision", () => {
       subjectScopeViolationCount: 0,
       criticalUnknownCount: 0,
     });
-    expect(result.status).toBe("complete_within_scope");
+    expect(result.status).toBe("partial");
     expect(result.criteria.publisherDomains).toBe(1);
+    expect(result.reasonCodes).toContain("insufficient_publisher_diversity");
   });
 
   it("does not count identity evidence as a business fact", () => {
@@ -68,7 +74,7 @@ describe("server completeness decision", () => {
       criticalUnknownCount: 0,
     });
     expect(result.criteria.uniqueBusinessClaims).toBe(2);
-    expect(result.status).toBe("complete_within_scope");
+    expect(result.status).toBe("partial");
   });
 
   it("turns a successful search without an admissible fact into business silence", () => {
