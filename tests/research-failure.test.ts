@@ -616,7 +616,7 @@ describe("terminal failure guarantees", () => {
     });
   });
 
-  it("keeps a unique attributable identity as supported when direct excerpt checks fail", async () => {
+  it("keeps attributable unresolved identity evidence when every direct excerpt check fails", async () => {
     const events: ResearchProgressEvent[] = [];
     await executeResearch({
       input: { name: "Airbus SE" },
@@ -638,12 +638,8 @@ describe("terminal failure guarantees", () => {
       state: "completed",
       dossier: {
         result_mode: "standard",
-        global_status: "partial",
-        identity: expect.objectContaining({
-          status: "resolved",
-          resolution_level: "supported",
-        }),
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        global_status: "needs_clarification",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.candidate" })]),
         evidence: expect.arrayContaining([expect.objectContaining({ verification_method: "provider_annotation" })]),
         sources: expect.arrayContaining([expect.objectContaining({ collection_method: "provider_search" })]),
         unknowns: expect.arrayContaining([expect.objectContaining({ category: "not_verified" })]),

@@ -39,11 +39,6 @@ export interface DeduplicationResult {
   readonly facts: readonly DeduplicatedBusinessFact[];
   readonly duplicateCount: number;
   readonly truncatedCount: number;
-  readonly duplicateFacts: readonly {
-    readonly candidate: ProviderFactCandidate;
-    readonly representative: ProviderFactCandidate;
-  }[];
-  readonly truncatedFacts: readonly ProviderFactCandidate[];
 }
 
 const LEGAL_SUFFIX = /\s+(?:AG|Corp(?:oration)?|GmbH|Group|Groupe|Inc|LLC|Ltd|PLC|SA|SAS|SASU|SE)\.?$/iu;
@@ -335,7 +330,8 @@ export function evaluateClaimQuality(options: {
   }
   if (candidate.category === "role") {
     const hasPersonLikeName = /\b\p{Lu}[\p{L}'’-]+\s+\p{Lu}[\p{L}'’-]+\b/u.test(proof.verifiedExcerpt);
-    if (!directoryRole && !hasPersonLikeName) {
+    const hasRelation = /\b(?:chez|de|d['’]|du|of|at|pour|for)\b/iu.test(proof.verifiedExcerpt);
+    if (!directoryRole && (!hasPersonLikeName || !hasRelation)) {
       return { accepted: false, reasonCode: "role_relation_missing" };
     }
   }
@@ -388,39 +384,18 @@ function sameFact(left: ProviderFactCandidate, right: ProviderFactCandidate): bo
 }
 
 function proofKey(proof: VerifiedSourceProof): string {
-  let canonicalUrl = proof.finalUrl;
-  try {
-    const url = new URL(proof.finalUrl);
-    url.hash = "";
-    for (const key of [...url.searchParams.keys()]) {
-      if (/^(?:utm_.+|fbclid|gclid)$/iu.test(key)) url.searchParams.delete(key);
-    }
-    url.searchParams.sort();
-    if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/u, "");
-    canonicalUrl = url.toString();
-  } catch {
-    // Source URL validation already happened before fact deduplication.
-  }
-  return [
-    canonicalUrl,
-    proof.locator.normalizedTextSha256,
-    normalized(proof.verifiedExcerpt),
-  ].join("|");
+  return `${proof.finalUrl}|${normalized(proof.verifiedExcerpt)}`;
 }
 
 export function deduplicateVerifiedFacts(
   input: readonly VerifiedBusinessFact[],
-  maxFacts = 12,
+  maxFacts = 6,
 ): DeduplicationResult {
   const groups: Array<{
     candidate: ProviderFactCandidate;
     proofs: VerifiedSourceProof[];
   }> = [];
   let duplicateCount = 0;
-  const duplicateFacts: Array<{
-    candidate: ProviderFactCandidate;
-    representative: ProviderFactCandidate;
-  }> = [];
 
   for (const item of input) {
     const existing = groups.find((group) => sameFact(group.candidate, item.candidate));
@@ -429,7 +404,6 @@ export function deduplicateVerifiedFacts(
       continue;
     }
     duplicateCount += 1;
-    duplicateFacts.push({ candidate: item.candidate, representative: existing.candidate });
     const itemProofKey = proofKey(item.proof);
     let representativeIndex = existing.proofs.findIndex(
       (proof) => proofKey(proof) === itemProofKey,
@@ -452,54 +426,10 @@ export function deduplicateVerifiedFacts(
     }
   }
 
-  const limit = Math.max(0, maxFacts);
-  const bounded = groups.length <= limit
-    ? groups
-    : (() => {
-        const remaining = [...groups];
-        const selected: typeof groups = [];
-        const categories = new Set<string>();
-        const sourceUrls = new Set<string>();
-        while (selected.length < limit && remaining.length > 0) {
-          let bestIndex = 0;
-          let bestScore = Number.NEGATIVE_INFINITY;
-          for (const [index, group] of remaining.entries()) {
-            const strongestProof = group.proofs.reduce((strength, proof) => {
-              const method = proof.verificationMethod ?? "source_content";
-              return Math.max(
-                strength,
-                method === "source_content" && proof.retrievalStatus !== "unavailable"
-                  ? 3
-                  : method === "provider_annotation"
-                    ? 2
-                    : 1,
-              );
-            }, 0);
-            const newCategory = categories.has(group.candidate.category) ? 0 : 1;
-            const newSource = group.proofs.some(({ finalUrl }) => !sourceUrls.has(finalUrl)) ? 1 : 0;
-            const recent = group.candidate.category === "recent_signal" ||
-              group.candidate.category === "event" ? 1 : 0;
-            const score = strongestProof * 100 + newCategory * 20 + newSource * 10 + recent;
-            if (score > bestScore) {
-              bestIndex = index;
-              bestScore = score;
-            }
-          }
-          const [next] = remaining.splice(bestIndex, 1);
-          if (next === undefined) break;
-          selected.push(next);
-          categories.add(next.candidate.category);
-          for (const proof of next.proofs) sourceUrls.add(proof.finalUrl);
-        }
-        return selected;
-      })();
+  const bounded = groups.slice(0, Math.max(0, maxFacts));
   return {
     facts: bounded.map(({ candidate, proofs }) => ({ candidate, proofs })),
     duplicateCount,
     truncatedCount: Math.max(0, groups.length - bounded.length),
-    duplicateFacts,
-    truncatedFacts: groups
-      .filter((group) => !bounded.includes(group))
-      .map(({ candidate }) => candidate),
   };
 }

@@ -37,7 +37,7 @@ interface ResearchRouteDependencies {
 
 const encoder = new TextEncoder();
 const unrestrictedTestGuard: ResearchRequestGuard = {
-  async acquire() {
+  acquire() {
     return { admitted: true, release() {} };
   },
 };
@@ -90,13 +90,12 @@ function errorResponse(error: ResearchRequestError): Response {
 function admissionRejectedResponse(
   admission: Extract<ResearchAdmission, { readonly admitted: false }>,
 ): Response {
+  const message =
+    admission.code === "rate_limited"
+      ? "Trop de recherches ont été demandées. Réessayez plus tard."
+      : "Deux recherches sont déjà en cours. Réessayez dans un instant.";
   return Response.json(
-    {
-      error: {
-        code: admission.code,
-        message: "Deux recherches sont déjà en cours. Réessayez dans un instant.",
-      },
-    },
+    { error: { code: admission.code, message } },
     {
       status: 429,
       headers: {
@@ -144,7 +143,7 @@ export function createResearchPostHandler(dependencies: ResearchRouteDependencie
     const localAbort = new AbortController();
     const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
     const signal = AbortSignal.any([request.signal, localAbort.signal, timeout]);
-    const admission = await requestGuard.acquire(request);
+    const admission = requestGuard.acquire(request);
     if (!admission.admitted) return admissionRejectedResponse(admission);
     let admissionReleased = false;
     const releaseAdmission = () => {
@@ -235,10 +234,7 @@ export const POST = createResearchPostHandler({
   },
   logger: {
     info(record) {
-      console.info(
-        "research_receipt",
-        record.event === "research_query_diagnostics" ? JSON.stringify(record) : record,
-      );
+      console.info("research_receipt", record);
     },
   },
 });

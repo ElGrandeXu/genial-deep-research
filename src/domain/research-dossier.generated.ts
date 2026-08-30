@@ -9,13 +9,11 @@
 export type GenialResearchDossierContract = {
   [k: string]: unknown;
 } & {
-  schema_version: "1.0.0" | "1.1.0";
+  schema_version: "1.0.0";
   dossier_id: Id;
   origin: "runtime" | "synthetic_contract_fixture";
   request: Request;
   identity: Identity;
-  related_subjects?: Candidate[];
-  relations?: Relation[];
   sources: Source[];
   evidence: Evidence[];
   claims: Claim[];
@@ -37,7 +35,6 @@ export type Identity = {
   [k: string]: unknown;
 } & {
   status: "resolved" | "ambiguous" | "insufficient_context" | "not_found_within_scope";
-  resolution_level?: "confirmed" | "supported" | "lead" | null;
   selected_subject_id: null | Id;
   candidates: Candidate[];
   resolution_reason: NonBlankText;
@@ -100,16 +97,6 @@ export interface Candidate {
     legal_identifier?: NonBlankText;
   };
   match_rationale: NonBlankText;
-}
-export interface Relation {
-  relation_id: Id;
-  from_subject_id: Id;
-  to_subject_id: Id;
-  relation_type: "employed_by" | "leads" | "founded" | "created" | "member_of" | "affiliated_with";
-  /**
-   * @minItems 1
-   */
-  evidence_ids: [Id, ...Id[]];
 }
 export interface Source {
   source_id: Id;

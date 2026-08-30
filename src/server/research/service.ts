@@ -51,7 +51,6 @@ import type {
   ProviderClaimCandidate,
   ProviderFactCandidate,
   ProviderIdentityCandidate,
-  ProviderRelationCandidate,
   ProviderResearchResult,
   ProviderSourceBinding,
   PublicReceipt,
@@ -105,27 +104,6 @@ interface VerificationBatch<T extends ProviderClaimCandidate> {
   readonly rejectedCount: number;
   readonly sourceFetchCount: number;
   readonly excerptVerificationCount: number;
-  readonly rejections: readonly {
-    readonly candidate: T;
-    readonly reasonCode: string;
-    readonly retainedAsGrounded: boolean;
-  }[];
-}
-
-interface DiagnosticFactItem {
-  readonly pass: "primary" | "supplement" | "derived";
-  readonly category: FactCategory;
-  readonly subjectKey: string;
-  readonly sourceUrl: string;
-  readonly statement: string;
-  readonly reasonCode?: string;
-}
-
-interface DiagnosticVerificationRejection {
-  readonly boundary: "candidate" | "related_subject" | "relation" | "fact";
-  readonly candidate: ProviderClaimCandidate;
-  readonly reasonCode: string;
-  readonly retainedAsGrounded: boolean;
 }
 
 interface DossierBuildDiagnostics {
@@ -133,141 +111,12 @@ interface DossierBuildDiagnostics {
   qualityRejections: Record<string, number>;
   identityStatus: string;
   identityReasonCodes: readonly string[];
-  factBoundaries?: {
-    readonly verified: readonly DiagnosticFactItem[];
-    readonly afterAttribution: readonly DiagnosticFactItem[];
-    readonly attributionRejected: readonly DiagnosticFactItem[];
-    readonly afterQuality: readonly DiagnosticFactItem[];
-    readonly qualityRejected: readonly DiagnosticFactItem[];
-    readonly afterDeduplication: readonly DiagnosticFactItem[];
-    readonly deduplicationRejected: readonly DiagnosticFactItem[];
-    readonly afterRanking: readonly DiagnosticFactItem[];
-    readonly rankingRejected: readonly DiagnosticFactItem[];
-    readonly displayed: readonly DiagnosticFactItem[];
-  };
 }
 
 function proofVerificationMethod(
   proof: VerifiedSourceProof,
 ): "source_content" | "provider_annotation" | "search_snippet" {
   return proof.verificationMethod ?? "source_content";
-}
-
-function diagnosticFactItem(
-  candidate: ProviderFactCandidate,
-  statement = candidate.excerpt,
-  reasonCode?: string,
-): DiagnosticFactItem {
-  return {
-    pass: candidate.collectionPass ?? "derived",
-    category: candidate.category,
-    subjectKey: candidate.subjectKey,
-    sourceUrl: candidate.structuredUrl,
-    statement: normalizeVisibleText(statement),
-    ...(reasonCode === undefined ? {} : { reasonCode }),
-  };
-}
-
-function organizationProfileFact(
-  item: VerifiedCandidate<ProviderIdentityCandidate>,
-): VerifiedCandidate<ProviderFactCandidate> | null {
-  const statement = normalizeVisibleText(item.proof.verifiedExcerpt);
-  const normalizedStatement = normalizeIdentityLabel(statement);
-  const normalizedName = normalizeIdentityLabel(item.candidate.displayName);
-  const nameOffset = normalizedStatement.indexOf(normalizedName);
-  if (
-    item.candidate.entityType !== "company" ||
-    nameOffset < 0 ||
-    nameOffset > 12 ||
-    statement.length < 24
-  ) return null;
-  return {
-    candidate: {
-      collectionPass: "derived",
-      subjectKey: item.candidate.candidateKey,
-      category: "activity",
-      entityType: "company",
-      predicate: "organization_profile",
-      scopeType: item.candidate.entityScope,
-      scopeLabel: item.candidate.displayName,
-      factPeriodLabel: null,
-      factDate: null,
-      normalizedValue: null,
-      unit: null,
-      currency: null,
-      contradictionKey: null,
-      statement,
-      structuredUrl: item.proof.finalUrl,
-      excerpt: statement,
-      prefix: item.proof.locator.prefix,
-      suffix: item.proof.locator.suffix,
-    },
-    proof: item.proof,
-  };
-}
-
-function organizationRelationFact(options: {
-  readonly relation: VerifiedCandidate<ProviderRelationCandidate>;
-  readonly relatedSubject: VerifiedCandidate<ProviderIdentityCandidate>;
-}): VerifiedCandidate<ProviderFactCandidate> {
-  const statement = normalizeVisibleText(options.relation.proof.verifiedExcerpt);
-  return {
-    candidate: {
-      collectionPass: "derived",
-      subjectKey: options.relatedSubject.candidate.candidateKey,
-      category: "activity",
-      entityType: "company",
-      predicate: "organization_relationship",
-      scopeType: options.relatedSubject.candidate.entityScope,
-      scopeLabel: options.relatedSubject.candidate.displayName,
-      factPeriodLabel: null,
-      factDate: null,
-      normalizedValue: null,
-      unit: null,
-      currency: null,
-      contradictionKey: null,
-      statement,
-      structuredUrl: options.relation.proof.finalUrl,
-      excerpt: statement,
-      prefix: options.relation.proof.locator.prefix,
-      suffix: options.relation.proof.locator.suffix,
-    },
-    proof: options.relation.proof,
-  };
-}
-
-function diagnosticVerificationItem(item: DiagnosticVerificationRejection) {
-  const candidate = item.candidate;
-  return {
-    boundary: item.boundary,
-    sourceUrl: candidate.structuredUrl,
-    statement: normalizeVisibleText(candidate.excerpt),
-    ...(candidate.entityType === "person" || candidate.entityType === "company"
-      ? { entityType: candidate.entityType }
-      : {}),
-    ...("candidateKey" in candidate && "displayName" in candidate
-      ? {
-          subjectKey: candidate.candidateKey,
-          displayName: candidate.displayName,
-        }
-      : {}),
-    ...("subjectKey" in candidate && "category" in candidate
-      ? {
-          subjectKey: candidate.subjectKey,
-          category: candidate.category,
-        }
-      : {}),
-    ...("fromSubjectKey" in candidate && "toSubjectKey" in candidate &&
-        "relationType" in candidate
-      ? {
-          fromSubjectKey: candidate.fromSubjectKey,
-          toSubjectKey: candidate.toSubjectKey,
-          relationType: candidate.relationType,
-        }
-      : {}),
-    reasonCode: item.reasonCode,
-    retainedAsGrounded: item.retainedAsGrounded,
-  };
 }
 
 function canRetainProviderGrounding(
@@ -294,18 +143,8 @@ function providerGroundedProof(options: {
       ?.title ?? new URL(url).hostname;
   }
   const retrievedAt = options.document?.retrievedAt ?? new Date().toISOString();
-  const fingerprintUrl = (() => {
-    const canonical = new URL(url);
-    canonical.hash = "";
-    for (const key of [...canonical.searchParams.keys()]) {
-      if (/^(?:utm_.+|fbclid|gclid)$/iu.test(key)) canonical.searchParams.delete(key);
-    }
-    canonical.searchParams.sort();
-    if (canonical.pathname !== "/") canonical.pathname = canonical.pathname.replace(/\/+$/u, "");
-    return canonical.toString();
-  })();
   const fingerprint = createHash("sha256")
-    .update(`provider-grounded\n${fingerprintUrl}\n${options.candidate.excerpt}`, "utf8")
+    .update(`provider-grounded\n${url}\n${options.candidate.excerpt}`, "utf8")
     .digest("hex");
   const verificationMethod = "bindingType" in options.citation &&
       (options.citation.bindingType === "web_search_source" ||
@@ -631,11 +470,6 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
   const verified: VerifiedCandidate<T>[] = [];
   const grounded: VerifiedCandidate<T>[] = [];
   const documents: Array<{ candidate: T; document: RetrievedSourceDocument }> = [];
-  const rejections: Array<{
-    candidate: T;
-    reasonCode: string;
-    retainedAsGrounded: boolean;
-  }> = [];
   let rejectedCount = 0;
   let sourceFetchCount = 0;
   for (const item of settled) {
@@ -645,15 +479,6 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
       if (item.document !== undefined) documents.push({ candidate: item.candidate, document: item.document });
     } else {
       rejectedCount += 1;
-      rejections.push({
-        candidate: item.candidate,
-        reasonCode: item.error instanceof ResearchPipelineError
-          ? item.error.contentTypeDiagnostics?.reasonCode ?? item.error.code
-          : item.error instanceof Error
-            ? item.error.name
-            : "unknown_verification_error",
-        retainedAsGrounded: item.grounded !== null && item.grounded !== undefined,
-      });
       if (item.error instanceof ResearchPipelineError) {
         sourceFetchCount += item.error.sourceDiagnostics?.sourceFetchCount ?? 0;
       }
@@ -673,32 +498,11 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
     rejectedCount,
     sourceFetchCount,
     excerptVerificationCount: options.candidates.length,
-    rejections,
   };
 }
 
 function normalizeIdentityLabel(value: string): string {
-  return normalizeVisibleText(value)
-    .normalize("NFD")
-    .replace(/\p{M}+/gu, "")
-    .toLocaleLowerCase("fr")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-function canonicalIdentitySourceUrl(value: string): string | null {
-  try {
-    const parsed = new URL(value);
-    parsed.hash = "";
-    for (const key of [...parsed.searchParams.keys()]) {
-      if (/^(?:utm_.+|fbclid|gclid)$/iu.test(key)) parsed.searchParams.delete(key);
-    }
-    parsed.searchParams.sort();
-    if (parsed.pathname !== "/") parsed.pathname = parsed.pathname.replace(/\/+$/u, "");
-    return parsed.toString();
-  } catch {
-    return null;
-  }
+  return normalizeVisibleText(value).toLocaleLowerCase("fr");
 }
 
 function withSelectedIdentitySource(
@@ -710,16 +514,10 @@ function withSelectedIdentitySource(
     input.entityType === undefined ||
     input.entityType === "auto"
   ) return result;
-  const selectedSource = canonicalIdentitySourceUrl(input.identitySourceUrl);
-  const sameNameCandidates = result.document.candidates.filter((candidate) =>
+  const matchingCandidate = result.document.candidates.find((candidate) =>
     candidate.entityType === input.entityType &&
     normalizeIdentityLabel(candidate.displayName) === normalizeIdentityLabel(input.name)
   );
-  const sourceMatchingCandidate = sameNameCandidates.find((candidate) =>
-    canonicalIdentitySourceUrl(candidate.structuredUrl) === selectedSource
-  );
-  const matchingCandidate = sourceMatchingCandidate ??
-    (sameNameCandidates.length === 1 ? sameNameCandidates[0] : undefined);
   const occupiedKeys = new Set(result.document.candidates.map(({ candidateKey }) => candidateKey));
   let candidateKey = matchingCandidate?.candidateKey ?? "selected-source";
   let suffix = 2;
@@ -747,170 +545,15 @@ function withSelectedIdentitySource(
     prefix: null,
     suffix: null,
   };
-  const relatedSubjectKeys = new Set(
-    (result.document.relatedSubjects ?? []).map(({ candidateKey }) => candidateKey),
-  );
-  const retainedRelations = matchingCandidate === undefined
-    ? []
-    : (result.document.relations ?? []).filter(({ fromSubjectKey, toSubjectKey }) =>
-        fromSubjectKey === candidateKey && relatedSubjectKeys.has(toSubjectKey)
-      );
-  const linkedRelatedSubjectKeys = new Set(
-    retainedRelations.map(({ toSubjectKey }) => toSubjectKey),
-  );
   return {
     ...result,
     document: {
       ...result.document,
       entityType: input.entityType,
       candidates: [anchorCandidate],
-      relatedSubjects: (result.document.relatedSubjects ?? []).filter(({ candidateKey }) =>
-        linkedRelatedSubjectKeys.has(candidateKey)
-      ),
-      relations: retainedRelations,
-      claims: result.document.claims.filter(({ subjectKey }) =>
-        subjectKey === candidateKey || linkedRelatedSubjectKeys.has(subjectKey)
-      ),
+      claims: result.document.claims.filter(({ subjectKey }) => subjectKey === candidateKey),
     },
   };
-}
-
-function withPreferredOrganizationHint(
-  result: ProviderResearchResult,
-  input: ResearchInput,
-): ProviderResearchResult {
-  const requested = input.hints?.organization?.trim();
-  if (requested === undefined || requested.length < 3) return result;
-  const requestedTokens = normalizeIdentityLabel(requested).split(" ").filter(Boolean);
-  return {
-    ...result,
-    document: {
-      ...result.document,
-      relatedSubjects: (result.document.relatedSubjects ?? []).map((candidate) => {
-        const candidateTokens = new Set(
-          normalizeIdentityLabel(candidate.displayName).split(" ").filter(Boolean),
-        );
-        return candidate.entityType === "company" &&
-            requestedTokens.length > 0 &&
-            requestedTokens.every((token) => candidateTokens.has(token)) &&
-            proofExplicitlyNames(candidate.excerpt, requested)
-          ? { ...candidate, displayName: requested }
-          : candidate;
-      }),
-    },
-  };
-}
-
-const RELATION_MARKERS: Readonly<Record<ProviderRelationCandidate["relationType"], RegExp>> = {
-  employed_by: /(?:employe[de]?\s+par|travaille\s+(?:chez|pour)|works?\s+(?:at|for))/iu,
-  leads: /(?:chief|dirige|direct(?:eur|rice)|lead(?:er|s|ing)?)/iu,
-  founded: /(?:co[- ]?founder|fondateur|fondatrice|a\s+fond[ée]|founded)/iu,
-  created: /(?:a\s+cr[ée][ée]|created?|creator|cr[ée]at(?:eur|rice))/iu,
-  member_of: /(?:member|membre)/iu,
-  affiliated_with: /(?:affiliate|affilie|associe[de]?\s+a|associated\s+with)/iu,
-};
-
-function literalOccurrences(value: string, needle: string): readonly number[] {
-  const source = value.toLocaleLowerCase("fr");
-  const query = needle.toLocaleLowerCase("fr");
-  if (query.length === 0) return [];
-  const positions: number[] = [];
-  for (let offset = source.indexOf(query); offset >= 0; offset = source.indexOf(query, offset + 1)) {
-    positions.push(offset);
-  }
-  return positions;
-}
-
-function reconstructRelationExcerpt(options: {
-  readonly documentText: string;
-  readonly fromNames: readonly string[];
-  readonly toNames: readonly string[];
-  readonly relationType: ProviderRelationCandidate["relationType"];
-}): string | null {
-  let best: { readonly start: number; readonly end: number } | null = null;
-  for (const fromName of options.fromNames) {
-    for (const fromStart of literalOccurrences(options.documentText, fromName)) {
-      for (const toName of options.toNames) {
-        for (const toStart of literalOccurrences(options.documentText, toName)) {
-          const start = Math.min(fromStart, toStart);
-          const end = Math.max(fromStart + fromName.length, toStart + toName.length);
-          if (end - start > 500) continue;
-          const excerpt = options.documentText.slice(start, end);
-          if (!RELATION_MARKERS[options.relationType].test(excerpt)) continue;
-          if (best === null || end - start < best.end - best.start) best = { start, end };
-        }
-      }
-    }
-  }
-  return best === null ? null : options.documentText.slice(best.start, best.end);
-}
-
-async function reconstructRelationsFromDocuments(options: {
-  readonly documents: VerificationBatch<ProviderRelationCandidate>["documents"];
-  readonly providerCandidates: readonly ProviderIdentityCandidate[];
-  readonly requestedPersonName: string;
-  readonly organizationHint?: string;
-  readonly sourceVerifier: SourceVerifier;
-}): Promise<readonly VerifiedCandidate<ProviderRelationCandidate>[]> {
-  const verifyDocument = options.sourceVerifier.verifyDocument;
-  if (verifyDocument === undefined) return [];
-  const candidateByKey = new Map(
-    options.providerCandidates.map((candidate) => [candidate.candidateKey, candidate] as const),
-  );
-  const reconstructed = await Promise.all(options.documents.map(async ({ candidate, document }) => {
-    const from = candidateByKey.get(candidate.fromSubjectKey);
-    const to = candidateByKey.get(candidate.toSubjectKey);
-    if (from === undefined || to === undefined) return null;
-    const organizationHint = options.organizationHint?.trim();
-    const requestedPersonTokens = normalizeIdentityLabel(options.requestedPersonName)
-      .split(" ").filter(Boolean);
-    const providerPersonTokens = new Set(
-      normalizeIdentityLabel(from.displayName).split(" ").filter(Boolean),
-    );
-    const fromNames = [
-      from.displayName,
-      ...(requestedPersonTokens.length > 0 &&
-          requestedPersonTokens.every((token) => providerPersonTokens.has(token))
-        ? [options.requestedPersonName]
-        : []),
-    ];
-    const toNames = [
-      to.displayName,
-      ...(organizationHint !== undefined && proofExplicitlyNames(to.excerpt, organizationHint)
-        ? [organizationHint]
-        : []),
-    ];
-    const inferredRelation = (Object.keys(RELATION_MARKERS) as Array<
-      ProviderRelationCandidate["relationType"]
-    >).flatMap((relationType) => {
-      const excerpt = reconstructRelationExcerpt({
-        documentText: document.documentText,
-        fromNames,
-        toNames,
-        relationType,
-      });
-      return excerpt === null ? [] : [{ relationType, excerpt }];
-    })[0];
-    if (inferredRelation === undefined) return null;
-    const reconstructedCandidate = {
-      ...candidate,
-      relationType: inferredRelation.relationType,
-      statement: inferredRelation.excerpt,
-      excerpt: inferredRelation.excerpt,
-      structuredUrl: document.finalUrl,
-    };
-    try {
-      const proof = await verifyDocument({
-        document,
-        candidate: reconstructedCandidate,
-        attributedDisplayNames: [...fromNames, ...toNames],
-      });
-      return { candidate: reconstructedCandidate, proof };
-    } catch {
-      return null;
-    }
-  }));
-  return reconstructed.flatMap((item) => item === null ? [] : [item]);
 }
 
 function sourceFirstRoleExcerptCandidates(
@@ -1181,24 +824,10 @@ function identityAnchorTokens(value: string, displayName: string): Set<string> {
   );
 }
 
-function proofExplicitlyNames(value: string, displayName: string): boolean {
-  const normalize = (text: string) => normalizeVisibleText(text)
-    .normalize("NFD")
-    .replace(/\p{M}+/gu, "")
-    .toLocaleLowerCase("fr")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-  const proofText = ` ${normalize(value)} `;
-  const name = normalize(displayName);
-  return name.length > 0 && proofText.includes(` ${name} `);
-}
-
 function buildDossier(options: {
   readonly input: ResearchInput;
   readonly result: ProviderResearchResult;
   readonly verifiedIdentityCandidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
-  readonly verifiedRelatedSubjects: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
-  readonly verifiedRelations: readonly VerifiedCandidate<ProviderRelationCandidate>[];
   readonly verifiedFacts: readonly VerifiedCandidate<ProviderFactCandidate>[];
   readonly rejectedProofCount: number;
   readonly retainedGroundedCount: number;
@@ -1213,7 +842,6 @@ function buildDossier(options: {
 }): ResearchDossier {
   const requestedType = options.input.entityType ?? "auto";
   const verifiedIdentityCandidates = assembleVerifiedIdentityCandidates({
-    requestedName: options.input.name,
     candidates: options.result.document.candidates,
     verifiedCandidates: options.verifiedIdentityCandidates,
     verifiedFacts: options.verifiedFacts,
@@ -1234,34 +862,9 @@ function buildDossier(options: {
           return domain === null ? [] : [domain];
         }),
       );
-  const relatedSubjectByKey = new Map(
-    options.verifiedRelatedSubjects
-      .filter(({ candidate, proof }) =>
-        candidate.entityType === "company" &&
-        proofExplicitlyNames(proof.verifiedExcerpt, candidate.displayName)
-      )
-      .map((item) => [item.candidate.candidateKey, item] as const),
-  );
-  const verifiedRelations = selected === null
-    ? []
-    : options.verifiedRelations.filter(({ candidate, proof }) => {
-        const relatedSubject = relatedSubjectByKey.get(candidate.toSubjectKey);
-        return candidate.fromSubjectKey === selected.candidate.candidateKey &&
-          relatedSubject !== undefined &&
-          proofExplicitlyNames(proof.verifiedExcerpt, selected.candidate.displayName) &&
-          proofExplicitlyNames(proof.verifiedExcerpt, relatedSubject.candidate.displayName);
-      });
-  const linkedRelatedSubjectKeys = new Set(
-    verifiedRelations.map(({ candidate }) => candidate.toSubjectKey),
-  );
-  const personalFacts = selected === null
-    ? []
-    : options.verifiedFacts.filter(
-        ({ candidate }) => candidate.subjectKey === selected.candidate.candidateKey,
-      );
   const attributionDecisions = selected === null
     ? []
-    : personalFacts.map((fact) => {
+    : options.verifiedFacts.map((fact) => {
         const supportingFacts = new Set(selected.corroboratingFacts ?? []);
         const factDomain = publisherDomainForUrl(fact.proof.finalUrl);
         const selectedTexts = [selected.proof, ...(selected.corroboratingProofs ?? [])]
@@ -1289,72 +892,25 @@ function buildDossier(options: {
             : { accepted: false as const, reasonCode: "identity_evidence_mismatch" as const },
         };
       });
-  const eligiblePersonalFacts = attributionDecisions.flatMap(({ fact, decision }) =>
+  const eligibleFacts = attributionDecisions.flatMap(({ fact, decision }) =>
     decision.accepted ? [fact] : [],
   );
-  const organizationalFacts = selected === null
-    ? []
-    : options.verifiedFacts.filter(({ candidate, proof }) => {
-        const relatedSubject = relatedSubjectByKey.get(candidate.subjectKey);
-        return relatedSubject !== undefined &&
-          linkedRelatedSubjectKeys.has(candidate.subjectKey) &&
-          candidate.entityType === "company" &&
-          ["company", "group", "subsidiary", "brand"].includes(candidate.scopeType) &&
-          proofExplicitlyNames(proof.verifiedExcerpt, relatedSubject.candidate.displayName);
-      });
-  const derivedOrganizationFacts = selected === null
-    ? []
-    : [...relatedSubjectByKey]
-        .filter(([candidateKey]) => linkedRelatedSubjectKeys.has(candidateKey))
-        .flatMap(([candidateKey, item]) => {
-          if (organizationalFacts.some((fact) => fact.candidate.subjectKey === candidateKey)) {
-            return [];
-          }
-          const derived = organizationProfileFact(item);
-          if (derived !== null) return [derived];
-          const relation = verifiedRelations.find(
-            ({ candidate }) => candidate.toSubjectKey === candidateKey,
-          );
-          return relation === undefined
-            ? []
-            : [organizationRelationFact({ relation, relatedSubject: item })];
-        });
-  const eligibleFacts = [
-    ...eligiblePersonalFacts,
-    ...organizationalFacts,
-    ...derivedOrganizationFacts,
-  ];
-  const attributionRejectedCount = options.verifiedFacts.length -
-    eligiblePersonalFacts.length - organizationalFacts.length;
+  const attributionRejectedCount = attributionDecisions.length - eligibleFacts.length;
   for (const { decision } of attributionDecisions) {
     if (!decision.accepted) {
       options.diagnostics.attributionRejections[decision.reasonCode] =
         (options.diagnostics.attributionRejections[decision.reasonCode] ?? 0) + 1;
     }
   }
-  const unlinkedOrganizationFactCount = options.verifiedFacts.filter(({ candidate }) =>
-    relatedSubjectByKey.has(candidate.subjectKey) &&
-    !linkedRelatedSubjectKeys.has(candidate.subjectKey)
-  ).length;
-  if (unlinkedOrganizationFactCount > 0) {
-    options.diagnostics.attributionRejections.organization_relation_missing =
-      unlinkedOrganizationFactCount;
-  }
   const qualityDecisions = selected === null
     ? []
     : eligibleFacts.map((fact) => ({
         fact,
-        decision: fact.candidate.collectionPass === "derived" &&
-            ["organization_profile", "organization_relationship"].includes(
-              fact.candidate.predicate,
-            )
-          ? { accepted: true as const }
-          : proofVerificationMethod(fact.proof) === "source_content"
+        decision: proofVerificationMethod(fact.proof) === "source_content"
           ? evaluateClaimQuality({
               candidate: fact.candidate,
               proof: fact.proof,
-              selectedDisplayName: relatedSubjectByKey.get(fact.candidate.subjectKey)
-                ?.candidate.displayName ?? selected.candidate.displayName,
+              selectedDisplayName: selected.candidate.displayName,
             })
           : groundedFactHasMinimumQuality(fact)
             ? { accepted: true as const }
@@ -1372,57 +928,12 @@ function buildDossier(options: {
   }
   const deduplication = deduplicateVerifiedFacts(qualityAcceptedFacts);
   const businessFacts = deduplication.facts;
-  options.diagnostics.factBoundaries = {
-    verified: [...options.verifiedFacts, ...derivedOrganizationFacts].map(({ candidate, proof }) =>
-      diagnosticFactItem(candidate, proof.verifiedExcerpt)
-    ),
-    afterAttribution: eligibleFacts.map(({ candidate, proof }) =>
-      diagnosticFactItem(candidate, proof.verifiedExcerpt)
-    ),
-    attributionRejected: attributionDecisions.flatMap(({ fact, decision }) =>
-      decision.accepted
-        ? []
-        : [diagnosticFactItem(
-            fact.candidate,
-            fact.proof.verifiedExcerpt,
-            decision.reasonCode,
-          )]
-    ),
-    afterQuality: qualityAcceptedFacts.map(({ candidate, proof }) =>
-      diagnosticFactItem(candidate, proof.verifiedExcerpt)
-    ),
-    qualityRejected: qualityDecisions.flatMap(({ fact, decision }) =>
-      decision.accepted
-        ? []
-        : [diagnosticFactItem(
-            fact.candidate,
-            fact.proof.verifiedExcerpt,
-            decision.reasonCode,
-          )]
-    ),
-    afterDeduplication: businessFacts.map(({ candidate, proofs }) =>
-      diagnosticFactItem(candidate, proofs[0]?.verifiedExcerpt ?? candidate.excerpt)
-    ),
-    deduplicationRejected: deduplication.duplicateFacts.map(({ candidate }) =>
-      diagnosticFactItem(candidate, candidate.excerpt, "semantic_duplicate")
-    ),
-    afterRanking: businessFacts.map(({ candidate, proofs }) =>
-      diagnosticFactItem(candidate, proofs[0]?.verifiedExcerpt ?? candidate.excerpt)
-    ),
-    rankingRejected: deduplication.truncatedFacts.map((candidate) =>
-      diagnosticFactItem(candidate, candidate.excerpt, "fact_limit_12")
-    ),
-    displayed: [],
-  };
   const resolved = identityDecision.status === "resolved" && selected !== null;
 
   const sources: ResearchDossier["sources"] = [];
   const evidence: ResearchDossier["evidence"] = [];
   const claims: ResearchDossier["claims"] = [];
   const candidates: ResearchDossier["identity"]["candidates"] = [];
-  const relatedSubjects: NonNullable<ResearchDossier["related_subjects"]> = [];
-  const relations: NonNullable<ResearchDossier["relations"]> = [];
-  const relatedSubjectIdByKey = new Map<string, string>();
   const sourceBySubjectAndUrl = new Map<string, string>();
   const factRecordByFact = new Map<DeduplicatedBusinessFact, {
     readonly claimId: string;
@@ -1440,18 +951,6 @@ function buildDossier(options: {
       discriminators: publicDiscriminators(identityDecision.verifiedDiscriminators),
       match_rationale: identityDecision.rationale,
     });
-    for (const [candidateKey, item] of relatedSubjectByKey) {
-      if (!linkedRelatedSubjectKeys.has(candidateKey)) continue;
-      const subjectId = `subject-${randomUUID()}`;
-      relatedSubjectIdByKey.set(candidateKey, subjectId);
-      relatedSubjects.push({
-        subject_id: subjectId,
-        entity_type: "company",
-        display_name: item.candidate.displayName,
-        discriminators: publicDiscriminators(item.candidate.discriminators),
-        match_rationale: "Organisation conservée uniquement parce qu’une preuve attribuable la relie explicitement à la personne résolue.",
-      });
-    }
   }
 
   function ensureSource(subjectId: string, scope: DossierScope, proof: VerifiedSourceProof): string {
@@ -1537,70 +1036,6 @@ function buildDossier(options: {
         ? "Identité établie par corroboration factuelle vérifiée ; chaque extrait utilisé reste relié à sa source."
         : "Preuve d’identité dédiée, distincte des faits métier ; l’extrait exact retrouvé est conservé.",
     });
-
-    const retainedRelationKeys = new Set<string>();
-    for (const item of verifiedRelations) {
-      const relatedSubjectId = relatedSubjectIdByKey.get(item.candidate.toSubjectKey);
-      if (relatedSubjectId === undefined) continue;
-      const proofFingerprint = [
-        item.proof.finalUrl,
-        item.proof.locator.normalizedTextSha256,
-        normalizeVisibleText(item.proof.verifiedExcerpt).toLocaleLowerCase("fr"),
-      ].join("|");
-      const relationKey = `${item.candidate.relationType}|${relatedSubjectId}|${proofFingerprint}`;
-      if (retainedRelationKeys.has(relationKey)) continue;
-      retainedRelationKeys.add(relationKey);
-      const claimId = `claim-${randomUUID()}`;
-      const evidenceId = `evidence-${randomUUID()}`;
-      const relationScope: DossierScope = {
-        type: "person",
-        label: selected.candidate.displayName,
-      };
-      const period: DossierFactPeriod = {
-        status: "unknown",
-        start: null,
-        end: null,
-        as_of: null,
-        label: null,
-      };
-      const sourceId = ensureSource(resolvedSubjectId, relationScope, item.proof);
-      evidence.push({
-        evidence_id: evidenceId,
-        source_id: sourceId,
-        claim_id: claimId,
-        excerpt: item.proof.verifiedExcerpt,
-        locator: serializeSourceLocator(item.proof.locator),
-        entity_id: resolvedSubjectId,
-        fact_period: period,
-        scope: relationScope,
-        relation: "supports",
-        verification_method: proofVerificationMethod(item.proof),
-        verified_at: item.proof.locator.retrievedAt,
-      });
-      claims.push({
-        claim_id: claimId,
-        subject_id: resolvedSubjectId,
-        statement: item.proof.verifiedExcerpt,
-        predicate: `relation.${item.candidate.relationType}`,
-        structured_value: null,
-        unit: null,
-        fact_period: period,
-        scope: relationScope,
-        temporal_status: "unknown",
-        evidence_ids: [evidenceId],
-        claim_state: "rejected",
-        reconciliation_state: "not_applicable",
-        presentation_decision: "reject",
-        presentation_reason: "La relation est présentée dans le graphe personne–organisation, séparément des faits personnels.",
-      });
-      relations.push({
-        relation_id: `relation-${randomUUID()}`,
-        from_subject_id: resolvedSubjectId,
-        to_subject_id: relatedSubjectId,
-        relation_type: item.candidate.relationType,
-        evidence_ids: [evidenceId],
-      });
-    }
   }
 
   const conflictGroups = new Map<string, DeduplicatedBusinessFact[]>();
@@ -1751,15 +1186,7 @@ function buildDossier(options: {
   if (resolved) {
     for (const item of businessFacts) {
       const claimId = `claim-${randomUUID()}`;
-      const relatedSubjectId = relatedSubjectIdByKey.get(item.candidate.subjectKey);
-      const factSubjectId = relatedSubjectId ?? resolvedSubjectId;
-      const relatedSubject = relatedSubjectByKey.get(item.candidate.subjectKey);
-      const scope = relatedSubjectId === undefined || relatedSubject === undefined
-        ? scopeFor(item.candidate)
-        : {
-            type: item.candidate.scopeType,
-            label: relatedSubject.candidate.displayName,
-          } satisfies DossierScope;
+      const scope = scopeFor(item.candidate);
       const period = deriveFactPeriod(item.candidate);
       const temporalStatus = classifyTemporalStatus({
         candidate: item.candidate,
@@ -1775,14 +1202,14 @@ function buildDossier(options: {
       const indeterminate = reconciliationState === "indetermination";
       const evidenceIds = item.proofs.map((proof) => {
         const evidenceId = `evidence-${randomUUID()}`;
-        const sourceId = ensureSource(factSubjectId, scope, proof);
+        const sourceId = ensureSource(resolvedSubjectId, scope, proof);
         evidence.push({
           evidence_id: evidenceId,
           source_id: sourceId,
           claim_id: claimId,
           excerpt: proof.verifiedExcerpt,
           locator: serializeSourceLocator(proof.locator),
-          entity_id: factSubjectId,
+          entity_id: resolvedSubjectId,
           fact_period: period,
           scope,
           relation: "supports",
@@ -1796,7 +1223,7 @@ function buildDossier(options: {
         : item.candidate.normalizedValue;
       claims.push({
         claim_id: claimId,
-        subject_id: factSubjectId,
+        subject_id: resolvedSubjectId,
         statement: item.proofs[0]?.verifiedExcerpt ?? item.candidate.excerpt,
         predicate: conflictSignature === undefined
           ? `${item.candidate.category}.${item.candidate.predicate}`
@@ -1991,17 +1418,6 @@ function buildDossier(options: {
       "Un fait métier doit être autonome, lié au sujet et contenir sa période, sa valeur et sa portée lorsqu’elles sont requises.",
     );
   }
-  if (
-    resolved &&
-    options.input.hints?.role !== undefined &&
-    !identityDecision.contextSignals.some(({ kind }) => kind === "role")
-  ) {
-    addUnknown(
-      "not_verified",
-      `Rôle fourni : non_confirmed (${options.input.hints.role}).`,
-      "Le rôle reste un indice additif ; aucune preuve attribuable ne l’a corroboré et il n’a pas filtré le socle de recherche.",
-    );
-  }
   const indeterminateMetricCount = [...reconciliationByFact.values()].filter(
     (relationship) => relationship === "indetermination",
   ).length;
@@ -2015,12 +1431,10 @@ function buildDossier(options: {
 
   const completeness = evaluateCompleteness({
     identityResolved: resolved,
-    businessClaims: businessFacts
-      .filter(({ candidate }) => candidate.subjectKey === selected?.candidate.candidateKey)
-      .map(({ candidate, proofs }) => ({
+    businessClaims: businessFacts.map(({ candidate, proofs }) => ({
       category: candidate.category,
       pageUrls: proofs.map(({ finalUrl }) => finalUrl),
-      })),
+    })),
     visibleContradictionCount: contradictions.filter(({ visible }) => visible).length,
     subjectScopeViolationCount: 0,
     criticalUnknownCount: indeterminateMetricCount,
@@ -2064,9 +1478,6 @@ function buildDossier(options: {
     ({ presentation_decision, predicate }) =>
       presentation_decision === "display_fact" && !predicate.startsWith("identity."),
   );
-  const personalVisibleBusinessClaims = visibleBusinessClaims.filter(
-    ({ subject_id }) => subject_id === resolvedSubjectId,
-  );
   const reconciledBusinessClaims = visibleBusinessClaims.filter(
     ({ claim_state, reconciliation_state }) =>
       claim_state !== "contested" && reconciliation_state !== "indetermination",
@@ -2085,20 +1496,14 @@ function buildDossier(options: {
   ];
   const summaryClaims: DossierClaim[] = [];
   const summaryCategories = new Set<string>();
-  for (const claim of personalVisibleBusinessClaims.filter(
-    ({ claim_state, reconciliation_state }) =>
-      claim_state !== "contested" && reconciliation_state !== "indetermination",
-  )) {
+  for (const claim of reconciledBusinessClaims) {
     const category = claim.predicate.split(".", 1)[0] ?? "other";
     if (summaryCategories.has(category)) continue;
     summaryClaims.push(claim);
     summaryCategories.add(category);
     if (summaryClaims.length === 3) break;
   }
-  for (const claim of personalVisibleBusinessClaims.filter(
-    ({ claim_state, reconciliation_state }) =>
-      claim_state !== "contested" && reconciliation_state !== "indetermination",
-  )) {
+  for (const claim of reconciledBusinessClaims) {
     if (summaryClaims.length === 3) break;
     if (!summaryClaims.includes(claim)) summaryClaims.push(claim);
   }
@@ -2114,15 +1519,6 @@ function buildDossier(options: {
   }
 
   const identityReason = identityDecision.rationale;
-  const identityResolutionLevel: ResearchDossier["identity"]["resolution_level"] =
-    identityStatus === "resolved" && selected !== null
-      ? proofVerificationMethod(selected.proof) === "source_content" &&
-          selected.proof.retrievalStatus !== "unavailable"
-        ? "confirmed"
-        : "supported"
-      : candidates.length > 0
-        ? "lead"
-        : null;
   const clarificationFields: ResearchDossier["identity"]["clarification_fields"] =
     identityStatus === "resolved" || identityStatus === "not_found_within_scope"
       ? []
@@ -2133,8 +1529,8 @@ function buildDossier(options: {
     ? searchedCategories.join(", ")
     : "identité et présence publique";
 
-  const dossier: ResearchDossier = {
-    schema_version: "1.1.0",
+  return {
+    schema_version: "1.0.0",
     dossier_id: `dossier-${randomUUID()}`,
     origin: "runtime",
     request: {
@@ -2158,14 +1554,11 @@ function buildDossier(options: {
     },
     identity: {
       status: identityStatus,
-      resolution_level: identityResolutionLevel,
       selected_subject_id: identityStatus === "resolved" ? resolvedSubjectId : null,
       candidates,
       resolution_reason: identityReason,
       clarification_fields: clarificationFields,
     },
-    related_subjects: relatedSubjects,
-    relations,
     sources,
     evidence,
     claims,
@@ -2267,43 +1660,13 @@ function buildDossier(options: {
         ? [`${deduplication.duplicateCount} doublon(s) ont été fusionnés sans augmenter le nombre de faits métier.`]
         : []),
       ...(deduplication.truncatedCount > 0
-        ? [`${deduplication.truncatedCount} fait(s) au-delà de la limite de douze n’ont pas été présentés.`]
+        ? [`${deduplication.truncatedCount} fait(s) au-delà de la limite de six n’ont pas été présentés.`]
         : []),
       ...(contradictions.length > 0
         ? ["Une contradiction reste ouverte : aucune valeur n’est privilégiée."]
         : []),
     ],
   };
-  if (options.diagnostics.factBoundaries !== undefined) {
-    const evidenceById = new Map(dossier.evidence.map((item) => [item.evidence_id, item]));
-    const diagnosticCandidateByClaimId = new Map(
-      [...factRecordByFact].map(([fact, record]) => [record.claimId, fact.candidate] as const),
-    );
-    options.diagnostics.factBoundaries = {
-      ...options.diagnostics.factBoundaries,
-      displayed: dossier.claims.flatMap((claim) => {
-        if (
-          claim.presentation_decision !== "display_fact" ||
-          claim.predicate.startsWith("identity.")
-        ) return [];
-        const firstEvidence = evidenceById.get(claim.evidence_ids[0] ?? "");
-        const source = firstEvidence === undefined
-          ? undefined
-          : dossier.sources.find(({ source_id }) => source_id === firstEvidence.source_id);
-        const category = claim.predicate.split(".", 1)[0];
-        if (!FACT_CATEGORY_LABELS[category as FactCategory]) return [];
-        const providerCandidate = diagnosticCandidateByClaimId.get(claim.claim_id);
-        return [{
-          pass: providerCandidate?.collectionPass ?? "derived",
-          category: category as FactCategory,
-          subjectKey: providerCandidate?.subjectKey ?? claim.subject_id,
-          sourceUrl: source?.canonical_url ?? source?.resolved_url ?? source?.provider_url ?? "",
-          statement: normalizeVisibleText(claim.statement),
-        }];
-      }),
-    };
-  }
-  return dossier;
 }
 
 function finalizeDossierTimings(options: {
@@ -2400,12 +1763,6 @@ function safeLogQueryDiagnostics(options: {
   readonly logger: SafeLogger;
   readonly executionId: string;
   readonly result: ProviderResearchResult;
-  readonly dossier: ResearchDossier;
-  readonly pipelineCounts: NonNullable<PublicReceipt["pipelineCounts"]>;
-  readonly durationMs: number;
-  readonly estimatedCostUsd: number;
-  readonly verificationRejections: readonly DiagnosticVerificationRejection[];
-  readonly factBoundaries: DossierBuildDiagnostics["factBoundaries"];
 }): void {
   if (process.env.RESEARCH_QUERY_DIAGNOSTICS !== "1") return;
   try {
@@ -2418,19 +1775,6 @@ function safeLogQueryDiagnostics(options: {
       inspectionsExecuted: options.result.webSearchInspectionCount,
       actionsTotal: options.result.webSearchActionCount,
       providerCalls: options.result.providerHttpCalls,
-      factsProposed: options.result.document.claims.length,
-      factsDisplayed: options.pipelineCounts.displayedBusinessFacts,
-      organizationFactsDisplayed: options.pipelineCounts.displayedOrganizationalFacts,
-      sources: options.dossier.sources.length,
-      identityStatus: options.dossier.identity.status,
-      identityResolutionLevel: options.dossier.identity.resolution_level ?? null,
-      durationMs: options.durationMs,
-      estimatedCostUsd: options.estimatedCostUsd,
-      attributionRejections: options.pipelineCounts.attributionRejections,
-      qualityRejections: options.pipelineCounts.qualityRejections,
-      providerPasses: options.result.passTrace ?? null,
-      verificationRejections: options.verificationRejections.map(diagnosticVerificationItem),
-      factBoundaries: options.factBoundaries ?? null,
       planDeviation: (options.result.executedQueries ?? []).filter(
         (query) => !(options.result.queryPlan ?? []).includes(query),
       ),
@@ -2512,12 +1856,10 @@ export async function executeResearch(options: {
       Math.round(monotonicNow() - totalStart) - searchingStartMs,
     );
     failedStage = "metadata_extraction";
+    safeLogQueryDiagnostics({ logger: options.logger, executionId, result });
     assertProviderAdmission(result);
     const estimatedCostUsd = requireMeasuredCost(result);
-    result = withPreferredOrganizationHint(
-      withSelectedIdentitySource(result, options.input),
-      options.input,
-    );
+    result = withSelectedIdentitySource(result, options.input);
 
     options.emit({
       state: "source_verifying",
@@ -2530,10 +1872,7 @@ export async function executeResearch(options: {
       0,
       Math.round(verificationStart - totalStart),
     );
-    const providerCandidates = [
-      ...result.document.candidates,
-      ...(result.document.relatedSubjects ?? []),
-    ];
+    const providerCandidates = result.document.candidates;
     const displayNamesByCandidateKey = new Map(
       providerCandidates.map((candidate) => [
         candidate.candidateKey,
@@ -2552,28 +1891,12 @@ export async function executeResearch(options: {
           : undefined,
       ] as const),
     );
-    const [candidateBatch, relatedSubjectBatch, relationBatch, factBatch] = await Promise.all([
+    const [candidateBatch, factBatch] = await Promise.all([
       verifyBatch({
         candidates: result.document.candidates,
         result,
         sourceVerifier: options.sourceVerifier,
         signal: options.signal,
-      }),
-      verifyBatch({
-        candidates: result.document.relatedSubjects ?? [],
-        result,
-        sourceVerifier: options.sourceVerifier,
-        signal: options.signal,
-      }),
-      verifyBatch({
-        candidates: result.document.relations ?? [],
-        result,
-        sourceVerifier: options.sourceVerifier,
-        signal: options.signal,
-        attributedDisplayNames: (relation) => [
-          ...(displayNamesByCandidateKey.get(relation.fromSubjectKey) ?? []),
-          ...(displayNamesByCandidateKey.get(relation.toSubjectKey) ?? []),
-        ],
       }),
       verifyBatch({
         candidates: result.document.claims,
@@ -2587,27 +1910,6 @@ export async function executeResearch(options: {
     const reconstructedIdentityCandidates = await reconstructIdentityFromDocuments({
       documents: candidateBatch.documents,
       alreadyVerified: candidateBatch.verified,
-      sourceVerifier: options.sourceVerifier,
-    });
-    const reconstructedRelations = await reconstructRelationsFromDocuments({
-      documents: (result.document.relations ?? []).flatMap((candidate) =>
-        [...new Map(
-          [
-            ...relationBatch.documents,
-            ...candidateBatch.documents,
-            ...relatedSubjectBatch.documents,
-            ...factBatch.documents,
-          ].map(({ document }) => [
-            `${canonicalIdentitySourceUrl(document.finalUrl) ?? document.finalUrl}|${createHash("sha256").update(document.documentText).digest("hex")}`,
-            document,
-          ] as const),
-        ).values()].map((document) => ({ candidate, document }))
-      ),
-      providerCandidates,
-      requestedPersonName: options.input.name,
-      ...(options.input.hints?.organization === undefined
-        ? {}
-        : { organizationHint: options.input.hints.organization }),
       sourceVerifier: options.sourceVerifier,
     });
     const directlyVerifiedIdentityCandidates = [
@@ -2634,13 +1936,10 @@ export async function executeResearch(options: {
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
     );
-    sourceFetchCount = candidateBatch.sourceFetchCount + relatedSubjectBatch.sourceFetchCount +
-      relationBatch.sourceFetchCount + factBatch.sourceFetchCount;
+    sourceFetchCount = candidateBatch.sourceFetchCount + factBatch.sourceFetchCount;
     excerptVerificationCount =
       candidateBatch.excerptVerificationCount + factBatch.excerptVerificationCount +
-      relatedSubjectBatch.excerptVerificationCount + relationBatch.excerptVerificationCount +
-      reconstructedIdentityCandidates.length + reconstructedRelations.length +
-      sourceFirstFacts.length;
+      reconstructedIdentityCandidates.length + sourceFirstFacts.length;
 
     options.emit({
       state: "building",
@@ -2662,20 +1961,11 @@ export async function executeResearch(options: {
       input: options.input,
       result,
       verifiedIdentityCandidates,
-      verifiedRelatedSubjects: [...relatedSubjectBatch.verified, ...relatedSubjectBatch.grounded],
-      verifiedRelations: [
-        ...reconstructedRelations,
-        ...relationBatch.verified,
-        ...relationBatch.grounded,
-      ],
       verifiedFacts,
       rejectedProofCount:
-        candidateBatch.rejectedCount + relatedSubjectBatch.rejectedCount +
-        relationBatch.rejectedCount + factBatch.rejectedCount -
-        candidateBatch.grounded.length - relatedSubjectBatch.grounded.length -
-        relationBatch.grounded.length - factBatch.grounded.length,
-      retainedGroundedCount: candidateBatch.grounded.length + relatedSubjectBatch.grounded.length +
-        relationBatch.grounded.length + factBatch.grounded.length,
+        candidateBatch.rejectedCount + factBatch.rejectedCount -
+        candidateBatch.grounded.length - factBatch.grounded.length,
+      retainedGroundedCount: candidateBatch.grounded.length + factBatch.grounded.length,
       executionId,
       startedAt,
       completedAt,
@@ -2687,30 +1977,20 @@ export async function executeResearch(options: {
     });
     pipelineCounts = {
       providerIdentityCandidates: result.document.candidates.length,
-      providerRelatedSubjects: result.document.relatedSubjects?.length ?? 0,
-      providerRelations: result.document.relations?.length ?? 0,
       providerFactCandidates: result.document.claims.length,
       retrievedIdentityDocuments: candidateBatch.documents.length,
       retrievedFactDocuments: factBatch.documents.length,
       directIdentityProofs: candidateBatch.verified.length,
-      directRelatedSubjectProofs: relatedSubjectBatch.verified.length,
-      directRelationProofs: relationBatch.verified.length,
       reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
       directFactProofs: factBatch.verified.length,
       sourceFirstFacts: sourceFirstFacts.length + providerSourceTitleFacts.length,
       retainedGroundedIdentityProofs: candidateBatch.grounded.length,
       retainedGroundedFactProofs: factBatch.grounded.length,
       discardedProofs:
-        candidateBatch.rejectedCount + relatedSubjectBatch.rejectedCount +
-        relationBatch.rejectedCount + factBatch.rejectedCount -
-        candidateBatch.grounded.length - relatedSubjectBatch.grounded.length -
-        relationBatch.grounded.length - factBatch.grounded.length,
+        candidateBatch.rejectedCount + factBatch.rejectedCount -
+        candidateBatch.grounded.length - factBatch.grounded.length,
       displayedBusinessFacts: dossier.claims.filter(({ predicate, presentation_decision }) =>
         presentation_decision === "display_fact" && !predicate.startsWith("identity.")
-      ).length,
-      displayedOrganizationalFacts: dossier.claims.filter(({ subject_id, presentation_decision }) =>
-        presentation_decision === "display_fact" &&
-        (dossier.related_subjects ?? []).some((subject) => subject.subject_id === subject_id)
       ).length,
       attributionRejections: dossierDiagnostics.attributionRejections,
       qualityRejections: dossierDiagnostics.qualityRejections,
@@ -2721,25 +2001,6 @@ export async function executeResearch(options: {
       0,
       Math.round(monotonicNow() - totalStart) - buildingStartMs,
     );
-    safeLogQueryDiagnostics({
-      logger: options.logger,
-      executionId,
-      result,
-      dossier,
-      pipelineCounts,
-      durationMs: Math.max(0, Math.round(monotonicNow() - totalStart)),
-      estimatedCostUsd,
-      verificationRejections: [
-        ...candidateBatch.rejections.map((item) => ({ ...item, boundary: "candidate" as const })),
-        ...relatedSubjectBatch.rejections.map((item) => ({
-          ...item,
-          boundary: "related_subject" as const,
-        })),
-        ...relationBatch.rejections.map((item) => ({ ...item, boundary: "relation" as const })),
-        ...factBatch.rejections.map((item) => ({ ...item, boundary: "fact" as const })),
-      ],
-      factBoundaries: dossierDiagnostics.factBoundaries,
-    });
     const beforeValidationMs = Math.max(0, Math.round(monotonicNow() - totalStart));
     validatingStartMs = beforeValidationMs;
     finalizeDossierTimings({
@@ -2766,29 +2027,10 @@ export async function executeResearch(options: {
     failedStage = "truth_validation";
     const contract = (options.validateDossier ?? validateResearchDossier)(dossier);
     if (!contract.ok) {
-      if (process.env.RESEARCH_QUERY_DIAGNOSTICS === "1") {
-        options.logger.info({
-          event: "research_truth_diagnostics",
-          executionId,
-          contractErrors: contract.errors.map(({ instancePath, keyword }) => ({
-            instancePath,
-            keyword,
-          })),
-          invariantErrors: [],
-        });
-      }
       throw new ResearchPipelineError("m2_contract_invalid", "Le résultat ne satisfait pas le contrat structurel.");
     }
     const invariants = validateRuntimeInvariants(dossier);
     if (!invariants.ok) {
-      if (process.env.RESEARCH_QUERY_DIAGNOSTICS === "1") {
-        options.logger.info({
-          event: "research_truth_diagnostics",
-          executionId,
-          contractErrors: [],
-          invariantErrors: invariants.errors,
-        });
-      }
       throw new ResearchPipelineError(
         "runtime_invariants_invalid",
         "Le résultat ne satisfait pas les invariants de vérité.",

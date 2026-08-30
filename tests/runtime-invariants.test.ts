@@ -309,9 +309,9 @@ describe("runtime dossier invariants", () => {
     expectRuntimeError(dossier, "complete_requires_three_business_facts");
   });
 
-  it("rejects complete with more than twelve business facts", () => {
+  it("rejects complete with more than six business facts", () => {
     const dossier = makeValidDossier();
-    for (let index = 3; index < 13; index += 1) {
+    for (let index = 3; index < 7; index += 1) {
       const claimId = `claim-${index}`;
       const evidenceId = `evidence-${index}`;
       dossier.claims.push({
@@ -330,7 +330,7 @@ describe("runtime dossier invariants", () => {
       dossier.presentation.key_fact_claim_ids.push(claimId);
     }
 
-    expectRuntimeError(dossier, "complete_allows_at_most_twelve_business_facts");
+    expectRuntimeError(dossier, "complete_allows_at_most_six_business_facts");
   });
 
   it("rejects complete when source pages share one publisher domain", () => {
