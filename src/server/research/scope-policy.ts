@@ -2,6 +2,10 @@ import {
   containsEntityNameInText,
   normalizeVisibleText,
 } from "./source-content";
+import {
+  companyIdentityLabels,
+  companyNamesCompatible,
+} from "./company-name";
 import type { VerifiedIdentityCandidate } from "./identity-resolution";
 import type {
   EntityScope,
@@ -49,13 +53,23 @@ function scopeCompatible(selected: EntityScope, fact: ProviderFactCandidate): bo
   return fact.scopeType === "company";
 }
 
-function labelsCompatible(selected: string, label: string): boolean {
-  return identityLabels(selected, selected).some((candidateLabel) =>
+function labelsCompatible(
+  selected: string,
+  label: string,
+  entityType: "person" | "company",
+): boolean {
+  if (entityType === "company") return companyNamesCompatible(selected, label);
+  return identityLabels(selected, selected, entityType).some((candidateLabel) =>
     normalized(candidateLabel) === normalized(label),
   );
 }
 
-function identityLabels(displayName: string, requestedName: string): string[] {
+function identityLabels(
+  displayName: string,
+  requestedName: string,
+  entityType: "person" | "company",
+): readonly string[] {
+  if (entityType === "company") return companyIdentityLabels(displayName, requestedName);
   const labels = new Set([displayName, requestedName]);
   if (displayName.split(/\s+/u).length > 1) {
     const withoutLegalSuffix = displayName.replace(
@@ -82,7 +96,11 @@ function pageAnchor(
     factDomain !== null &&
     sameDomain(officialDomain, factDomain)
   ) return "official_domain";
-  const labels = identityLabels(selected.candidate.displayName, requestedName);
+  const labels = identityLabels(
+    selected.candidate.displayName,
+    requestedName,
+    selected.candidate.entityType,
+  );
   const containsSelectedName = (value: string, label: string): boolean =>
     containsEntityNameInText(value, label, selected.candidate.entityType);
   if (labels.some((label) => containsSelectedName(proof.verifiedExcerpt, label))) return "excerpt";
@@ -149,7 +167,11 @@ export function evaluateFactAttribution(options: {
   }
   if (
     candidate.scopeLabel !== null &&
-    !labelsCompatible(options.selected.candidate.displayName, candidate.scopeLabel) &&
+    !labelsCompatible(
+      options.selected.candidate.displayName,
+      candidate.scopeLabel,
+      options.selected.candidate.entityType,
+    ) &&
     !directlyNamesSelectedPerson
   ) {
     return { accepted: false, reasonCode: "scope_label_mismatch" };

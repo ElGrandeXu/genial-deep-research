@@ -6,6 +6,7 @@ import {
   assembleVerifiedIdentityCandidates,
   resolveIdentity,
 } from "../src/server/research/identity-resolution";
+import { evaluateFactAttribution } from "../src/server/research/scope-policy";
 import type {
   ProviderFactCandidate,
   ProviderIdentityCandidate,
@@ -82,6 +83,32 @@ function verified(identity = candidate()) {
   return { candidate: identity, proof: proof(identity) };
 }
 
+function airbusCompany(options: {
+  readonly displayName: string;
+  readonly excerpt?: string;
+  readonly url?: string;
+  readonly officialSite?: string | null;
+}): ProviderIdentityCandidate {
+  const excerpt = options.excerpt ?? `${options.displayName} exerce des activités aéronautiques à Toulouse.`;
+  return candidate({
+    candidateKey: "airbus",
+    displayName: options.displayName,
+    entityScope: "company",
+    discriminators: {
+      city: "Toulouse",
+      country: "France",
+      industry: "aéronautique",
+      employer: null,
+      officialSite: options.officialSite === undefined ? "airbus.com" : options.officialSite,
+      legalIdentifier: null,
+      year: null,
+    },
+    statement: excerpt,
+    structuredUrl: options.url ?? "https://www.airbus.com/en/about-us",
+    excerpt,
+  });
+}
+
 function personCandidate(
   overrides: Partial<ProviderIdentityCandidate> = {},
 ): ProviderIdentityCandidate {
@@ -136,6 +163,137 @@ function personFact(
 }
 
 describe("server identity resolution", () => {
+  it("resolves requested Airbus SE from commercial Airbus with official domain and context", () => {
+    const identity = airbusCompany({ displayName: "Airbus" });
+    const decision = resolveIdentity({
+      input: {
+        name: "Airbus SE",
+        entityType: "company",
+        context: "aéronautique",
+        hints: {
+          city: "Toulouse",
+          industry: "aéronautique",
+          sourceUrl: "https://www.airbus.com",
+        },
+      },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).toBe("resolved");
+    expect(decision.verifiedDiscriminators.officialSite).toBe("airbus.com");
+  });
+
+  it("resolves requested Airbus SE when a commercial candidate proof writes Airbus SE", () => {
+    const identity = airbusCompany({
+      displayName: "Airbus",
+      excerpt: "Airbus SE est une entreprise aéronautique européenne.",
+      officialSite: null,
+      url: "https://registry.example.org/airbus-se",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Airbus SE", entityType: "company" },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).toBe("resolved");
+  });
+
+  it("resolves requested commercial Airbus from proposed Airbus SE", () => {
+    const identity = airbusCompany({ displayName: "Airbus SE" });
+    const decision = resolveIdentity({
+      input: { name: "Airbus", entityType: "company" },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).toBe("resolved");
+  });
+
+  it("keeps Airbus SE distinct from Airbus SAS", () => {
+    const identity = airbusCompany({ displayName: "Airbus SAS" });
+    const decision = resolveIdentity({
+      input: { name: "Airbus SE", entityType: "company" },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).toBe("not_found_within_scope");
+    expect(decision.reasonCodes).toContain("candidate_name_mismatch");
+  });
+
+  it("keeps Airbus SE distinct from Airbus Defence and Space", () => {
+    const identity = airbusCompany({ displayName: "Airbus Defence and Space" });
+    const decision = resolveIdentity({
+      input: { name: "Airbus SE", entityType: "company" },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).toBe("not_found_within_scope");
+    expect(decision.reasonCodes).toContain("candidate_name_mismatch");
+  });
+
+  it("does not resolve a commercial alias without strong proof", () => {
+    const identity = airbusCompany({
+      displayName: "Airbus",
+      officialSite: null,
+      url: "https://press.example.org/airbus",
+    });
+    const decision = resolveIdentity({
+      input: { name: "Airbus SE", entityType: "company" },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+
+    expect(decision.status).not.toBe("resolved");
+    expect(decision.selected).toBeNull();
+  });
+
+  it("keeps commercial-form Airbus facts attributable after resolving Airbus SE", () => {
+    const identity = airbusCompany({ displayName: "Airbus" });
+    const decision = resolveIdentity({
+      input: {
+        name: "Airbus SE",
+        entityType: "company",
+        context: "aéronautique",
+        hints: { city: "Toulouse", industry: "aéronautique", sourceUrl: "https://airbus.com" },
+      },
+      providerStatus: "resolved",
+      candidates: [verified(identity)],
+    });
+    expect(decision.status).toBe("resolved");
+    if (decision.selected === null) throw new Error("Expected resolved Airbus identity");
+    const excerpt = "Airbus conçoit et fabrique des avions commerciaux.";
+    const businessFact: ProviderFactCandidate = {
+      subjectKey: "airbus",
+      entityType: "company",
+      category: "activity",
+      predicate: "aircraft_manufacturing",
+      scopeType: "company",
+      scopeLabel: "Airbus",
+      factPeriodLabel: null,
+      factDate: null,
+      normalizedValue: null,
+      unit: null,
+      currency: null,
+      contradictionKey: null,
+      statement: excerpt,
+      structuredUrl: "https://www.airbus.com/en/products-services/commercial-aircraft",
+      excerpt,
+      prefix: null,
+      suffix: null,
+    };
+
+    expect(evaluateFactAttribution({
+      selected: decision.selected,
+      fact: { candidate: businessFact, proof: proof(businessFact) },
+      requestedName: "Airbus SE",
+      verifiedOfficialSite: decision.verifiedDiscriminators.officialSite,
+    })).toMatchObject({ accepted: true });
+  });
+
   it("keeps a candidate when a corroborating fact identifies the exact subject", () => {
     const identity = personCandidate({
       excerpt: "Profil professionnel public.",

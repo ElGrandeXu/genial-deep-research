@@ -21,6 +21,7 @@ import {
   decideDossierAdmission,
   evaluateCompleteness,
 } from "./completeness";
+import { companyIdentityLabels } from "./company-name";
 import { ResearchPipelineError } from "./errors";
 import {
   assembleVerifiedIdentityCandidates,
@@ -711,6 +712,7 @@ function buildDossier(options: {
     candidates: options.result.document.candidates,
     verifiedCandidates: options.verifiedIdentityCandidates,
     verifiedFacts: options.verifiedFacts,
+    requestedName: options.input.name,
   });
   const identityDecision = resolveIdentity({
     input: options.input,
@@ -1714,15 +1716,9 @@ export async function executeResearch(options: {
         providerCandidates.filter(
           (other) => other.candidateKey === candidate.candidateKey,
         ).length === 1
-          ? [...new Set([
-              candidate.displayName,
-              ...(candidate.entityType === "company"
-                ? [candidate.displayName.replace(
-                    /\s+(?:AG|Corp(?:oration)?|GmbH|Group|Groupe|Inc|LLC|Ltd|PLC|SA|SAS|SASU|SE)\.?$/iu,
-                    "",
-                  ).trim()]
-                : []),
-            ].filter((label) => label.length > 0))]
+          ? candidate.entityType === "company"
+            ? companyIdentityLabels(candidate.displayName, options.input.name)
+            : [candidate.displayName]
           : undefined,
       ] as const),
     );
@@ -1732,6 +1728,8 @@ export async function executeResearch(options: {
         result,
         sourceVerifier: options.sourceVerifier,
         signal: options.signal,
+        attributedDisplayNames: (candidate) =>
+          displayNamesByCandidateKey.get(candidate.candidateKey) ?? [],
       }),
       verifyBatch({
         candidates: result.document.claims,

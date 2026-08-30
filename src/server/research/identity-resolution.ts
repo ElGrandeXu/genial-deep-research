@@ -3,6 +3,12 @@ import {
   normalizeVisibleText,
 } from "./source-content";
 import { publisherDomainForUrl } from "../../domain/publisher-domain";
+import {
+  COMPANY_LEGAL_SUFFIXES,
+  companyIdentityLabels,
+  companyNameHasLegalSuffix,
+  companyNamesCompatible,
+} from "./company-name";
 import { evaluateClaimQuality } from "./claim-quality";
 import { evaluateFactAttribution } from "./scope-policy";
 import { positiveContextText } from "./query-plan";
@@ -17,23 +23,6 @@ import type {
 } from "./types";
 
 const CANDIDATE_KEY = /^[a-z][a-z0-9_-]{0,31}$/u;
-const LEGAL_SUFFIXES = new Set([
-  "ag",
-  "corp",
-  "corporation",
-  "gmbh",
-  "group",
-  "groupe",
-  "inc",
-  "llc",
-  "ltd",
-  "plc",
-  "sa",
-  "sas",
-  "sasu",
-  "se",
-]);
-
 type VerifiedDiscriminators = {
   -readonly [Key in keyof ProviderCandidateDiscriminators]?: string;
 };
@@ -109,9 +98,16 @@ function proofContainsDisplayName(
 function proofIdentifiesCandidate(
   proof: VerifiedSourceProof,
   candidate: ProviderIdentityCandidate,
+  requestedName = candidate.displayName,
 ): boolean {
   const method = proof.verificationMethod ?? "source_content";
-  return method === "source_content" && proofContainsDisplayName(proof, candidate);
+  if (method !== "source_content") return false;
+  if (proofContainsDisplayName(proof, candidate)) return true;
+  return candidate.entityType === "company" &&
+    companyNamesCompatible(candidate.displayName, requestedName) &&
+    companyIdentityLabels(candidate.displayName, requestedName).some((label) =>
+      containsEntityNameInText(proof.verifiedExcerpt, label, "company")
+    );
 }
 
 function proofKey(proof: VerifiedSourceProof): string {
@@ -183,6 +179,7 @@ export function assembleVerifiedIdentityCandidates(options: {
     readonly candidate: ProviderFactCandidate;
     readonly proof: VerifiedSourceProof;
   }[];
+  readonly requestedName?: string;
 }): readonly VerifiedIdentityCandidate[] {
   return options.candidates.flatMap((candidate) => {
     const direct = options.verifiedCandidates.find(
@@ -199,7 +196,7 @@ export function assembleVerifiedIdentityCandidates(options: {
       ] as const),
     ).values()];
     const directNamesCandidate = direct !== undefined &&
-      proofIdentifiesCandidate(direct.proof, candidate);
+      proofIdentifiesCandidate(direct.proof, candidate, options.requestedName);
     const primaryProof = directNamesCandidate
       ? direct.proof
       : factProofs[0] ?? direct?.proof ?? proofs[0];
@@ -341,14 +338,19 @@ function tokens(value: string): string[] {
   return normalizedName(value).split(/[ '-]+/u).filter(Boolean);
 }
 
-function requestedAndCandidateNamesMatch(requested: string, displayName: string): boolean {
+function requestedAndCandidateNamesMatch(
+  requested: string,
+  displayName: string,
+  entityType: "person" | "company",
+): boolean {
   const requestedName = normalizedName(requested);
   const candidateName = normalizedName(displayName);
   if (requestedName === candidateName) return true;
+  if (entityType === "company") return companyNamesCompatible(requested, displayName);
   const requestedTokens = tokens(requestedName);
   const candidateTokens = new Set(tokens(candidateName));
   if (requestedTokens.length === 1) return candidateTokens.has(requestedTokens[0] ?? "");
-  const requestedSuffix = requestedTokens.find((token) => LEGAL_SUFFIXES.has(token));
+  const requestedSuffix = requestedTokens.find((token) => COMPANY_LEGAL_SUFFIXES.has(token));
   if (requestedSuffix !== undefined && !candidateTokens.has(requestedSuffix)) return false;
   return requestedTokens.every((token) => candidateTokens.has(token));
 }
@@ -1516,7 +1518,7 @@ function isDistinctiveWithoutContext(
   if (officialDomain === undefined) return false;
   const domainLabel = officialDomain.split(".")[0] ?? "";
   const significantName = tokens(item.candidate.displayName)
-    .filter((token) => !LEGAL_SUFFIXES.has(token))
+    .filter((token) => !COMPANY_LEGAL_SUFFIXES.has(token))
     .join("");
   return significantName.length >= 3 && domainLabel === significantName;
 }
@@ -1530,11 +1532,11 @@ function candidateIsEligible(
     item.proof,
     ...(item.corroboratingProofs ?? []),
     ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
-  ].some((proof) => proofIdentifiesCandidate(proof, item.candidate));
+  ].some((proof) => proofIdentifiesCandidate(proof, item.candidate, input.name));
   return CANDIDATE_KEY.test(item.candidate.candidateKey) &&
     (requestedType === "auto" || item.candidate.entityType === requestedType) &&
     scopeMatchesType(item.candidate.entityScope, item.candidate.entityType) &&
-    requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) &&
+    requestedAndCandidateNamesMatch(input.name, item.candidate.displayName, item.candidate.entityType) &&
     identityProofAvailable;
 }
 
@@ -1542,9 +1544,12 @@ function preferRequestedNameWhenItIsTheProvenForm(
   input: ResearchInput,
   item: VerifiedIdentityCandidate,
 ): VerifiedIdentityCandidate {
+  const candidateFormIsProven = item.candidate.entityType === "company"
+    ? proofContainsDisplayName(item.proof, item.candidate)
+    : containsContext(item.proof.verifiedExcerpt, item.candidate.displayName);
   if (
-    containsContext(item.proof.verifiedExcerpt, item.candidate.displayName) ||
-    !requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) ||
+    candidateFormIsProven ||
+    !requestedAndCandidateNamesMatch(input.name, item.candidate.displayName, item.candidate.entityType) ||
     !containsEntityNameInText(
       item.proof.verifiedExcerpt,
       input.name,
@@ -1565,6 +1570,18 @@ function preferRequestedNameWhenItIsTheProvenForm(
       suffix: item.proof.locator.suffix,
     },
   };
+}
+
+function requestedLegalCompanyFormIsDirectlyProven(
+  input: ResearchInput,
+  item: VerifiedIdentityCandidate,
+): boolean {
+  return item.candidate.entityType === "company" &&
+    companyNameHasLegalSuffix(input.name) &&
+    !companyNameHasLegalSuffix(item.candidate.displayName) &&
+    companyNamesCompatible(input.name, item.candidate.displayName) &&
+    (item.proof.verificationMethod ?? "source_content") === "source_content" &&
+    containsEntityNameInText(item.proof.verifiedExcerpt, input.name, "company");
 }
 
 function preferProofThatIdentifiesCandidate(
@@ -1791,14 +1808,18 @@ export function resolveIdentity(options: {
       if (!scopeMatchesType(item.candidate.entityScope, item.candidate.entityType)) {
         eligibilityReasons.add("candidate_scope_mismatch");
       }
-      if (!requestedAndCandidateNamesMatch(options.input.name, item.candidate.displayName)) {
+      if (!requestedAndCandidateNamesMatch(
+        options.input.name,
+        item.candidate.displayName,
+        item.candidate.entityType,
+      )) {
         eligibilityReasons.add("candidate_name_mismatch");
       }
       if (![
         item.proof,
         ...(item.corroboratingProofs ?? []),
         ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
-      ].some((proof) => proofIdentifiesCandidate(proof, item.candidate))) {
+      ].some((proof) => proofIdentifiesCandidate(proof, item.candidate, options.input.name))) {
         eligibilityReasons.add("candidate_proof_name_missing");
       }
     }
@@ -1851,7 +1872,7 @@ export function resolveIdentity(options: {
           options.input,
           dedicatedItem,
           dedicatedEvaluation.verifiedDiscriminators,
-        )
+        ) || requestedLegalCompanyFormIsDirectlyProven(options.input, dedicatedItem)
       : dedicatedEvaluation.strong || dedicatedEvaluation.mediumKindCount >= 1;
     if (dedicatedMatched) {
       return {
@@ -1969,7 +1990,11 @@ export function resolveIdentity(options: {
     positiveContextText(options.input) === undefined &&
     uniqueVerifiedCandidate.item.proofBasis === "dedicated" &&
     normalizedName(options.input.name) ===
-      normalizedName(uniqueVerifiedCandidate.item.candidate.displayName)
+      normalizedName(uniqueVerifiedCandidate.item.candidate.displayName) &&
+    proofContainsDisplayName(
+      uniqueVerifiedCandidate.item.proof,
+      uniqueVerifiedCandidate.item.candidate,
+    )
   ) {
     return {
       status: "resolved",

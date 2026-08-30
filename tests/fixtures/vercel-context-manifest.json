@@ -2,8 +2,8 @@
   "framework": {
     "slug": "nextjs"
   },
-  "fileCount": 41,
-  "totalSize": 806253,
+  "fileCount": 42,
+  "totalSize": 810365,
   "files": [
     {
       "path": "docs/contracts/research-dossier.schema.json",
@@ -121,6 +121,11 @@
       "mode": 33188
     },
     {
+      "path": "src/server/research/company-name.ts",
+      "size": 2123,
+      "mode": 33188
+    },
+    {
       "path": "src/server/research/completeness.ts",
       "size": 5464,
       "mode": 33188
@@ -137,7 +142,7 @@
     },
     {
       "path": "src/server/research/identity-resolution.ts",
-      "size": 61715,
+      "size": 63250,
       "mode": 33188
     },
     {
@@ -167,12 +172,12 @@
     },
     {
       "path": "src/server/research/scope-policy.ts",
-      "size": 5924,
+      "size": 6398,
       "mode": 33188
     },
     {
       "path": "src/server/research/service.ts",
-      "size": 75806,
+      "size": 75786,
       "mode": 33188
     },
     {

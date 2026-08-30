@@ -527,6 +527,63 @@ describe("research request", () => {
 });
 
 describe("verified dossier service", () => {
+  it("builds a sourced Airbus SE dossier from a strongly proven Airbus commercial alias", async () => {
+    const officialUrl = "https://www.airbus.com/en/about-us";
+    const commercialIdentity: ProviderIdentityCandidate = {
+      candidateKey: "airbus",
+      displayName: "Airbus",
+      entityType: "company",
+      entityScope: "company",
+      discriminators: {
+        city: "Toulouse",
+        country: "France",
+        industry: "aéronautique",
+        employer: null,
+        officialSite: "airbus.com",
+        legalIdentifier: null,
+        year: null,
+      },
+      statement: "Airbus exerce des activités aéronautiques à Toulouse.",
+      structuredUrl: officialUrl,
+      excerpt: "Airbus exerce des activités aéronautiques à Toulouse.",
+      prefix: null,
+      suffix: null,
+    };
+    const businessFact = fact(
+      "Airbus conçoit et fabrique des avions commerciaux.",
+      officialUrl,
+      {
+        subjectKey: "airbus",
+        scopeLabel: "Airbus",
+        predicate: "aircraft_manufacturing",
+      },
+    );
+    const document = resolvedDocument({
+      candidates: [commercialIdentity],
+      claims: [businessFact],
+      missingCategories: [],
+    });
+    const terminal = completed(await executeWith({
+      result: providerResult(document),
+      input: {
+        name: "Airbus SE",
+        entityType: "company",
+        context: "aéronautique",
+        hints: { city: "Toulouse", industry: "aéronautique", sourceUrl: "https://airbus.com" },
+      },
+    }));
+
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "activity.aircraft_manufacturing",
+        presentation_decision: "display_fact",
+      }),
+    ]));
+    expect(terminal.dossier.sources).toHaveLength(1);
+    expect(terminal.dossier.global_status).toBe("partial");
+  });
+
   it.each([
     ["GENIAL", "https://www.genial.fr/equipe/erwan-simon"],
     ["CibleR", "https://www.cibler.fr/equipe/erwan-simon"],
