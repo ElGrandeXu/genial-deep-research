@@ -1014,19 +1014,15 @@ describe("M5-R2B provider metadata boundary", () => {
     ).toMatchObject({ status: "unknown", citations: [] });
   });
 
-  it("[9] explicitly rejects a missing citation title required by M2", () => {
+  it("[9] retains a valid citation when only its display title is missing", () => {
     const text = providerText();
     const metadata = normalizedMetadata({ text });
     const citation = metadata.citations[0];
     if (citation === undefined) throw new Error("synthetic citation missing");
-    expectPipelineCode(
-      () =>
-        bindProviderSource(
-          { text, citations: [{ ...citation, title: null }], sources: metadata.sources, providerMetadataStatus: "supported" },
-          parseProviderCandidate(text),
-        ),
-      "source_metadata_missing",
-    );
+    expect(bindProviderSource(
+      { text, citations: [{ ...citation, title: null }], sources: metadata.sources, providerMetadataStatus: "supported" },
+      parseProviderCandidate(text),
+    )).toMatchObject({ url: citation.url, title: null });
   });
 
   it("[10] marks provider fixtures as synthetic and non-real", () => {
@@ -1541,7 +1537,7 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "partial",
+        global_status: "insufficient_evidence",
         claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
@@ -1607,8 +1603,8 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "partial",
-        result_mode: "standard",
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
         claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
       receipt: {
@@ -1927,8 +1923,8 @@ describe("M5-R3 verified document title binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "partial",
-        result_mode: "standard",
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
         claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
       },
     });
@@ -4130,8 +4126,8 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       expect(terminal).toMatchObject({
         state: "completed",
         dossier: {
-          global_status: "partial",
-          result_mode: "standard",
+          global_status: "insufficient_evidence",
+          result_mode: "silence",
           claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
           unknowns: expect.arrayContaining([
             expect.objectContaining({ category: "not_verified" }),

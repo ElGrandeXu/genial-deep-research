@@ -1965,43 +1965,24 @@ export function resolveIdentity(options: {
     };
   }
 
-  const uniqueContextualCandidate = matched.length === 0 && evaluated.length === 1
+  const uniqueVerifiedCandidate = matched.length === 0 && evaluated.length === 1
     ? evaluated[0]
     : undefined;
   if (
-    uniqueContextualCandidate !== undefined &&
-    (
-      (
-        (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
-          "source_content" &&
-        uniqueContextualCandidate.item.proof.retrievalStatus === "retrieved"
-      ) ||
-      ["provider_annotation", "search_snippet"].includes(
-        uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content",
-      )
-    ) &&
+    uniqueVerifiedCandidate !== undefined &&
     eligible.length === 1 &&
-    (
-      positiveContextText(options.input) !== undefined ||
-      (() => {
-        try {
-          const host = new URL(uniqueContextualCandidate.item.proof.finalUrl).hostname
-            .toLocaleLowerCase("en-US");
-          return host === "linkedin.com" || host.endsWith(".linkedin.com");
-        } catch {
-          return false;
-        }
-      })()
-    )
+    uniqueVerifiedCandidate.item.proofBasis === "dedicated" &&
+    normalizedName(options.input.name) ===
+      normalizedName(uniqueVerifiedCandidate.item.candidate.displayName)
   ) {
     return {
       status: "resolved",
-      selected: uniqueContextualCandidate.item,
-      candidates: [uniqueContextualCandidate.item],
-      verifiedDiscriminators: uniqueContextualCandidate.verifiedDiscriminators,
-      contextSignals: uniqueContextualCandidate.contextSignals,
-      reasonCodes: ["unique_contextual_source_candidate"],
-      rationale: "Un seul candidat au nom exact est retrouvé dans une source publique attribuable, sans concurrent signalé par la recherche ciblée ; cette attribution reste graduée par la qualité de la source.",
+      selected: uniqueVerifiedCandidate.item,
+      candidates: [uniqueVerifiedCandidate.item],
+      verifiedDiscriminators: uniqueVerifiedCandidate.verifiedDiscriminators,
+      contextSignals: uniqueVerifiedCandidate.contextSignals,
+      reasonCodes: ["unique_verified_source_candidate"],
+      rationale: "Un seul candidat au nom exact est retrouvé dans une source publique attribuable ; les indices de contexte complètent l’identité sans devenir obligatoires.",
     };
   }
 

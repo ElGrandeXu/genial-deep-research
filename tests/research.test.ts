@@ -108,6 +108,54 @@ function resolvedDocument(
   };
 }
 
+function erwanCandidate(options: {
+  readonly organization: string;
+  readonly url: string;
+  readonly excerpt?: string;
+  readonly candidateKey?: string;
+}): ProviderIdentityCandidate {
+  const excerpt = options.excerpt ??
+    `Erwan Simon travaille chez ${options.organization} à Bordeaux.`;
+  return {
+    candidateKey: options.candidateKey ?? "erwan-simon",
+    displayName: "Erwan Simon",
+    entityType: "person",
+    entityScope: "person",
+    discriminators: {
+      city: "Bordeaux",
+      country: "France",
+      industry: null,
+      employer: options.organization,
+      officialSite: null,
+      legalIdentifier: null,
+      year: null,
+    },
+    statement: excerpt,
+    structuredUrl: options.url,
+    excerpt,
+    prefix: null,
+    suffix: null,
+  };
+}
+
+function erwanFact(options: {
+  readonly organization: string;
+  readonly url: string;
+  readonly excerpt?: string;
+  readonly subjectKey?: string;
+}): ProviderFactCandidate {
+  const excerpt = options.excerpt ??
+    `Erwan Simon travaille chez ${options.organization} à Bordeaux.`;
+  return fact(excerpt, options.url, {
+    subjectKey: options.subjectKey ?? "erwan-simon",
+    entityType: "person",
+    category: "role",
+    predicate: "professional_role",
+    scopeType: "person",
+    scopeLabel: "Erwan Simon",
+  });
+}
+
 function providerResult(
   document: ProviderResearchDocument = resolvedDocument(),
   overrides: Partial<ProviderResearchResult> = {},
@@ -190,6 +238,7 @@ function twoCallOrchestration(
 function exactSourceVerifier(options: {
   readonly rejectExcerpt?: string;
   readonly documentText?: string;
+  readonly title?: string;
 } = {}): SourceVerifier {
   return {
     async verify(request) {
@@ -206,7 +255,7 @@ function exactSourceVerifier(options: {
         citation: request.citation,
         citationUrl: url,
         finalUrl: url,
-        title: `Verified title — ${new URL(url).hostname}`,
+        title: options.title ?? `Verified title — ${new URL(url).hostname}`,
         verifiedExcerpt: request.candidate.excerpt,
         documentText,
         locator: {
@@ -478,6 +527,224 @@ describe("research request", () => {
 });
 
 describe("verified dossier service", () => {
+  it.each([
+    ["GENIAL", "https://www.genial.fr/equipe/erwan-simon"],
+    ["CibleR", "https://www.cibler.fr/equipe/erwan-simon"],
+  ])("keeps one sourced Erwan Simon fact linked to %s", async (organization, url) => {
+    const candidate = erwanCandidate({ organization, url });
+    const businessFact = erwanFact({ organization, url });
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [candidate],
+        claims: [businessFact],
+        missingCategories: [],
+      }),
+      input: {
+        name: "Erwan Simon",
+        entityType: "person",
+        context: `${organization}, Bordeaux`,
+        hints: { organization, city: "Bordeaux" },
+      },
+    }));
+
+    expect(terminal.dossier.identity.status).toBe("resolved");
+    expect(terminal.dossier.claims).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        predicate: "role.professional_role",
+        statement: expect.stringContaining(organization),
+        presentation_decision: "display_fact",
+      }),
+    ]));
+    expect(terminal.dossier.global_status).not.toBe("technical_failure");
+  });
+
+  it("treats an absent context hint as neutral for one verified candidate", async () => {
+    const url = "https://profiles.public.org/erwan-simon";
+    const excerpt = "Erwan Simon accompagne des équipes commerciales en France.";
+    const candidate = erwanCandidate({ organization: "GENIAL", url, excerpt });
+    const businessFact = fact(excerpt, url, {
+      subjectKey: "erwan-simon",
+      entityType: "person",
+      category: "activity",
+      predicate: "commercial_support",
+      scopeType: "person",
+      scopeLabel: "Erwan Simon",
+    });
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [candidate],
+        claims: [businessFact],
+        missingCategories: [],
+      }),
+      input: {
+        name: "Erwan Simon",
+        entityType: "person",
+        context: "GENIAL, Bordeaux",
+        hints: { organization: "GENIAL", city: "Bordeaux" },
+      },
+    }));
+
+    expect(terminal.dossier.identity).toMatchObject({ status: "resolved" });
+    expect(terminal.dossier.claims.some(({ statement }) => statement === excerpt)).toBe(true);
+  });
+
+  it("keeps explicit Erwan Simon homonyms unresolved without discarding the whole execution", async () => {
+    const first = erwanCandidate({
+      organization: "GENIAL",
+      url: "https://www.genial.fr/equipe/erwan-simon",
+      candidateKey: "erwan-genial",
+    });
+    const second = erwanCandidate({
+      organization: "Autre société",
+      url: "https://directory.public.org/autre/erwan-simon",
+      candidateKey: "erwan-autre",
+    });
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "ambiguous",
+        entityType: "person",
+        candidates: [first, second],
+        claims: [],
+        missingCategories: [],
+      }),
+      input: { name: "Erwan Simon", entityType: "person" },
+    }));
+
+    expect(terminal.dossier).toMatchObject({
+      global_status: "needs_clarification",
+      identity: { status: "ambiguous" },
+    });
+    expect(terminal.dossier.claims.filter(({ predicate }) =>
+      !predicate.startsWith("identity.")
+    )).toEqual([]);
+  });
+
+  it("retains valid facts when another fact depends on an invalid source", async () => {
+    const identityUrl = "https://www.genial.fr/equipe/erwan-simon";
+    const validFact = erwanFact({ organization: "GENIAL", url: identityUrl });
+    const invalidFact = erwanFact({
+      organization: "GENIAL",
+      url: "http://127.0.0.1/private",
+      excerpt: "Erwan Simon travaille chez GENIAL depuis une source privée.",
+    });
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [erwanCandidate({ organization: "GENIAL", url: identityUrl })],
+        claims: [validFact, invalidFact],
+        missingCategories: [],
+      }),
+      input: { name: "Erwan Simon", entityType: "person" },
+    }));
+
+    expect(terminal.dossier.claims.some(({ statement }) => statement === validFact.excerpt)).toBe(true);
+    expect(terminal.dossier.claims.some(({ statement }) => statement === invalidFact.excerpt)).toBe(false);
+    expect(JSON.stringify(terminal.dossier.sources)).not.toContain("127.0.0.1");
+  });
+
+  it("falls back to the source domain when a valid proof has no display title", async () => {
+    const url = "https://www.genial.fr/equipe/erwan-simon";
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [erwanCandidate({
+          organization: "GENIAL",
+          url,
+          excerpt: "Erwan Simon",
+        })],
+        claims: [erwanFact({ organization: "GENIAL", url })],
+        missingCategories: [],
+      }),
+      input: { name: "Erwan Simon", entityType: "person" },
+      sourceVerifier: exactSourceVerifier({ title: "" }),
+    }));
+
+    expect(terminal.dossier.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: "www.genial.fr" }),
+    ]));
+  });
+
+  it("returns public-data silence after a successful search with no admissible fact", async () => {
+    const url = "https://www.genial.fr/equipe/erwan-simon";
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [erwanCandidate({
+          organization: "GENIAL",
+          url,
+          excerpt: "Erwan Simon",
+        })],
+        claims: [],
+        missingCategories: ["activity"],
+      }),
+      input: { name: "Erwan Simon", entityType: "person" },
+    }));
+
+    expect(terminal.dossier).toMatchObject({
+      result_mode: "silence",
+      global_status: "insufficient_evidence",
+      error: null,
+      identity: { status: "resolved" },
+    });
+    expect(terminal.dossier.claims.filter(({ predicate }) =>
+      !predicate.startsWith("identity.")
+    )).toEqual([]);
+    expect(terminal.dossier.sources).toHaveLength(1);
+    expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
+  });
+
+  it("rejects a private fact URL without turning the successful search into a technical error", async () => {
+    const identityUrl = "https://www.genial.fr/equipe/erwan-simon";
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [erwanCandidate({
+          organization: "GENIAL",
+          url: identityUrl,
+          excerpt: "Erwan Simon",
+        })],
+        claims: [erwanFact({
+          organization: "GENIAL",
+          url: "http://127.0.0.1/private",
+        })],
+        missingCategories: [],
+      }),
+      input: { name: "Erwan Simon", entityType: "person" },
+    }));
+
+    expect(terminal.dossier.global_status).toBe("insufficient_evidence");
+    expect(terminal.dossier.error).toBeNull();
+    expect(JSON.stringify(terminal.dossier)).not.toContain("127.0.0.1");
+  });
+
+  it("does not substitute a person when an organization name was requested", async () => {
+    const url = "https://www.genial.fr/equipe/erwan-simon";
+    const terminal = completed(await executeWith({
+      result: providerResult({
+        identityStatus: "resolved",
+        entityType: "person",
+        candidates: [erwanCandidate({ organization: "GENIAL", url })],
+        claims: [erwanFact({ organization: "GENIAL", url })],
+        missingCategories: [],
+      }),
+      input: { name: "GENIAL", entityType: "person" },
+    }));
+
+    expect(terminal.dossier).toMatchObject({
+      global_status: "insufficient_evidence",
+      identity: { status: "not_found_within_scope" },
+    });
+    expect(terminal.dossier.claims).toEqual([]);
+  });
+
   it("fetches a selected identity source and derives its adjacent atomic role", async () => {
     const selectedUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
     const searchUrl = "https://directory.public.net/camille-durand";
@@ -965,14 +1232,14 @@ describe("verified dossier service", () => {
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
-  it("keeps identity proof outside the three-business-fact completeness count", async () => {
+  it("keeps identity proof outside the business-fact admission count", async () => {
     const document = resolvedDocument({ claims: resolvedDocument().claims.slice(0, 2) });
     const terminal = completed(await executeWith({ result: providerResult(document) }));
     const businessClaims = terminal.dossier.claims.filter(
       ({ predicate }) => !predicate.startsWith("identity."),
     );
     expect(businessClaims).toHaveLength(2);
-    expect(terminal.dossier.global_status).toBe("partial");
+    expect(terminal.dossier.global_status).toBe("complete_within_scope");
   });
 
   it("merges one exact fact from two pages into one claim with two proofs", async () => {
@@ -1028,17 +1295,14 @@ describe("verified dossier service", () => {
 
     expect(businessClaims).toHaveLength(1);
     expect(businessClaims[0]?.evidence_ids).toHaveLength(3);
-    expect(terminal.dossier.global_status).toBe("partial");
+    expect(terminal.dossier.global_status).toBe("complete_within_scope");
     expect(terminal.dossier.receipt.search_scope.stop_reason).toContain(
-      "faits uniques: 1/3 minimum",
-    );
-    expect(terminal.dossier.receipt.search_scope.stop_reason).toContain(
-      "catégories: 1/2 minimum",
+      "faits admissibles: 1",
     );
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
-  it("keeps three facts from subdomains of one publisher partial", async () => {
+  it("does not impose a publisher-domain minimum", async () => {
     const urls = [
       "https://www.publisher.org/activity",
       "https://press.publisher.org/location",
@@ -1062,8 +1326,8 @@ describe("verified dossier service", () => {
       ],
     });
     const terminal = completed(await executeWith({ result: providerResult(document) }));
-    expect(terminal.dossier.global_status).toBe("partial");
-    expect(terminal.dossier.receipt.search_scope.stop_reason).toContain("éditeurs: 1/2 minimum");
+    expect(terminal.dossier.global_status).toBe("complete_within_scope");
+    expect(terminal.dossier.receipt.search_scope.stop_reason).toContain("domaines éditeurs: 1");
   });
 
   it("never presents more than six unique business facts", async () => {
@@ -1292,18 +1556,14 @@ describe("verified dossier service", () => {
     }));
     expect(terminal.dossier.contradictions).toEqual([]);
     expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-      ]));
+      .toHaveLength(2);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce")
+      .every(({ presentation_decision }) => presentation_decision === "reject")).toBe(true);
+    expect(terminal.dossier).toMatchObject({
+      global_status: "insufficient_evidence",
+      result_mode: "silence",
+      error: null,
+    });
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
@@ -1334,26 +1594,15 @@ describe("verified dossier service", () => {
     expect(terminal.dossier.contradictions).toEqual([]);
     expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
       .toHaveLength(2);
-    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-      ]));
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce")
+      .every(({ presentation_decision }) => presentation_decision === "reject")).toBe(true);
     expect(terminal.dossier.presentation.summary_items).toEqual([]);
     expect(terminal.dossier.presentation.key_fact_claim_ids.map((claimId) =>
       terminal.dossier.claims.find(({ claim_id }) => claim_id === claimId)?.predicate,
     )).toEqual(["identity.proof"]);
     expect(terminal.dossier.unknowns.some(({ description }) =>
       description.includes("restent non comparables"))).toBe(true);
-    expect(terminal.dossier.global_status).toBe("partial");
+    expect(terminal.dossier.global_status).toBe("insufficient_evidence");
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
@@ -1385,19 +1634,10 @@ describe("verified dossier service", () => {
     const terminal = completed(await executeWith({ result: providerResult(document) }));
     expect(terminal.dossier.contradictions).toEqual([]);
     expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce"))
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-        expect.objectContaining({
-          claim_state: "rejected",
-          reconciliation_state: "indetermination",
-          presentation_decision: "reject",
-        }),
-      ]));
-    expect(terminal.dossier.global_status).toBe("partial");
+      .toHaveLength(2);
+    expect(terminal.dossier.claims.filter(({ predicate }) => predicate === "metric.workforce")
+      .every(({ presentation_decision }) => presentation_decision === "reject")).toBe(true);
+    expect(terminal.dossier.global_status).toBe("insufficient_evidence");
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
@@ -1494,7 +1734,7 @@ describe("verified dossier service", () => {
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });
 
-  it("keeps attributable Web Search result titles as bounded weak leads", async () => {
+  it("does not manufacture business facts from Web Search display titles", async () => {
     const identityUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
     const profileUrl = "https://directory.public.net/camille-durand-design";
     const interviewUrl = "https://media.public.com/camille-durand-rennes";
@@ -1548,16 +1788,12 @@ describe("verified dossier service", () => {
     const titleClaims = terminal.dossier.claims.filter(
       ({ predicate }) => predicate === "other.provider_source_title",
     );
-    expect(titleClaims.map(({ statement }) => statement)).toEqual([
-      "Camille Durand — profil Atelier Nordique",
-      "Entretien Atelier Nordique avec Camille Durand",
-    ]);
-    expect(titleClaims).toHaveLength(2);
-    expect(terminal.dossier.evidence.filter(({ claim_id }) =>
-      titleClaims.some(({ claim_id: candidateId }) => candidateId === claim_id)
-    ).every(({ verification_method }) => verification_method === "provider_annotation")).toBe(true);
-    expect(terminal.dossier.sources.map(({ provider_url }) => provider_url)).toEqual(
-      expect.arrayContaining([profileUrl, interviewUrl]),
+    expect(titleClaims).toEqual([]);
+    expect(terminal.dossier.sources.map(({ provider_url }) => provider_url)).not.toContain(
+      profileUrl,
+    );
+    expect(terminal.dossier.sources.map(({ provider_url }) => provider_url)).not.toContain(
+      interviewUrl,
     );
     expect(validateRuntimeInvariants(terminal.dossier)).toEqual({ ok: true });
   });

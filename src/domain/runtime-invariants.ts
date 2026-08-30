@@ -13,7 +13,6 @@ import {
   conflictValueKey,
   conflictVersionUnitMatchesExcerpt,
 } from "./conflict-comparison";
-import { publisherDomainForUrl } from "./publisher-domain";
 import type { ResearchDossier } from "./research-dossier";
 
 type Claim = ResearchDossier["claims"][number];
@@ -72,10 +71,6 @@ function isBusinessClaim(claim: Claim): boolean {
 
 function sourcePage(source: Source): string {
   return source.canonical_url ?? source.resolved_url ?? source.provider_url;
-}
-
-function sourceDomain(source: Source): string | null {
-  return publisherDomainForUrl(sourcePage(source));
 }
 
 export function validateRuntimeDossier(
@@ -221,10 +216,7 @@ export function validateRuntimeDossier(
       .map((item) => item.ref_id),
   ]);
   const presentedSourceIds = new Set(value.presentation.source_ids);
-  const visibleProofSources = new Set<string>();
-  const visibleFactualClaims: Claim[] = [];
   const visibleBusinessClaims: Claim[] = [];
-  const businessProofSources = new Set<string>();
 
   for (const claim of value.claims) {
     requireUniqueReferences(`claim.${claim.claim_id}.evidence_ids`, claim.evidence_ids);
@@ -253,7 +245,6 @@ export function validateRuntimeDossier(
       continue;
     }
 
-    visibleFactualClaims.push(claim);
     const businessClaim = isBusinessClaim(claim);
     if (businessClaim) visibleBusinessClaims.push(claim);
     if (!businessClaim && !claim.predicate.startsWith("identity.")) {
@@ -298,18 +289,6 @@ export function validateRuntimeDossier(
       ) {
         qualifyingSources.push(source);
       }
-      if (
-        businessClaim &&
-        source !== undefined &&
-        item.relation === "supports" &&
-        item.entity_id === claim.subject_id &&
-        source.assumed_entity_id === claim.subject_id &&
-        ["source_content", "provider_annotation", "search_snippet"].includes(
-          item.verification_method,
-        )
-      ) {
-        businessProofSources.add(source.source_id);
-      }
     }
 
     if (qualifyingSources.length === 0) {
@@ -322,9 +301,6 @@ export function validateRuntimeDossier(
     );
     if (visibleSources.length === 0) {
       errors.push(`displayed_claim_source_not_presented:${claim.claim_id}`);
-    }
-    for (const source of visibleSources) {
-      visibleProofSources.add(source.source_id);
     }
   }
 
@@ -715,37 +691,13 @@ export function validateRuntimeDossier(
   }
 
   const supportedFacts = value.claims.filter(isFactualClaim);
+  const supportedBusinessFacts = supportedFacts.filter(isBusinessClaim);
   if (value.global_status === "complete_within_scope") {
     if (value.identity.status !== "resolved") {
       errors.push("complete_requires_resolved_identity");
     }
-    if (visibleFactualClaims.length < 3) {
-      errors.push("complete_requires_three_visible_facts");
-    }
-    if (visibleBusinessClaims.length < 3) {
-      errors.push("complete_requires_three_business_facts");
-    }
     if (visibleBusinessClaims.length > 6) {
       errors.push("complete_allows_at_most_six_business_facts");
-    }
-    if (new Set(visibleBusinessClaims.map(claimCategory)).size < 2) {
-      errors.push("complete_requires_two_business_categories");
-    }
-    if (visibleProofSources.size < 2) {
-      errors.push("complete_requires_two_visible_sources");
-    }
-    const businessSources = [...businessProofSources].flatMap((sourceId) => {
-      const source = sources.get(sourceId);
-      return source === undefined ? [] : [source];
-    });
-    if (new Set(businessSources.map(sourcePage)).size < 2) {
-      errors.push("complete_requires_two_business_source_pages");
-    }
-    if (new Set(businessSources.flatMap((source) => {
-      const domain = sourceDomain(source);
-      return domain === null ? [] : [domain];
-    })).size < 2) {
-      errors.push("complete_requires_two_publisher_domains");
     }
     if (value.contradictions.some((item) => item.visible)) {
       errors.push("complete_forbids_visible_contradiction");
@@ -764,11 +716,11 @@ export function validateRuntimeDossier(
   }
   if (
     value.global_status === "insufficient_evidence" &&
-    supportedFacts.length > 0
+    supportedBusinessFacts.length > 0
   ) {
     errors.push("insufficient_evidence_forbids_supported_facts");
   }
-  if (value.result_mode === "silence" && supportedFacts.length > 0) {
+  if (value.result_mode === "silence" && supportedBusinessFacts.length > 0) {
     errors.push("silence_forbids_supported_facts");
   }
 

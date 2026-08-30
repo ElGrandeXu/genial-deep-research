@@ -1,6 +1,6 @@
 # État du sauvetage
 
-- Mission courante : R4 — orchestration fournisseur nettoyée.
+- Mission courante : R5 — admission, identité et sources nettoyées.
 - Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
 - Branche : `rescue/minimal-recall`.
@@ -20,11 +20,11 @@
 - Production : gelée jusqu'à validation explicite d'une Preview.
 - Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
 - Déploiement : non effectué.
-- Vérifications R4 : 732 tests, lint, typecheck et build réussis.
+- Vérifications R5 : 739 tests, lint, typecheck et build réussis.
 - Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
 - Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
 - Mesure : 26 356 ms ; 2 appels fournisseur ; 4 actions Web Search (2 recherches, 2 inspections).
 - Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
 - Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
-- Correction R4 : second appel exclusif et diagnostiqué, complément non fatal, plafond de 4 actions.
+- Corrections : R4 borne l’orchestration ; R5 admet un fait sourcé et transforme zéro fait en insuffisance métier.
 - Prochaine action autorisée : attendre une nouvelle mission explicite.

@@ -49,9 +49,9 @@ Simplifier en place le moteur existant en retirant uniquement les blocages prouv
 
 Centraliser la comptabilité du provider : un appel principal, au plus un second appel exclusif de réparation ou de complément, et quatre actions Web Search maximum. Un complément échoué ou rejeté conserve désormais le dossier principal valide ; 732 tests, lint, typecheck et build passent sans appel réel.
 
-## R5 — Preview
+## R5 — Admission, identité et sources
 
-Déployer et valider une candidate en Preview uniquement ; Production reste intouchable.
+Centraliser l’admission autour des faits métier réellement affichables : un fait sourcé suffit, zéro fait devient une insuffisance publique, et les rejets d’identité ou de source restent locaux. Les minima historiques et les faits fabriqués depuis les titres sont supprimés ; 739 tests, lint, typecheck et build passent sans Web réel.
 
 ## R6 — Ménage
 

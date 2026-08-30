@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateCompleteness } from "../src/server/research/completeness";
+import {
+  decideDossierAdmission,
+  evaluateCompleteness,
+} from "../src/server/research/completeness";
 
 function claims(domains = ["official.example", "press.example"]) {
   return [
@@ -28,17 +31,17 @@ describe("server completeness decision", () => {
     });
   });
 
-  it("CP-01 keeps a dossier partial when all pages belong to one publisher", () => {
+  it("admits one sourced business fact without publisher or category minima", () => {
     const result = evaluateCompleteness({
       identityResolved: true,
-      businessClaims: claims(["official.example", "official.example"]),
+      businessClaims: claims(["official.example", "official.example"]).slice(0, 1),
       visibleContradictionCount: 0,
       subjectScopeViolationCount: 0,
       criticalUnknownCount: 0,
     });
-    expect(result.status).toBe("partial");
-    expect(result.reasonCodes).toContain("publisher_domain_diversity_missing");
-    expect(result.stopReason).toContain("éditeurs: 1/2 minimum");
+    expect(result.status).toBe("complete_within_scope");
+    expect(result.reasonCodes).toEqual([]);
+    expect(result.stopReason).toContain("faits admissibles: 1");
   });
 
   it("treats subdomains of one registrable family as one publisher", () => {
@@ -49,7 +52,7 @@ describe("server completeness decision", () => {
       subjectScopeViolationCount: 0,
       criticalUnknownCount: 0,
     });
-    expect(result.status).toBe("partial");
+    expect(result.status).toBe("complete_within_scope");
     expect(result.criteria.publisherDomains).toBe(1);
   });
 
@@ -65,7 +68,27 @@ describe("server completeness decision", () => {
       criticalUnknownCount: 0,
     });
     expect(result.criteria.uniqueBusinessClaims).toBe(2);
-    expect(result.status).toBe("partial");
+    expect(result.status).toBe("complete_within_scope");
+  });
+
+  it("turns a successful search without an admissible fact into business silence", () => {
+    const completeness = evaluateCompleteness({
+      identityResolved: true,
+      businessClaims: [],
+      visibleContradictionCount: 0,
+      subjectScopeViolationCount: 0,
+      criticalUnknownCount: 0,
+    });
+    expect(completeness.reasonCodes).toContain("no_admissible_business_fact");
+    expect(decideDossierAdmission({
+      identityStatus: "resolved",
+      admissibleBusinessFactCount: 0,
+      completenessStatus: completeness.status,
+      forcePartial: false,
+    })).toEqual({
+      globalStatus: "insufficient_evidence",
+      resultMode: "silence",
+    });
   });
 
   it.each([

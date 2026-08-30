@@ -228,7 +228,7 @@ describe("server identity resolution", () => {
     expect(decision.selected?.corroboratingFacts).toHaveLength(1);
   });
 
-  it("rejects a lone role mention when the page title and URL do not ground its organization", () => {
+  it("does not require the publisher title or URL to repeat a sourced role organization", () => {
     const excerpt = "Camille Durand\nDirectrice de l’Atelier Nordique";
     const sourceUrl = "https://chronique.example/article";
     const identity = personCandidate({
@@ -266,11 +266,11 @@ describe("server identity resolution", () => {
       candidates: assembled,
     });
 
-    expect(decision.status).toBe("insufficient_context");
-    expect(decision.selected).toBeNull();
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.displayName).toBe("Camille Durand");
   });
 
-  it("rejects a role naming an organization different from the publishing organization", () => {
+  it("does not treat an organization different from the publisher as a contradiction", () => {
     const excerpt = "Camille Durand\nDirectrice de Rival Systems";
     const sourceUrl = "https://atelier-nordique.public.org/equipe/camille-durand";
     const identity = personCandidate({ statement: excerpt, structuredUrl: sourceUrl, excerpt });
@@ -288,8 +288,8 @@ describe("server identity resolution", () => {
       candidates: assembled,
     });
 
-    expect(decision.status).toBe("insufficient_context");
-    expect(decision.selected).toBeNull();
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.displayName).toBe("Camille Durand");
   });
 
   it("resolves an exact-name person from independent facts and two supported context signals", () => {
@@ -1966,7 +1966,7 @@ describe("server identity resolution", () => {
     });
 
     expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("unique_contextual_source_candidate");
+    expect(decision.reasonCodes).toContain("unique_verified_source_candidate");
   });
 
   it("keeps one attributable provider-grounded identity with degraded confidence", () => {
@@ -1985,7 +1985,7 @@ describe("server identity resolution", () => {
     });
 
     expect(decision.status).toBe("resolved");
-    expect(decision.reasonCodes).toContain("unique_contextual_source_candidate");
+    expect(decision.reasonCodes).toContain("unique_verified_source_candidate");
   });
 
   it("keeps corroborated fact-backed exact-name homonyms ambiguous", () => {
@@ -2099,7 +2099,7 @@ describe("server identity resolution", () => {
     expect(decision.selected).toBeNull();
   });
 
-  it("ID-02 does not resolve when supplied context is absent from verified evidence", () => {
+  it("ID-02 treats supplied context absent from verified evidence as neutral", () => {
     const decision = resolveIdentity({
       input: {
         name: "Airbus SAS",
@@ -2110,8 +2110,8 @@ describe("server identity resolution", () => {
       candidates: [verified()],
     });
 
-    expect(decision.status).toBe("insufficient_context");
-    expect(decision.selected).toBeNull();
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.candidateKey).toBe("airbus-sas");
     expect(decision.contextSignals).toEqual([]);
   });
 
@@ -2172,7 +2172,7 @@ describe("server identity resolution", () => {
       candidates: [verified(unproved)],
     });
 
-    expect(decision.status).toBe("insufficient_context");
+    expect(decision.status).toBe("resolved");
     expect(decision.verifiedDiscriminators).toEqual({ officialSite: "airbus.com" });
   });
 
@@ -2199,8 +2199,8 @@ describe("server identity resolution", () => {
       candidates: [verified()],
     });
 
-    expect(decision.status).toBe("insufficient_context");
-    expect(decision.selected).toBeNull();
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.candidateKey).toBe("airbus-sas");
   });
 
   it("keeps Thomas Martin candidates separate without context", () => {
@@ -2491,7 +2491,7 @@ describe("server identity resolution", () => {
     expect(assembled[0]?.proofBasis).toBe("verified_facts");
   });
 
-  it("requires context before resolving a common-word brand", () => {
+  it("resolves one exact-name common-word brand without making context mandatory", () => {
     const orange = candidate({
       candidateKey: "orange-brand",
       displayName: "Orange",
@@ -2515,8 +2515,8 @@ describe("server identity resolution", () => {
       candidates: [{ candidate: orange, proof: proof(orange) }],
     });
 
-    expect(decision.status).toBe("insufficient_context");
-    expect(decision.selected).toBeNull();
+    expect(decision.status).toBe("resolved");
+    expect(decision.selected?.candidate.candidateKey).toBe("orange-brand");
   });
 
   it("does not promote a discriminator mentioned elsewhere on a multi-entity page", () => {
@@ -2543,7 +2543,7 @@ describe("server identity resolution", () => {
       }],
     });
 
-    expect(decision.status).toBe("insufficient_context");
+    expect(decision.status).toBe("resolved");
     expect(decision.contextSignals).toEqual([]);
   });
 });

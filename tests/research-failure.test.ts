@@ -327,8 +327,8 @@ describe("safe failure classification with installed AI SDK errors", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "partial",
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
         claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
         unknowns: expect.arrayContaining([
           expect.objectContaining({ category: "not_verified" }),
@@ -637,9 +637,9 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "needs_clarification",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.candidate" })]),
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
         evidence: expect.arrayContaining([expect.objectContaining({ verification_method: "provider_annotation" })]),
         sources: expect.arrayContaining([expect.objectContaining({ collection_method: "provider_search" })]),
         unknowns: expect.arrayContaining([expect.objectContaining({ category: "not_verified" })]),
@@ -723,8 +723,8 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "partial",
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
         claims: [{ statement: claim, claim_state: "supported" }],
         evidence: [{ excerpt: claim, verification_method: "source_content" }],
         sources: [{ provider_url: sourceUrl, accessibility_status: "accessible" }],

@@ -17,7 +17,10 @@ import {
   evaluateClaimQuality,
   type DeduplicatedBusinessFact,
 } from "./claim-quality";
-import { evaluateCompleteness } from "./completeness";
+import {
+  decideDossierAdmission,
+  evaluateCompleteness,
+} from "./completeness";
 import { ResearchPipelineError } from "./errors";
 import {
   assembleVerifiedIdentityCandidates,
@@ -707,78 +710,6 @@ function deriveSourceFirstRoleFacts(
   });
 }
 
-function deriveProviderSourceTitleFacts(options: {
-  readonly result: ProviderResearchResult;
-  readonly identityCandidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
-  readonly existingFacts: readonly VerifiedCandidate<ProviderFactCandidate>[];
-}): readonly VerifiedCandidate<ProviderFactCandidate>[] {
-  const existingUrls = new Set([
-    ...options.identityCandidates.map(({ proof }) => proof.finalUrl),
-    ...options.existingFacts.map(({ proof }) => proof.finalUrl),
-  ]);
-  const existingSourceCount = new Set(existingUrls).size;
-  const missingFactCount = Math.max(0, 3 - options.existingFacts.length);
-  const missingSourceCount = Math.max(0, 2 - existingSourceCount);
-  const limit = Math.min(2, Math.max(missingFactCount, missingSourceCount));
-  if (limit === 0) return [];
-
-  const derived: VerifiedCandidate<ProviderFactCandidate>[] = [];
-  for (const item of options.identityCandidates) {
-    const displayName = normalizeVisibleText(item.candidate.displayName).toLocaleLowerCase("fr");
-    const employer = normalizeVisibleText(item.candidate.discriminators.employer ?? "")
-      .toLocaleLowerCase("fr");
-    const identityDomain = publisherDomainForUrl(item.proof.finalUrl);
-    for (const source of options.result.sources) {
-      if (derived.length >= limit || existingUrls.has(source.url)) continue;
-      const title = normalizeVisibleText(source.title ?? "");
-      if (title.length < 8) continue;
-      const normalizedTitle = title.toLocaleLowerCase("fr");
-      const sourceDomain = publisherDomainForUrl(source.url);
-      const attributable = normalizedTitle.includes(displayName) ||
-        (employer.length >= 3 && (
-          normalizedTitle.includes(employer) || sourceDomain?.includes(employer) === true
-        )) ||
-        (identityDomain !== null && sourceDomain === identityDomain);
-      if (!attributable) continue;
-
-      const candidate: ProviderFactCandidate = {
-        subjectKey: item.candidate.candidateKey,
-        entityType: item.candidate.entityType,
-        category: "other",
-        predicate: "provider_source_title",
-        scopeType: item.candidate.entityScope,
-        scopeLabel: item.candidate.displayName,
-        factPeriodLabel: null,
-        factDate: null,
-        normalizedValue: null,
-        unit: null,
-        currency: null,
-        contradictionKey: null,
-        statement: title,
-        structuredUrl: source.url,
-        excerpt: title,
-        prefix: null,
-        suffix: null,
-      };
-      const proof = providerGroundedProof({
-        result: options.result,
-        candidate,
-        citation: {
-          provider: "openai",
-          bindingType: "provider_source",
-          url: source.url,
-          sourceId: source.sourceId,
-        },
-      });
-      if (proof === null) continue;
-      derived.push({ candidate, proof });
-      existingUrls.add(source.url);
-    }
-    if (derived.length >= limit) break;
-  }
-  return derived;
-}
-
 async function reconstructIdentityFromDocuments(options: {
   readonly documents: readonly {
     readonly candidate: ProviderIdentityCandidate;
@@ -985,14 +916,16 @@ function buildDossier(options: {
     const verificationMethod = proofVerificationMethod(proof);
     const directlyRetrieved = proof.retrievalStatus !== "unavailable";
     const publisherDomain = publisherDomainForUrl(proof.finalUrl);
+    const sourceHost = new URL(proof.finalUrl).hostname;
+    const displayTitle = normalizeVisibleText(proof.title) || sourceHost;
     const sameAsIdentityPublisher = publisherDomain !== null && identityPublisherDomains.has(publisherDomain);
     sources.push({
       source_id: sourceId,
       provider_url: proof.citationUrl,
       resolved_url: directlyRetrieved ? proof.finalUrl : null,
       canonical_url: null,
-      title: proof.title,
-      publisher: new URL(proof.finalUrl).hostname,
+      title: displayTitle,
+      publisher: sourceHost,
       source_type: verificationMethod === "source_content" && sameAsIdentityPublisher
         ? "official_publication"
         : "search_result",
@@ -1453,9 +1386,20 @@ function buildDossier(options: {
     );
   }
 
+  const visibleBusinessClaims = claims.filter(
+    ({ presentation_decision, predicate }) =>
+      presentation_decision === "display_fact" && !predicate.startsWith("identity."),
+  );
+  const visibleBusinessClaimIds = new Set(
+    visibleBusinessClaims.map(({ claim_id }) => claim_id),
+  );
+  const admissibleBusinessFacts = businessFacts.filter((fact) => {
+    const record = factRecordByFact.get(fact);
+    return record !== undefined && visibleBusinessClaimIds.has(record.claimId);
+  });
   const completeness = evaluateCompleteness({
     identityResolved: resolved,
-    businessClaims: businessFacts.map(({ candidate, proofs }) => ({
+    businessClaims: admissibleBusinessFacts.map(({ candidate, proofs }) => ({
       category: candidate.category,
       pageUrls: proofs.map(({ finalUrl }) => finalUrl),
     })),
@@ -1464,44 +1408,35 @@ function buildDossier(options: {
     criticalUnknownCount: indeterminateMetricCount,
   });
 
-  let identityStatus: ResearchDossier["identity"]["status"];
-  let globalStatus: ResearchDossier["global_status"];
-  let resultMode: ResearchDossier["result_mode"];
-  if (resolved) {
-    identityStatus = "resolved";
-    globalStatus = options.retainedGroundedCount > 0 ? "partial" : completeness.status;
-    resultMode = "standard";
-  } else if (
-    identityDecision.status === "ambiguous" ||
-    identityDecision.status === "insufficient_context"
-  ) {
-    identityStatus = identityDecision.status;
-    globalStatus = "needs_clarification";
-    resultMode = "standard";
+  const identityStatus: ResearchDossier["identity"]["status"] = identityDecision.status;
+  const admission = decideDossierAdmission({
+    identityStatus,
+    admissibleBusinessFactCount: visibleBusinessClaims.length,
+    completenessStatus: completeness.status,
+    forcePartial: options.retainedGroundedCount > 0,
+  });
+  const globalStatus: ResearchDossier["global_status"] = admission.globalStatus;
+  const resultMode: ResearchDossier["result_mode"] = admission.resultMode;
+  if (globalStatus === "needs_clarification") {
     addUnknown(
       "identity_ambiguity",
       "Le nom, le type et les indices démontrés ne permettent pas de sélectionner une identité unique.",
       "La recherche s’arrête avant tout dossier factuel afin de ne pas fusionner des entités.",
       ["Ajouter une ville, un secteur, un employeur ou un site officiel"],
     );
-  } else {
-    identityStatus = "not_found_within_scope";
-    globalStatus = "insufficient_evidence";
-    resultMode = "silence";
+  } else if (globalStatus === "insufficient_evidence") {
     if (unknowns.length === 0) {
       addUnknown(
         "no_reliable_source",
-        "Aucune information publique directement vérifiable n’a été trouvée dans le périmètre.",
-        "Le produit refuse de transformer l’absence de preuve en dossier confiant.",
+        identityStatus === "resolved"
+          ? "L’identité est retrouvée, mais aucune donnée publique factuelle admissible n’est disponible."
+          : "Aucune information publique directement vérifiable n’a été trouvée dans le périmètre.",
+        "Le produit présente des données publiques insuffisantes au lieu de transformer l’absence de fait en erreur technique.",
         ["Ajouter un indice discriminant ou réessayer plus tard"],
       );
     }
   }
 
-  const visibleBusinessClaims = claims.filter(
-    ({ presentation_decision, predicate }) =>
-      presentation_decision === "display_fact" && !predicate.startsWith("identity."),
-  );
   const reconciledBusinessClaims = visibleBusinessClaims.filter(
     ({ claim_state, reconciliation_state }) =>
       claim_state !== "contested" && reconciliation_state !== "indetermination",
@@ -1957,12 +1892,7 @@ export async function executeResearch(options: {
       ),
     ];
     const preFallbackFacts = [...factBatch.verified, ...sourceFirstFacts, ...factBatch.grounded];
-    const providerSourceTitleFacts = deriveProviderSourceTitleFacts({
-      result,
-      identityCandidates: verifiedIdentityCandidates,
-      existingFacts: preFallbackFacts,
-    });
-    const verifiedFacts = [...preFallbackFacts, ...providerSourceTitleFacts];
+    const verifiedFacts = preFallbackFacts;
     sourceVerifyingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
@@ -2014,7 +1944,7 @@ export async function executeResearch(options: {
       directIdentityProofs: candidateBatch.verified.length,
       reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
       directFactProofs: factBatch.verified.length,
-      sourceFirstFacts: sourceFirstFacts.length + providerSourceTitleFacts.length,
+      sourceFirstFacts: sourceFirstFacts.length,
       retainedGroundedIdentityProofs: candidateBatch.grounded.length,
       retainedGroundedFactProofs: factBatch.grounded.length,
       discardedProofs:
