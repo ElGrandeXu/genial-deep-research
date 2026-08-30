@@ -111,51 +111,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function researchHttpErrorMessage(options: {
-  readonly status: number;
-  readonly retryAfter: string | null;
-  readonly applicationMessage?: string;
-  readonly now?: number;
-}): string {
-  if (options.status === 429) {
-    const rawRetryAfter = options.retryAfter?.trim() ?? "";
-    const deltaSeconds = /^\d+$/u.test(rawRetryAfter)
-      ? Number(rawRetryAfter)
-      : rawRetryAfter.length > 0
-        ? Math.max(0, Math.ceil((Date.parse(rawRetryAfter) - (options.now ?? Date.now())) / 1_000))
-        : Number.NaN;
-    if (Number.isFinite(deltaSeconds) && deltaSeconds > 0) {
-      return `Limite temporaire atteinte. Réessayez dans ${deltaSeconds} seconde${deltaSeconds === 1 ? "" : "s"}.`;
-    }
-    return "Limite temporaire atteinte. Réessayez dans environ 10 minutes.";
-  }
-  if (options.status === 403) {
-    return "La requête a été bloquée par la protection de sécurité.";
-  }
-  if (
-    options.applicationMessage !== undefined &&
-    !/forbidden/iu.test(options.applicationMessage)
-  ) return options.applicationMessage;
-  return "La demande a été refusée.";
-}
-
-export async function researchHttpErrorMessageForResponse(response: Response): Promise<string> {
-  let applicationMessage: string | undefined;
-  try {
-    const payload = (await response.json()) as unknown;
-    if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string") {
-      applicationMessage = payload.error.message;
-    }
-  } catch {
-    // Le message public générique reste préférable à une réponse serveur brute.
-  }
-  return researchHttpErrorMessage({
-    status: response.status,
-    retryAfter: response.headers.get("retry-after"),
-    ...(applicationMessage === undefined ? {} : { applicationMessage }),
-  });
-}
-
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
@@ -658,16 +613,11 @@ export function confidenceForClaim(
       explanation: "Extrait retrouvé dans une page directement consultée et source forte.",
     };
   }
-  if (
-    direct.length > 0 ||
-    records.some(({ evidence }) => evidence.verification_method === "provider_annotation")
-  ) {
+  if (direct.length > 0) {
     return {
       level: "supported",
       label: "Étayé",
-      explanation: direct.length > 0
-        ? "Extrait retrouvé dans une page consultée, avec corroboration limitée."
-        : "Citation Web Search attribuable ; vérification directe incomplète.",
+      explanation: "Extrait retrouvé dans une page consultée, avec corroboration limitée.",
     };
   }
   const selectedName = dossier.identity.candidates.find(
@@ -710,6 +660,13 @@ export function confidenceForClaim(
     label: "Piste à vérifier",
     explanation: "Résultat Web Search attribuable, à confirmer avant utilisation comme fait établi.",
   };
+}
+
+function identityConfidenceLabel(dossier: ResearchDossier, claim: DossierClaim): string {
+  const level = confidenceForClaim(dossier, claim).level;
+  if (level === "confirmed") return "confirmée";
+  if (level === "supported") return "étayée";
+  return "fragile";
 }
 
 function evidenceVerificationLabel(
@@ -774,9 +731,9 @@ export function dossierDisplayIssue(dossier: ResearchDossier): string | undefine
   }
   if (
     dossier.global_status === "complete_within_scope" &&
-    (businessFacts.length < 3 || businessFacts.length > 12)
+    (businessFacts.length < 3 || businessFacts.length > 6)
   ) {
-    return "Le dossier complet ne contient pas entre trois et douze faits métier.";
+    return "Le dossier complet ne contient pas entre trois et six faits métier.";
   }
   if (
     dossier.global_status === "complete_within_scope" &&
@@ -1229,11 +1186,6 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       <p className="identity-copy">
         {dossier.identity.resolution_reason}
       </p>
-      {dossier.identity.resolution_level === undefined ? null : (
-        <p className="identity-copy">
-          Niveau de résolution : {dossier.identity.resolution_level ?? "aucune identité"}.
-        </p>
-      )}
       {contextAssessments.length === 0 ? null : (
         <div className="context-assessment" aria-label="Évaluation des indices fournis">
           <strong>Indices fournis</strong>
@@ -1249,7 +1201,7 @@ function IdentityPanel({ dossier }: Readonly<{ dossier: ResearchDossier }>) {
       )}
       {identityProof === undefined ? null : (
         <div className="identity-proof">
-          <strong>Identité {confidenceForClaim(dossier, identityProof).label.toLocaleLowerCase("fr")}</strong>
+          <strong>Identité {identityConfidenceLabel(dossier, identityProof)}</strong>
           <p>{identityProof.statement}</p>
           <EvidenceList
             dossier={dossier}
@@ -1644,19 +1596,10 @@ function DossierResult({
     return rank[confidenceForClaim(dossier, left).level] -
       rank[confidenceForClaim(dossier, right).level];
   });
-  const relatedSubjectIds = new Set(
-    (dossier.related_subjects ?? []).map(({ subject_id }) => subject_id),
-  );
-  const personalDisplayFacts = displayFacts.filter(
-    ({ subject_id }) => !relatedSubjectIds.has(subject_id),
-  );
-  const organizationDisplayFacts = displayFacts.filter(
-    ({ subject_id }) => relatedSubjectIds.has(subject_id),
-  );
   const visibleConflictCount = dossier.contradictions.filter(({ visible }) => visible).length;
   const groupedFacts = new Map<string, DossierClaim[]>();
   for (const category of CATEGORY_ORDER) groupedFacts.set(category, []);
-  for (const claim of personalDisplayFacts) groupedFacts.get(categoryForClaim(claim))?.push(claim);
+  for (const claim of displayFacts) groupedFacts.get(categoryForClaim(claim))?.push(claim);
 
   const isAmbiguous =
     dossier.global_status === "needs_clarification" ||
@@ -1773,12 +1716,12 @@ function DossierResult({
 
           {!isAmbiguous && !isTechnical ? <QuickRead dossier={dossier} /> : null}
 
-          {!isAmbiguous && !isTechnical && personalDisplayFacts.length > 0 ? (
+          {!isAmbiguous && !isTechnical && displayFacts.length > 0 ? (
             <section className="facts-section" aria-labelledby="facts-title">
               <div className="section-intro facts-intro">
                 <p className="section-kicker">Dossier factuel</p>
                 <h3 id="facts-title">
-                  {personalDisplayFacts.length} {personalDisplayFacts.length > 1 ? "faits métier étayés" : "fait métier étayé"}
+                  {displayFacts.length} {displayFacts.length > 1 ? "faits métier étayés" : "fait métier étayé"}
                 </h3>
               </div>
               {[...groupedFacts.entries()].map(([category, claims], categoryIndex) =>
@@ -1793,31 +1736,6 @@ function DossierResult({
                   </section>
                 ) : null,
               )}
-            </section>
-          ) : null}
-
-          {!isAmbiguous && !isTechnical && organizationDisplayFacts.length > 0 ? (
-            <section className="facts-section" aria-labelledby="organization-context-title">
-              <div className="section-intro facts-intro">
-                <p className="section-kicker">Graphe relationnel</p>
-                <h3 id="organization-context-title">Contexte de l’organisation</h3>
-              </div>
-              {(dossier.related_subjects ?? []).map((subject) => {
-                const subjectFacts = organizationDisplayFacts.filter(
-                  ({ subject_id }) => subject_id === subject.subject_id,
-                );
-                if (subjectFacts.length === 0) return null;
-                return (
-                  <section className="fact-group" key={subject.subject_id}>
-                    <h4>{subject.display_name}</h4>
-                    <div className="claims-list">
-                      {subjectFacts.map((claim) => (
-                        <ClaimCard key={claim.claim_id} dossier={dossier} claim={claim} />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
             </section>
           ) : null}
 
@@ -1880,7 +1798,7 @@ export function ResearchForm() {
       ? "Recherche annulée"
       : status === "failed"
         ? requestError !== undefined
-          ? "Flux de recherche interrompu"
+          ? "Recherche impossible"
           : failure?.receipt.category === "timeout"
           ? "Délai de recherche dépassé"
           : failure?.receipt.category === "source_metadata_missing"
@@ -1954,7 +1872,16 @@ export function ResearchForm() {
       });
 
       if (!response.ok) {
-        throw new Error(await researchHttpErrorMessageForResponse(response));
+        let message = "La demande a été refusée.";
+        try {
+          const payload = (await response.json()) as unknown;
+          if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string") {
+            message = payload.error.message;
+          }
+        } catch {
+          // Le message public générique reste préférable à une réponse serveur brute.
+        }
+        throw new Error(message);
       }
 
       const contentType = response.headers.get("content-type")?.toLocaleLowerCase("en-US");
@@ -2154,7 +2081,7 @@ export function ResearchForm() {
             aria-describedby="context-help privacy-note"
             disabled={status === "running"}
           />
-          <p id="context-help" className="field-help">Chaque indice améliore la recherche sans devenir une obligation de correspondance.</p>
+          <p id="context-help" className="field-help">Les indices fournis doivent pouvoir être corroborés par les sources pour résoudre l’identité.</p>
           <p id="privacy-note" className="privacy-note">
             Utilisez seulement des informations publiques. N’ajoutez aucune donnée privée ou sensible.
           </p>

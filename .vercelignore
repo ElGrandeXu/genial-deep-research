@@ -35,6 +35,9 @@ eslint.config.mjs
 
 # Documents internes, y compris s'ils réapparaissent localement
 AGENTS.md
+PROJECT.md
+PLAN.md
+STATE.md
 MISSION.md
 INPUTS.md
 ACCEPTANCE.md

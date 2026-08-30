@@ -13,7 +13,6 @@ import {
   conflictValueKey,
   conflictVersionUnitMatchesExcerpt,
 } from "./conflict-comparison";
-import { publisherDomainForUrl } from "./publisher-domain";
 import type { ResearchDossier } from "./research-dossier";
 
 type Claim = ResearchDossier["claims"][number];
@@ -74,10 +73,6 @@ function sourcePage(source: Source): string {
   return source.canonical_url ?? source.resolved_url ?? source.provider_url;
 }
 
-function sourceDomain(source: Source): string | null {
-  return publisherDomainForUrl(sourcePage(source));
-}
-
 export function validateRuntimeDossier(
   dossier: unknown,
 ): RuntimeDossierValidationResult {
@@ -94,12 +89,8 @@ export function validateRuntimeDossier(
 
   const value: ResearchDossier = structural.value;
   const errors: string[] = [];
-  const relatedSubjects = value.related_subjects ?? [];
-  const dossierRelations = value.relations ?? [];
   const candidates = new Map(
-    [...value.identity.candidates, ...relatedSubjects].map(
-      (candidate) => [candidate.subject_id, candidate],
-    ),
+    value.identity.candidates.map((candidate) => [candidate.subject_id, candidate]),
   );
   const sources = new Map(value.sources.map((source) => [source.source_id, source]));
   const evidence = new Map(
@@ -123,12 +114,6 @@ export function validateRuntimeDossier(
     ["run", value.receipt.run_id],
     ...value.identity.candidates.map(
       (candidate) => ["subject", candidate.subject_id] as const,
-    ),
-    ...relatedSubjects.map(
-      (candidate) => ["subject", candidate.subject_id] as const,
-    ),
-    ...dossierRelations.map(
-      (relation) => ["relation", relation.relation_id] as const,
     ),
     ...value.sources.map((source) => ["source", source.source_id] as const),
     ...value.evidence.map((item) => ["evidence", item.evidence_id] as const),
@@ -202,56 +187,6 @@ export function validateRuntimeDossier(
     errors.push("unresolved_identity_has_selected_candidate");
   }
 
-  const relationTargets = new Set<string>();
-  for (const relation of dossierRelations) {
-    requireUniqueReferences(`relation.${relation.relation_id}.evidence_ids`, relation.evidence_ids);
-    if (!candidates.has(relation.from_subject_id)) {
-      errors.push(`relation_missing_from_subject:${relation.relation_id}`);
-    }
-    if (!candidates.has(relation.to_subject_id)) {
-      errors.push(`relation_missing_to_subject:${relation.relation_id}`);
-    }
-    if (
-      value.identity.selected_subject_id !== null &&
-      relation.from_subject_id !== value.identity.selected_subject_id
-    ) {
-      errors.push(`relation_from_subject_not_selected_identity:${relation.relation_id}`);
-    }
-    if (!relatedSubjects.some(({ subject_id }) => subject_id === relation.to_subject_id)) {
-      errors.push(`relation_target_not_related_subject:${relation.relation_id}`);
-    }
-    relationTargets.add(relation.to_subject_id);
-    const from = candidates.get(relation.from_subject_id);
-    const to = candidates.get(relation.to_subject_id);
-    for (const evidenceId of relation.evidence_ids) {
-      const item = evidence.get(evidenceId);
-      if (item === undefined) {
-        errors.push(`relation_missing_evidence:${relation.relation_id}:${evidenceId}`);
-        continue;
-      }
-      const excerpt = normalizeText(item.excerpt).toLocaleLowerCase("fr");
-      const normalizedName = (name: string) => normalizeText(name)
-        .toLocaleLowerCase("fr")
-        .normalize("NFD")
-        .replace(/\p{M}+/gu, "")
-        .replace(/[^\p{L}\p{N}]+/gu, " ")
-        .trim();
-      const normalizedExcerpt = normalizedName(excerpt);
-      if (
-        from === undefined || to === undefined ||
-        !normalizedExcerpt.includes(normalizedName(from.display_name)) ||
-        !normalizedExcerpt.includes(normalizedName(to.display_name))
-      ) {
-        errors.push(`relation_evidence_missing_explicit_parties:${relation.relation_id}:${evidenceId}`);
-      }
-    }
-  }
-  for (const relatedSubject of relatedSubjects) {
-    if (!relationTargets.has(relatedSubject.subject_id)) {
-      errors.push(`unlinked_related_subject:${relatedSubject.subject_id}`);
-    }
-  }
-
   for (const source of value.sources) {
     if (!candidates.has(source.assumed_entity_id)) {
       errors.push(`source_missing_entity:${source.source_id}`);
@@ -281,10 +216,7 @@ export function validateRuntimeDossier(
       .map((item) => item.ref_id),
   ]);
   const presentedSourceIds = new Set(value.presentation.source_ids);
-  const visibleProofSources = new Set<string>();
-  const visibleFactualClaims: Claim[] = [];
   const visibleBusinessClaims: Claim[] = [];
-  const businessProofSources = new Set<string>();
 
   for (const claim of value.claims) {
     requireUniqueReferences(`claim.${claim.claim_id}.evidence_ids`, claim.evidence_ids);
@@ -313,20 +245,8 @@ export function validateRuntimeDossier(
       continue;
     }
 
-    visibleFactualClaims.push(claim);
     const businessClaim = isBusinessClaim(claim);
     if (businessClaim) visibleBusinessClaims.push(claim);
-    if (businessClaim && relatedSubjects.some(({ subject_id }) => subject_id === claim.subject_id)) {
-      const relatedSubject = candidates.get(claim.subject_id);
-      if (
-        !relationTargets.has(claim.subject_id) ||
-        claim.scope.type === "person" ||
-        claim.scope.type === "undetermined" ||
-        claim.scope.label !== relatedSubject?.display_name
-      ) {
-        errors.push(`organization_claim_scope_invalid:${claim.claim_id}`);
-      }
-    }
     if (!businessClaim && !claim.predicate.startsWith("identity.")) {
       errors.push(`displayed_claim_unknown_category:${claim.claim_id}`);
     }
@@ -369,18 +289,6 @@ export function validateRuntimeDossier(
       ) {
         qualifyingSources.push(source);
       }
-      if (
-        businessClaim &&
-        source !== undefined &&
-        item.relation === "supports" &&
-        item.entity_id === claim.subject_id &&
-        source.assumed_entity_id === claim.subject_id &&
-        ["source_content", "provider_annotation", "search_snippet"].includes(
-          item.verification_method,
-        )
-      ) {
-        businessProofSources.add(source.source_id);
-      }
     }
 
     if (qualifyingSources.length === 0) {
@@ -393,9 +301,6 @@ export function validateRuntimeDossier(
     );
     if (visibleSources.length === 0) {
       errors.push(`displayed_claim_source_not_presented:${claim.claim_id}`);
-    }
-    for (const source of visibleSources) {
-      visibleProofSources.add(source.source_id);
     }
   }
 
@@ -786,37 +691,13 @@ export function validateRuntimeDossier(
   }
 
   const supportedFacts = value.claims.filter(isFactualClaim);
+  const supportedBusinessFacts = supportedFacts.filter(isBusinessClaim);
   if (value.global_status === "complete_within_scope") {
     if (value.identity.status !== "resolved") {
       errors.push("complete_requires_resolved_identity");
     }
-    if (visibleFactualClaims.length < 3) {
-      errors.push("complete_requires_three_visible_facts");
-    }
-    if (visibleBusinessClaims.length < 3) {
-      errors.push("complete_requires_three_business_facts");
-    }
-    if (visibleBusinessClaims.length > 12) {
-      errors.push("complete_allows_at_most_twelve_business_facts");
-    }
-    if (new Set(visibleBusinessClaims.map(claimCategory)).size < 2) {
-      errors.push("complete_requires_two_business_categories");
-    }
-    if (visibleProofSources.size < 2) {
-      errors.push("complete_requires_two_visible_sources");
-    }
-    const businessSources = [...businessProofSources].flatMap((sourceId) => {
-      const source = sources.get(sourceId);
-      return source === undefined ? [] : [source];
-    });
-    if (new Set(businessSources.map(sourcePage)).size < 2) {
-      errors.push("complete_requires_two_business_source_pages");
-    }
-    if (new Set(businessSources.flatMap((source) => {
-      const domain = sourceDomain(source);
-      return domain === null ? [] : [domain];
-    })).size < 2) {
-      errors.push("complete_requires_two_publisher_domains");
+    if (visibleBusinessClaims.length > 6) {
+      errors.push("complete_allows_at_most_six_business_facts");
     }
     if (value.contradictions.some((item) => item.visible)) {
       errors.push("complete_forbids_visible_contradiction");
@@ -835,11 +716,11 @@ export function validateRuntimeDossier(
   }
   if (
     value.global_status === "insufficient_evidence" &&
-    supportedFacts.length > 0
+    supportedBusinessFacts.length > 0
   ) {
     errors.push("insufficient_evidence_forbids_supported_facts");
   }
-  if (value.result_mode === "silence" && supportedFacts.length > 0) {
+  if (value.result_mode === "silence" && supportedBusinessFacts.length > 0) {
     errors.push("silence_forbids_supported_facts");
   }
 

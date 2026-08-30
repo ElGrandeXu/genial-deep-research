@@ -202,7 +202,6 @@ function validationClassification(code: string): Classification {
   if (
     [
       "ambiguous_source_relation",
-      "missing_source_title",
       "source_not_in_provider_metadata",
       "source_excerpt_missing",
       "invalid_source_url",

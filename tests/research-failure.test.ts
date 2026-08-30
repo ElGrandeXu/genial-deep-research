@@ -310,7 +310,7 @@ describe("safe failure classification with installed AI SDK errors", () => {
     },
   );
 
-  it("retains attributable provider evidence after a direct source rejection without leaking failures", async () => {
+  it("drops rejected provider evidence without leaking failures", async () => {
     const marker = "PRIVATE_SOURCE_REJECTION_MARKER";
     const events = await executeWith({
         result: providerResult(),
@@ -327,12 +327,33 @@ describe("safe failure classification with installed AI SDK errors", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "partial",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: [],
         unknowns: expect.arrayContaining([
-          expect.objectContaining({ category: "not_verified" }),
+          expect.objectContaining({ category: "source_inaccessible" }),
         ]),
+      },
+    });
+    expect(JSON.stringify(events)).not.toContain(marker);
+  });
+
+  it("reports a systemic verifier failure instead of disguising it as documentary silence", async () => {
+    const marker = "PRIVATE_SYSTEMIC_VERIFIER_FAILURE";
+    const events = await executeWith({
+      result: providerResult(),
+      sourceVerifier: {
+        async verify() {
+          throw new TypeError(marker);
+        },
+      },
+    });
+
+    expect(events.at(-1)).toMatchObject({
+      state: "failed",
+      receipt: {
+        category: "internal_unknown",
+        failedStage: "source_verification",
       },
     });
     expect(JSON.stringify(events)).not.toContain(marker);
@@ -616,7 +637,7 @@ describe("terminal failure guarantees", () => {
     });
   });
 
-  it("keeps a unique attributable identity as supported when direct excerpt checks fail", async () => {
+  it("keeps no factual identity evidence when every direct excerpt check fails", async () => {
     const events: ResearchProgressEvent[] = [];
     await executeResearch({
       input: { name: "Airbus SE" },
@@ -637,16 +658,12 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "partial",
-        identity: expect.objectContaining({
-          status: "resolved",
-          resolution_level: "supported",
-        }),
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
-        evidence: expect.arrayContaining([expect.objectContaining({ verification_method: "provider_annotation" })]),
-        sources: expect.arrayContaining([expect.objectContaining({ collection_method: "provider_search" })]),
-        unknowns: expect.arrayContaining([expect.objectContaining({ category: "not_verified" })]),
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
+        claims: [],
+        evidence: [],
+        sources: [],
+        unknowns: expect.arrayContaining([expect.objectContaining({ category: "source_inaccessible" })]),
       },
       receipt: { sourceFetchCount: 2 },
     });
@@ -727,8 +744,8 @@ describe("terminal failure guarantees", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        result_mode: "standard",
-        global_status: "partial",
+        result_mode: "silence",
+        global_status: "insufficient_evidence",
         claims: [{ statement: claim, claim_state: "supported" }],
         evidence: [{ excerpt: claim, verification_method: "source_content" }],
         sources: [{ provider_url: sourceUrl, accessibility_status: "accessible" }],

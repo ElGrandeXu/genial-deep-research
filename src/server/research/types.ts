@@ -18,7 +18,33 @@ export interface ResearchHints {
 }
 
 export const MAX_PROVIDER_HTTP_CALLS = 2;
-export const MAX_WEB_SEARCH_ACTIONS = 8;
+export const MAX_PROVIDER_WEB_SEARCH_TOOL_CALLS = 4;
+export const MAX_WEB_SEARCH_ACTIONS = 6;
+
+export interface ProviderAttemptAccounting {
+  readonly webSearchActionCount: number;
+  readonly webSearchQueryCount: number;
+  readonly webSearchInspectionCount: number;
+}
+
+export type ProviderSecondCallReason =
+  | "structural_repair"
+  | "recall_supplement";
+
+export type ProviderSecondCallOutcome =
+  | "succeeded"
+  | "failed"
+  | "rejected";
+
+export interface ProviderOrchestrationDiagnostics {
+  readonly primaryOutcome: "succeeded" | "recovered";
+  readonly primaryAccounting: ProviderAttemptAccounting;
+  readonly secondCall: null | {
+    readonly reason: ProviderSecondCallReason;
+    readonly outcome: ProviderSecondCallOutcome;
+    readonly accounting: ProviderAttemptAccounting;
+  };
+}
 
 export interface ProviderCitation {
   readonly provider: "openai";
@@ -162,8 +188,6 @@ export interface ProviderIdentityCandidate extends ProviderClaimCandidate {
 }
 
 export interface ProviderFactCandidate extends ProviderClaimCandidate {
-  /** Internal provenance; never supplied by the model or serialized in the dossier contract. */
-  readonly collectionPass?: "primary" | "supplement" | "derived";
   readonly subjectKey: CandidateKey;
   readonly category: FactCategory;
   readonly predicate: string;
@@ -185,23 +209,6 @@ export interface ProviderFactCandidate extends ProviderClaimCandidate {
   readonly contradictionKey: string | null;
 }
 
-export const RELATION_TYPES = [
-  "employed_by",
-  "leads",
-  "founded",
-  "created",
-  "member_of",
-  "affiliated_with",
-] as const;
-
-export type RelationType = (typeof RELATION_TYPES)[number];
-
-export interface ProviderRelationCandidate extends ProviderClaimCandidate {
-  readonly fromSubjectKey: CandidateKey;
-  readonly toSubjectKey: CandidateKey;
-  readonly relationType: RelationType;
-}
-
 export interface ProviderResearchDocument {
   readonly identityStatus:
     | "resolved"
@@ -210,8 +217,6 @@ export interface ProviderResearchDocument {
     | "not_found";
   readonly entityType: "person" | "company" | null;
   readonly candidates: readonly ProviderIdentityCandidate[];
-  readonly relatedSubjects?: readonly ProviderIdentityCandidate[];
-  readonly relations?: readonly ProviderRelationCandidate[];
   readonly claims: readonly ProviderFactCandidate[];
   readonly missingCategories: readonly FactCategory[];
 }
@@ -318,39 +323,7 @@ export interface ProviderResearchResult {
   readonly requestId: string | null;
   readonly queryPlan?: readonly string[];
   readonly executedQueries?: readonly string[];
-  readonly passTrace?: {
-    readonly rawPrimaryGraph: readonly ProviderGraphTraceItem[];
-    readonly rawSupplementGraph: readonly ProviderGraphTraceItem[];
-    readonly normalizedPrimaryGraph: readonly ProviderGraphTraceItem[];
-    readonly normalizedSupplementGraph: readonly ProviderGraphTraceItem[];
-    readonly mergedGraph: readonly ProviderGraphTraceItem[];
-    readonly rawPrimaryFacts: readonly ProviderFactTraceItem[];
-    readonly rawSupplementFacts: readonly ProviderFactTraceItem[];
-    readonly normalizedPrimaryFacts: readonly ProviderFactTraceItem[];
-    readonly normalizedSupplementFacts: readonly ProviderFactTraceItem[];
-    readonly mergedFacts: readonly ProviderFactTraceItem[];
-    readonly primarySources: readonly string[];
-    readonly supplementSources: readonly string[];
-  };
-}
-
-export interface ProviderGraphTraceItem {
-  readonly pass: "primary" | "supplement";
-  readonly kind: "candidate" | "related_subject" | "relation";
-  readonly subjectKey: string | null;
-  readonly displayName: string | null;
-  readonly fromSubjectKey: string | null;
-  readonly toSubjectKey: string | null;
-  readonly sourceUrl: string;
-  readonly statement: string;
-}
-
-export interface ProviderFactTraceItem {
-  readonly pass: "primary" | "supplement" | "derived";
-  readonly category: FactCategory;
-  readonly subjectKey: string;
-  readonly sourceUrl: string;
-  readonly statement: string;
+  readonly orchestration?: ProviderOrchestrationDiagnostics;
 }
 
 export interface ResearchProvider {
@@ -400,14 +373,10 @@ export interface PublicReceipt {
   readonly costLimitations: readonly string[];
   readonly pipelineCounts?: {
     readonly providerIdentityCandidates: number;
-    readonly providerRelatedSubjects: number;
-    readonly providerRelations: number;
     readonly providerFactCandidates: number;
     readonly retrievedIdentityDocuments: number;
     readonly retrievedFactDocuments: number;
     readonly directIdentityProofs: number;
-    readonly directRelatedSubjectProofs: number;
-    readonly directRelationProofs: number;
     readonly reconstructedIdentityProofs: number;
     readonly directFactProofs: number;
     readonly sourceFirstFacts: number;
@@ -415,7 +384,6 @@ export interface PublicReceipt {
     readonly retainedGroundedFactProofs: number;
     readonly discardedProofs: number;
     readonly displayedBusinessFacts: number;
-    readonly displayedOrganizationalFacts: number;
     readonly attributionRejections: Readonly<Record<string, number>>;
     readonly qualityRejections: Readonly<Record<string, number>>;
     readonly identityStatus: string;

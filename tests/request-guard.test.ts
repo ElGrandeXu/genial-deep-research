@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,21 +7,10 @@ import {
 } from "../src/app/api/research/route";
 import {
   createResearchRequestGuard,
-  RESEARCH_RATE_LIMIT_MODE,
-  RESEARCH_WAF_MAX_REQUESTS,
-  RESEARCH_WAF_WINDOW_SECONDS,
   type ResearchRequestGuard,
 } from "../src/server/research/request-guard";
 
 const routeUrl = "https://genial.test/api/research";
-const requestGuardSource = readFileSync(
-  new URL("../src/server/research/request-guard.ts", import.meta.url),
-  "utf8",
-);
-const routeSource = readFileSync(
-  new URL("../src/app/api/research/route.ts", import.meta.url),
-  "utf8",
-);
 
 function requestFor(address: string, body: unknown = { name: "Airbus" }): Request {
   return new Request(routeUrl, {
@@ -50,22 +37,40 @@ describe("research request guard", () => {
     });
   });
 
-  it("uses the explicit WAF-only contract without a local distributed limiter", () => {
-    expect(RESEARCH_RATE_LIMIT_MODE).toBe("waf_only");
-    expect(RESEARCH_WAF_MAX_REQUESTS).toBe(20);
-    expect(RESEARCH_WAF_WINDOW_SECONDS).toBe(600);
-    expect(requestGuardSource).not.toContain(["check", "RateLimit"].join(""));
-    expect(requestGuardSource).not.toContain(["research-dossier", "fixed-window"].join("-"));
-    expect(routeSource).not.toContain(["rate_limit", "unavailable"].join("_"));
+  it("admits eight requests per hashed address in ten minutes", () => {
+    let currentTime = 1_000;
+    const guard = createResearchRequestGuard({
+      now: () => currentTime,
+      hashSalt: new Uint8Array(32).fill(7),
+    });
+
+    for (let admissionNumber = 0; admissionNumber < 8; admissionNumber += 1) {
+      const admission = guard.acquire(requestFor("203.0.113.7"));
+      expect(admission.admitted).toBe(true);
+      if (admission.admitted) admission.release();
+    }
+
+    const rejected = guard.acquire(requestFor("203.0.113.7"));
+    expect(rejected).toEqual({
+      admitted: false,
+      code: "rate_limited",
+      retryAfterSeconds: 600,
+    });
+
+    currentTime += 10 * 60 * 1_000 + 1;
+    const admittedAfterWindow = guard.acquire(requestFor("203.0.113.7"));
+    expect(admittedAfterWindow.admitted).toBe(true);
+    if (admittedAfterWindow.admitted) admittedAfterWindow.release();
   });
 
-  it("limits global concurrency to two and releases leases idempotently", async () => {
-    const guard = createResearchRequestGuard();
-    const [first, second] = await Promise.all([
-      guard.acquire(requestFor("203.0.113.1")),
-      guard.acquire(requestFor("203.0.113.2")),
-    ]);
-    const busy = await guard.acquire(requestFor("203.0.113.3"));
+  it("limits global concurrency to two and releases leases idempotently", () => {
+    const guard = createResearchRequestGuard({
+      now: () => 1_000,
+      hashSalt: new Uint8Array(32).fill(9),
+    });
+    const first = guard.acquire(requestFor("203.0.113.1"));
+    const second = guard.acquire(requestFor("203.0.113.2"));
+    const busy = guard.acquire(requestFor("203.0.113.3"));
 
     expect(first.admitted).toBe(true);
     expect(second.admitted).toBe(true);
@@ -79,7 +84,7 @@ describe("research request guard", () => {
       first.release();
       first.release();
     }
-    const third = await guard.acquire(requestFor("203.0.113.3"));
+    const third = guard.acquire(requestFor("203.0.113.3"));
     expect(third.admitted).toBe(true);
     if (second.admitted) second.release();
     if (third.admitted) third.release();
@@ -109,16 +114,16 @@ describe("research route admission", () => {
     expect(acquire).not.toHaveBeenCalled();
   });
 
-  it("returns only a local concurrency 429 before constructing providers", async () => {
+  it("returns a no-store 429 with Retry-After before constructing providers", async () => {
     const providerFactory = vi.fn(() => {
       throw new Error("provider must not be constructed");
     });
     const handler = createResearchPostHandler({
       requestGuard: {
-        acquire: async () => ({
+        acquire: () => ({
           admitted: false,
-          code: "server_busy",
-          retryAfterSeconds: 1,
+          code: "rate_limited",
+          retryAfterSeconds: 42,
         }),
       },
       providerFactory,
@@ -131,29 +136,13 @@ describe("research route admission", () => {
     const response = await handler(requestFor("203.0.113.9"));
     expect(response.status).toBe(429);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("retry-after")).toBe("1");
+    expect(response.headers.get("retry-after")).toBe("42");
     await expect(response.json()).resolves.toEqual({
       error: {
-        code: "server_busy",
-        message: "Deux recherches sont déjà en cours. Réessayez dans un instant.",
+        code: "rate_limited",
+        message: "Trop de recherches ont été demandées. Réessayez plus tard.",
       },
     });
-    expect(providerFactory).not.toHaveBeenCalled();
-  });
-
-  it("represents an edge WAF rejection as zero application and provider calls", async () => {
-    const providerFactory = vi.fn();
-    const applicationHandler = vi.fn(async () => {
-      providerFactory();
-      return new Response(null, { status: 200 });
-    });
-    const dispatchThroughWaf = async (): Promise<Response> =>
-      new Response(null, { status: 429 });
-
-    const response = await dispatchThroughWaf();
-
-    expect(response.status).toBe(429);
-    expect(applicationHandler).not.toHaveBeenCalled();
     expect(providerFactory).not.toHaveBeenCalled();
   });
 
@@ -161,7 +150,7 @@ describe("research route admission", () => {
     const release = vi.fn();
     const handler = createResearchPostHandler({
       requestGuard: {
-        acquire: async () => ({ admitted: true, release }),
+        acquire: () => ({ admitted: true, release }),
       },
       providerFactory: () => ({
         research: (_input, signal) =>
@@ -187,7 +176,7 @@ describe("research route admission", () => {
     const release = vi.fn();
     const handler = createResearchPostHandler({
       requestGuard: {
-        acquire: async () => ({ admitted: true, release }),
+        acquire: () => ({ admitted: true, release }),
       },
       providerFactory: () => ({
         research: async () => {

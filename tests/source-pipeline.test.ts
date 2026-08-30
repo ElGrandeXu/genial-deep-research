@@ -1014,19 +1014,15 @@ describe("M5-R2B provider metadata boundary", () => {
     ).toMatchObject({ status: "unknown", citations: [] });
   });
 
-  it("[9] explicitly rejects a missing citation title required by M2", () => {
+  it("[9] retains a valid citation when only its display title is missing", () => {
     const text = providerText();
     const metadata = normalizedMetadata({ text });
     const citation = metadata.citations[0];
     if (citation === undefined) throw new Error("synthetic citation missing");
-    expectPipelineCode(
-      () =>
-        bindProviderSource(
-          { text, citations: [{ ...citation, title: null }], sources: metadata.sources, providerMetadataStatus: "supported" },
-          parseProviderCandidate(text),
-        ),
-      "source_metadata_missing",
-    );
+    expect(bindProviderSource(
+      { text, citations: [{ ...citation, title: null }], sources: metadata.sources, providerMetadataStatus: "supported" },
+      parseProviderCandidate(text),
+    )).toMatchObject({ url: citation.url, title: null });
   });
 
   it("[10] marks provider fixtures as synthetic and non-real", () => {
@@ -1515,7 +1511,7 @@ describe("G3-R3 inspection action URL binding", () => {
         }),
       ],
     ],
-  ] as const)("allows bounded %s accounting and retains attributable provider evidence", async (_case, results) => {
+  ] as const)("allows bounded %s accounting and reports systemic verifier failure", async (_case, results) => {
     const metadata = normalizeWebSearchActions({ results });
     let verificationCalls = 0;
     const events = await runPipeline({
@@ -1534,17 +1530,12 @@ describe("G3-R3 inspection action URL binding", () => {
       "accepted",
       "researching_and_resolving",
       "source_verifying",
-      "building",
-      "validating",
-      "completed",
+      "failed",
     ]);
     expect(events.at(-1)).toMatchObject({
-      state: "completed",
-      dossier: {
-        global_status: "partial",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
-      },
+      state: "failed",
       receipt: {
+        category: "internal_unknown",
         webSearchQueryCount: 1,
         webSearchInspectionCount: 2,
       },
@@ -1577,7 +1568,7 @@ describe("G3-R3 inspection action URL binding", () => {
       okHtml("<html><head><title>Airbus</title></head><body><p>Different text.</p></body></html>"),
       "source_excerpt_missing",
     ],
-  ] as const)("retains provider-grounded identity without retry after %s rejection", async (
+  ] as const)("returns safe silence without provider identity after %s rejection", async (
     _case,
     response,
     expectedCode,
@@ -1607,9 +1598,9 @@ describe("G3-R3 inspection action URL binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "partial",
-        result_mode: "standard",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
       },
       receipt: {
         webSearchQueryCount: 1,
@@ -1843,6 +1834,29 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
+  it("drops a Web Search excerpt when the fetched page does not contain it", async () => {
+    const source = realSyntheticVerifier(
+      "<html><head><title>Airbus &amp; Space</title></head><body><p>Different verified content.</p></body></html>",
+    );
+    const events = await runPipeline({
+      result: webSearchResult(),
+      verifier: source.verifier,
+    });
+
+    expect(events.at(-1)).toMatchObject({
+      state: "completed",
+      dossier: {
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
+        evidence: [],
+        sources: [],
+      },
+    });
+    expect(JSON.stringify(events)).not.toContain(claim);
+    expect(source.transport.requests).toHaveLength(1);
+  });
+
   it.each([
     ["absent", `<html><head></head><body><p>${claim}</p></body></html>`],
     ["empty", `<html><head><title> \n </title></head><body><p>${claim}</p></body></html>`],
@@ -1906,7 +1920,7 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
-  it("retains provider-grounded identity when direct title validation fails", async () => {
+  it("returns safe silence when direct title validation fails", async () => {
     const source = realSyntheticVerifier(
       `<html><head></head><body><p>${claim}</p></body></html>`,
     );
@@ -1927,9 +1941,9 @@ describe("M5-R3 verified document title binding", () => {
     expect(events.at(-1)).toMatchObject({
       state: "completed",
       dossier: {
-        global_status: "partial",
-        result_mode: "standard",
-        claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
       },
     });
     expect(source.transport.requests.length).toBeGreaterThanOrEqual(1);
@@ -4117,7 +4131,7 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       sourceMediaTypeClass: "application_pdf",
     },
   ] as const)(
-    "degrades $name proof to provider grounding without retaining raw header data",
+    "drops $name proof without retaining raw header data",
     async ({ response: createResponse, reasonCode, sourceMediaTypeClass }) => {
       const response = createResponse();
       const source = contentTypeDiagnosticVerifier(response);
@@ -4130,11 +4144,11 @@ describe("M5-R3-FIX-05A safe Content-Type rejection diagnostics", () => {
       expect(terminal).toMatchObject({
         state: "completed",
         dossier: {
-          global_status: "partial",
-          result_mode: "standard",
-          claims: expect.arrayContaining([expect.objectContaining({ predicate: "identity.proof" })]),
+          global_status: "insufficient_evidence",
+          result_mode: "silence",
+          claims: [],
           unknowns: expect.arrayContaining([
-            expect.objectContaining({ category: "not_verified" }),
+            expect.objectContaining({ category: "source_inaccessible" }),
           ]),
         },
       });

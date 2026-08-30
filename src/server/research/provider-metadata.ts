@@ -643,12 +643,6 @@ function bindUrlCitation(
       "L’identifiant de source fournisseur ne correspond pas à la citation.",
     );
   }
-  if (citation.title === null) {
-    throw new ResearchPipelineError(
-      "source_metadata_missing",
-      "Le titre requis par le contrat M2 est absent de la citation fournisseur.",
-    );
-  }
   return citation;
 }
 

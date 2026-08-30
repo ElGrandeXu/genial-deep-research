@@ -96,9 +96,14 @@ try {
     Assert-Release ($health.Status -eq 200) 'health is not HTTP 200'
     Assert-Release ((Get-Header $health.Headers 'Cache-Control') -match 'no-store') 'health is cacheable'
     $healthJson = $health.Body | ConvertFrom-Json
+    $healthProperties = @($healthJson.PSObject.Properties.Name)
     Assert-Release (
-        @($healthJson.PSObject.Properties.Name).Count -eq 1 -and $healthJson.status -ceq 'ok'
-    ) 'health body differs from {"status":"ok"}'
+        $healthJson.status -ceq 'ok' -and
+        $healthProperties.Count -ge 1 -and
+        $healthProperties.Count -le 2 -and
+        @($healthProperties | Where-Object { $_ -notin @('status', 'commit') }).Count -eq 0 -and
+        ($healthProperties -notcontains 'commit' -or [string]$healthJson.commit -cmatch '^[0-9a-f]{40}$')
+    ) 'health body contains an invalid status or commit fingerprint'
 
     Assert-Release ($method.Status -eq 405) 'GET research is not HTTP 405'
     Assert-Release ((Get-Header $method.Headers 'Allow') -eq 'POST') 'GET research lacks Allow: POST'
@@ -129,7 +134,7 @@ try {
         },
         [pscustomobject]@{
             Name = 'body_limit'; Expected = 413; Code = 'body_too_large';
-            Response = Invoke-ReleaseRequest -Method POST -Path '/api/research' -Body ('x' * 1100) -ContentType 'application/json' -Headers $sameOriginHeaders
+            Response = Invoke-ReleaseRequest -Method POST -Path '/api/research' -Body ('x' * 4200) -ContentType 'application/json' -Headers $sameOriginHeaders
         }
     )
     foreach ($guard in $guardCases) {

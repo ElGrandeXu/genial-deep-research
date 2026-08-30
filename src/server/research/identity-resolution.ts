@@ -61,6 +61,7 @@ export interface ContextSignal {
     | "country"
     | "industry"
     | "role"
+    | "context"
     | "corroborated_context"
     | "year";
   readonly value: string;
@@ -109,41 +110,13 @@ function proofIdentifiesCandidate(
   proof: VerifiedSourceProof,
   candidate: ProviderIdentityCandidate,
 ): boolean {
-  if (proofContainsDisplayName(proof, candidate)) return true;
   const method = proof.verificationMethod ?? "source_content";
-  return method !== "source_content" && (
-    containsContext(proof.title, candidate.displayName) ||
-    urlContainsIdentityName(proof.finalUrl, candidate.displayName)
-  );
-}
-
-function urlContainsIdentityName(url: string, displayName: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const identityText = decodeURIComponent(`${parsed.hostname} ${parsed.pathname}`)
-      .replace(/[-_.]+/gu, " ");
-    return containsContext(identityText, displayName);
-  } catch {
-    return false;
-  }
+  return method === "source_content" && proofContainsDisplayName(proof, candidate);
 }
 
 function proofKey(proof: VerifiedSourceProof): string {
-  let canonicalUrl = proof.finalUrl;
-  try {
-    const url = new URL(proof.finalUrl);
-    url.hash = "";
-    for (const key of [...url.searchParams.keys()]) {
-      if (/^(?:utm_.+|fbclid|gclid)$/iu.test(key)) url.searchParams.delete(key);
-    }
-    url.searchParams.sort();
-    if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/u, "");
-    canonicalUrl = url.toString();
-  } catch {
-    // URL validation occurs before identity evidence is assembled.
-  }
   return [
-    canonicalUrl,
+    proof.finalUrl,
     proof.locator.normalizedTextSha256,
     normalizedName(proof.verifiedExcerpt),
   ].join("|");
@@ -164,26 +137,18 @@ function factCanCorroborateCandidate(
     readonly candidate: ProviderFactCandidate;
     readonly proof: VerifiedSourceProof;
   },
-  requestedName?: string,
 ): boolean {
-  const candidateNameIsProven = proofIdentifiesCandidate(item.proof, candidate);
-  const requestedNameIsProven = requestedName !== undefined &&
-    requestedAndCandidateNamesMatch(requestedName, candidate.displayName) &&
-    containsEntityNameInText(item.proof.verifiedExcerpt, requestedName, candidate.entityType);
   if (
     item.candidate.subjectKey !== candidate.candidateKey ||
     item.candidate.entityType !== candidate.entityType ||
     (candidate.entityScope === "person" && item.candidate.scopeType !== "person") ||
-    (!candidateNameIsProven && !requestedNameIsProven)
+    !proofIdentifiesCandidate(item.proof, candidate)
   ) {
     return false;
   }
-  const provenDisplayName = candidateNameIsProven ? candidate.displayName : requestedName;
-  if (provenDisplayName === undefined) return false;
   const selected: VerifiedIdentityCandidate = {
     candidate: {
       ...candidate,
-      displayName: provenDisplayName,
       statement: item.proof.verifiedExcerpt,
       structuredUrl: item.proof.finalUrl,
       excerpt: item.proof.verifiedExcerpt,
@@ -202,17 +167,16 @@ function factCanCorroborateCandidate(
   return evaluateFactAttribution({
     selected,
     fact: item,
-    requestedName: provenDisplayName,
+    requestedName: candidate.displayName,
     verifiedOfficialSite: undefined,
   }).accepted && (providerGroundedQuality || evaluateClaimQuality({
       candidate: item.candidate,
       proof: item.proof,
-      selectedDisplayName: provenDisplayName,
+      selectedDisplayName: candidate.displayName,
     }).accepted);
 }
 
 export function assembleVerifiedIdentityCandidates(options: {
-  readonly requestedName?: string;
   readonly candidates: readonly ProviderIdentityCandidate[];
   readonly verifiedCandidates: readonly VerifiedIdentityCandidate[];
   readonly verifiedFacts: readonly {
@@ -225,7 +189,7 @@ export function assembleVerifiedIdentityCandidates(options: {
       (item) => item.candidate.candidateKey === candidate.candidateKey,
     );
     const corroboratingFacts = options.verifiedFacts.filter((item) =>
-      factCanCorroborateCandidate(candidate, item, options.requestedName)
+      factCanCorroborateCandidate(candidate, item)
     );
     const factProofs = corroboratingFacts.map(({ proof }) => proof);
     const proofs = [...new Map(
@@ -1578,31 +1542,14 @@ function preferRequestedNameWhenItIsTheProvenForm(
   input: ResearchInput,
   item: VerifiedIdentityCandidate,
 ): VerifiedIdentityCandidate {
-  const allProofs = [...new Map(
-    [
-      item.proof,
-      ...(item.corroboratingProofs ?? []),
-      ...(item.corroboratingFacts ?? []).map(({ proof }) => proof),
-    ].map((proof) => [proofKey(proof), proof] as const),
-  ).values()];
-  const candidateFormIsProven = allProofs.some((proof) =>
-    containsEntityNameInText(
-      proof.verifiedExcerpt,
-      item.candidate.displayName,
-      item.candidate.entityType,
-    )
-  );
-  const requestedNameProof = allProofs.find((proof) =>
-    containsEntityNameInText(
-      proof.verifiedExcerpt,
+  if (
+    containsContext(item.proof.verifiedExcerpt, item.candidate.displayName) ||
+    !requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) ||
+    !containsEntityNameInText(
+      item.proof.verifiedExcerpt,
       input.name,
       item.candidate.entityType,
     )
-  );
-  if (
-    candidateFormIsProven ||
-    !requestedAndCandidateNamesMatch(input.name, item.candidate.displayName) ||
-    requestedNameProof === undefined
   ) {
     return item;
   }
@@ -1611,21 +1558,12 @@ function preferRequestedNameWhenItIsTheProvenForm(
     candidate: {
       ...item.candidate,
       displayName: input.name.trim(),
-      statement: requestedNameProof.verifiedExcerpt,
-      structuredUrl: requestedNameProof.finalUrl,
-      excerpt: requestedNameProof.verifiedExcerpt,
-      prefix: requestedNameProof.locator.prefix,
-      suffix: requestedNameProof.locator.suffix,
+      statement: item.proof.verifiedExcerpt,
+      structuredUrl: item.proof.finalUrl,
+      excerpt: item.proof.verifiedExcerpt,
+      prefix: item.proof.locator.prefix,
+      suffix: item.proof.locator.suffix,
     },
-    proof: requestedNameProof,
-    corroboratingProofs: allProofs.filter((proof) => proofKey(proof) !== proofKey(requestedNameProof)),
-    ...((item.corroboratingFacts ?? []).some(
-        ({ proof }) => proofKey(proof) === proofKey(requestedNameProof),
-      )
-      ? { proofBasis: "verified_facts" as const }
-      : item.proofBasis === undefined
-        ? {}
-        : { proofBasis: item.proofBasis }),
   };
 }
 
@@ -1672,6 +1610,15 @@ function evaluatedEvidenceSet(
   const baseContextSignals = positiveContext === undefined
     ? []
     : contextSignalsFor(positiveContext, item, verifiedDiscriminators);
+  if (positiveContext !== undefined && item.proofBasis === "dedicated") {
+    for (const evidence of supportedContextEvidence(positiveContext, item)) {
+      if (!baseContextSignals.some(({ value }) =>
+        normalizedContext(value) === normalizedContext(evidence.value)
+      )) {
+        baseContextSignals.push({ kind: "context", value: evidence.value, strength: "medium" });
+      }
+    }
+  }
   if (
     input.hints?.role !== undefined &&
     [
@@ -1905,7 +1852,7 @@ export function resolveIdentity(options: {
           dedicatedItem,
           dedicatedEvaluation.verifiedDiscriminators,
         )
-      : dedicatedEvaluation.strong || dedicatedEvaluation.mediumKindCount >= 2;
+      : dedicatedEvaluation.strong || dedicatedEvaluation.mediumKindCount >= 1;
     if (dedicatedMatched) {
       return {
         item: dedicatedItem,
@@ -1956,27 +1903,6 @@ export function resolveIdentity(options: {
       matchBasis: "dedicated" as const,
     };
   });
-  if (
-    evaluated.length === 1 &&
-    positiveContextText(options.input) === undefined &&
-    evaluated[0]?.item.candidate.entityScope !== "brand" &&
-    normalizedName(options.input.name) ===
-      normalizedName(evaluated[0]?.item.candidate.displayName ?? "")
-  ) {
-    const only = evaluated[0];
-    if (only === undefined) throw new Error("Unreachable identity decision.");
-    return {
-      status: "resolved",
-      selected: only.item,
-      candidates: [only.item],
-      verifiedDiscriminators: only.verifiedDiscriminators,
-      contextSignals: only.contextSignals,
-      reasonCodes: [only.matchBasis === "facts"
-        ? "unique_attributable_fact_candidate"
-        : "unique_verified_candidate"],
-      rationale: "Un seul candidat au nom exact et au type compatible dispose d’une preuve publique attribuable ; aucun concurrent admissible ni contradiction n’a été relevé.",
-    };
-  }
   const matched = evaluated.filter((item) => item.matched);
   const priorityFor = (signals: readonly ContextSignal[]): number => signals.reduce(
     (total, signal) => total + (
@@ -2034,43 +1960,25 @@ export function resolveIdentity(options: {
     };
   }
 
-  const uniqueContextualCandidate = matched.length === 0 && evaluated.length === 1
+  const uniqueVerifiedCandidate = matched.length === 0 && evaluated.length === 1
     ? evaluated[0]
     : undefined;
   if (
-    uniqueContextualCandidate !== undefined &&
-    (
-      (
-        (uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content") ===
-          "source_content" &&
-        uniqueContextualCandidate.item.proof.retrievalStatus === "retrieved"
-      ) ||
-      ["provider_annotation", "search_snippet"].includes(
-        uniqueContextualCandidate.item.proof.verificationMethod ?? "source_content",
-      )
-    ) &&
+    uniqueVerifiedCandidate !== undefined &&
     eligible.length === 1 &&
-    (
-      positiveContextText(options.input) !== undefined ||
-      (() => {
-        try {
-          const host = new URL(uniqueContextualCandidate.item.proof.finalUrl).hostname
-            .toLocaleLowerCase("en-US");
-          return host === "linkedin.com" || host.endsWith(".linkedin.com");
-        } catch {
-          return false;
-        }
-      })()
-    )
+    positiveContextText(options.input) === undefined &&
+    uniqueVerifiedCandidate.item.proofBasis === "dedicated" &&
+    normalizedName(options.input.name) ===
+      normalizedName(uniqueVerifiedCandidate.item.candidate.displayName)
   ) {
     return {
       status: "resolved",
-      selected: uniqueContextualCandidate.item,
-      candidates: [uniqueContextualCandidate.item],
-      verifiedDiscriminators: uniqueContextualCandidate.verifiedDiscriminators,
-      contextSignals: uniqueContextualCandidate.contextSignals,
-      reasonCodes: ["unique_contextual_source_candidate"],
-      rationale: "Un seul candidat au nom exact est retrouvé dans une source publique attribuable, sans concurrent signalé par la recherche ciblée ; cette attribution reste graduée par la qualité de la source.",
+      selected: uniqueVerifiedCandidate.item,
+      candidates: [uniqueVerifiedCandidate.item],
+      verifiedDiscriminators: uniqueVerifiedCandidate.verifiedDiscriminators,
+      contextSignals: uniqueVerifiedCandidate.contextSignals,
+      reasonCodes: ["unique_verified_source_candidate"],
+      rationale: "Un seul candidat au nom exact est retrouvé dans une page publique directement vérifiée.",
     };
   }
 

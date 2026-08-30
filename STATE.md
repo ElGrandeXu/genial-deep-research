@@ -1,0 +1,52 @@
+# État du sauvetage
+
+- Mission courante : examen final autonome — correction, Preview et contre-examen.
+- Statut R1 : cadre installé et stratégie clarifiée.
+- Worktree : racine du dépôt `GENIAL_RESCUE`.
+- Branche : `exam/final-correction`.
+- Baseline historique R2.1 : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
+- Baseline fonctionnelle d'entrée : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
+- Worktree original `GENIAL` : isolé et non modifié par ce sauvetage.
+- MVP : recherche personne/entreprise, contexte facultatif, dossier lisible et sourcé.
+- Régression obligatoire : `Erwan Simon` + `GENIAL` + `Bordeaux`.
+- Surfaces gelées : UI, SSE, Vercel, citations et sécurité serveur.
+- Moteur actuel : préservé par défaut.
+- R2 : tester `f776313` sans changement de code ni de comportement.
+- R3 : `8b778` fusionné ; toute simplification ultérieure reste ciblée sur un blocage observé.
+- Réécriture ou moteur parallèle : interdits sans décision explicite après R2.
+- Correctifs : isolés et prouvés chacun par un test métier réel.
+- Autorité : brief et comportement métier réel avant les anciens tests.
+- Archives : anciens README, contrats, tests et preuves non prescriptifs hors brief.
+- Production : gelée jusqu'à validation explicite d'une Preview.
+- Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
+- Déploiement de la mission finale : non effectué ; Production reste gelée.
+- Vérifications R5 : 739 tests, lint, typecheck et build réussis.
+- Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
+- Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
+- Mesure : 26 356 ms ; 2 appels fournisseur ; 4 actions Web Search (2 recherches, 2 inspections).
+- Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
+- Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
+- Corrections : R4 borne l’orchestration ; R5 admet un fait sourcé et transforme zéro fait en insuffisance métier.
+- Examen initial : 60/100 ; exigences PASS/PARTIAL/FAIL consignées dans `PLAN.md`.
+- Régression initiale réelle du checkpoint : `partial`, identité résolue, 2 faits métier, 2 sources, 27 315 ms, 2 appels fournisseur, 3 actions Web Search, coût estimé 0,0393742 USD.
+- Budget de soumissions réelles restant : 5 sur 6, toutes réservées à la matrice Preview.
+- P0 démontré : un extrait fournisseur rejeté peut être reconstruit en preuve synthétique puis affiché comme fait ou servir à l'identité.
+- P1 démontrés : contexte fourni non corroboré, panne globale absorbée, complétude incohérente, gate portable et manifeste Vercel obsolètes.
+- Lot 1 vérité métier : terminé ; 740 tests, lint et typecheck réussis.
+- Correctifs lot 1 : preuve fournisseur rejetée supprimée du dossier et de l'identité ; panne systémique non absorbée ; contexte significatif corroboré ; complétude à 3 faits, 2 catégories, 2 pages et 2 familles d'éditeurs.
+- Lot 2 livraison et UX : terminé ; 741 tests, lint, typecheck et build réussis.
+- Gate candidat : 128 fichiers ; manifeste Vercel : 41 fichiers, 811 027 octets ; tests négatifs réussis.
+- Correctifs lot 2 : smoke 4 200 octets, documents portables, frontière Vercel, SHA public optionnel, suppression du diagnostic de requêtes, messages/accords/contrastes UI.
+- Validation complète avant Preview : `pnpm verify` réussi ; clone propre installé, 741 tests, build, démarrage et health réussis.
+- Preview v1 : `https://genial-deep-research-d43ceenoj-el-grande-xue.vercel.app`, cible Preview et smoke public réussi.
+- Matrice v1 : Thomas Pesquet → clarification sûre, 30 852 ms ; Erwan Simon → `partial`, 3 faits/3 sources, 14 995 ms ; Airbus SE → échec `web_search_action_invalid`, 5 actions, 30 387 ms.
+- Correctif Preview : `max_tool_calls=4` conservé ; plafond de télémétrie porté à 6 actions observées, 7 restant rejetées ; 742 tests, lint, typecheck, build et gate candidat réussis.
+- Preview finale : `https://genial-deep-research-ob9qtw9cd-el-grande-xue.vercel.app`, cible Preview, `Ready`, dry-run et smoke public réussis.
+- Matrice finale complémentaire : Thomas Martin → silence sûr, 0 fait/source, 18 767 ms, 4 actions ; Apolline Zéphyr-Nébuleuse → silence sûr, 0 fait/source, 7 929 ms, 3 actions.
+- Budget de soumissions réelles restant : 0 sur 6 ; aucune autre recherche réelle n'est autorisée dans cette mission.
+- Contre-examen neuf : 82/100, `NOT_READY` sur un P1 de fallback `search_snippet` après extrait absent.
+- Correction contre-examen : suppression complète des preuves fournisseur dégradées du runtime factuel ; une vérification échouée produit uniquement rejet, inconnue ou silence.
+- Preuve ciblée : page `web_search_source` récupérée mais extrait absent → 0 claim, 0 evidence, 0 source ; 743 tests, lint, typecheck, build et gate candidat réussis.
+- Contre-examen final : `P1 FIXED`, aucun nouveau P0/P1, 94/100, `READY_TO_SHIP`.
+- Gate publique finale : `PROJECT_VERIFY_OK`, 743 tests, 11 E2E, audit sans vulnérabilité connue.
+- Prochaine action : validation explicite de cette Preview par le propriétaire avant toute publication Production.

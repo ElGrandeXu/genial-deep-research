@@ -293,25 +293,20 @@ describe("runtime dossier invariants", () => {
     expectRuntimeError(dossier, "summary_requires_displayed_fact:claim:claim-a");
   });
 
-  it("rejects a false complete status with fewer than three visible facts", () => {
+  it("accepts complete with one sourced business fact", () => {
     const dossier = makeValidDossier();
-    dossier.claims = dossier.claims.slice(0, 2);
-    dossier.evidence = dossier.evidence.slice(0, 2);
+    dossier.claims = dossier.claims.slice(0, 1);
+    dossier.evidence = dossier.evidence.slice(0, 1);
+    dossier.presentation.summary_items = [{ kind: "claim", ref_id: "claim-a" }];
+    dossier.presentation.key_fact_claim_ids = ["claim-a"];
     dossier.presentation.recent_signal_claim_ids = [];
 
-    expectRuntimeError(dossier, "complete_requires_three_visible_facts");
+    expect(validateRuntimeDossier(dossier)).toEqual({ ok: true });
   });
 
-  it("does not count an identity proof among the three business facts", () => {
+  it("rejects complete with more than six business facts", () => {
     const dossier = makeValidDossier();
-    dossier.claims[2]!.predicate = "identity.proof";
-
-    expectRuntimeError(dossier, "complete_requires_three_business_facts");
-  });
-
-  it("rejects complete with more than twelve business facts", () => {
-    const dossier = makeValidDossier();
-    for (let index = 3; index < 13; index += 1) {
+    for (let index = 3; index < 7; index += 1) {
       const claimId = `claim-${index}`;
       const evidenceId = `evidence-${index}`;
       dossier.claims.push({
@@ -330,23 +325,7 @@ describe("runtime dossier invariants", () => {
       dossier.presentation.key_fact_claim_ids.push(claimId);
     }
 
-    expectRuntimeError(dossier, "complete_allows_at_most_twelve_business_facts");
-  });
-
-  it("rejects complete when source pages share one publisher domain", () => {
-    const dossier = makeValidDossier();
-    dossier.sources[1]!.provider_url = "https://example.com/b";
-    dossier.sources[1]!.resolved_url = "https://example.com/b";
-    dossier.sources[1]!.canonical_url = "https://example.com/b";
-
-    expectRuntimeError(dossier, "complete_requires_two_publisher_domains");
-  });
-
-  it("rejects complete when business facts cover one category", () => {
-    const dossier = makeValidDossier();
-    for (const claim of dossier.claims) claim.predicate = "activity.single_category";
-
-    expectRuntimeError(dossier, "complete_requires_two_business_categories");
+    expectRuntimeError(dossier, "complete_allows_at_most_six_business_facts");
   });
 
   it("rejects a clarification response that contains supported facts", () => {
