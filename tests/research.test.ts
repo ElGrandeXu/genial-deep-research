@@ -17,12 +17,14 @@ import { ResearchPipelineError } from "../src/server/research/errors";
 import type {
   ProviderFactCandidate,
   ProviderIdentityCandidate,
+  ProviderOrchestrationDiagnostics,
   ProviderResearchDocument,
   ProviderResearchResult,
   ResearchInput,
   ResearchProgressEvent,
   ResearchProvider,
   RetrievedSourceDocument,
+  SafeLogger,
   SourceVerifier,
 } from "../src/server/research/types";
 
@@ -148,7 +150,40 @@ function providerResult(
     providerDurationMs: 800,
     finishReason: "stop",
     requestId: "request-synthetic",
+    orchestration: {
+      primaryOutcome: "succeeded",
+      primaryAccounting: {
+        webSearchActionCount: 1,
+        webSearchQueryCount: 1,
+        webSearchInspectionCount: 0,
+      },
+      secondCall: null,
+    },
     ...overrides,
+  };
+}
+
+function twoCallOrchestration(
+  reason: "structural_repair" | "recall_supplement",
+  outcome: "succeeded" | "failed" | "rejected",
+  secondActions = 0,
+): ProviderOrchestrationDiagnostics {
+  return {
+    primaryOutcome: reason === "structural_repair" ? "recovered" : "succeeded",
+    primaryAccounting: {
+      webSearchActionCount: 1,
+      webSearchQueryCount: 1,
+      webSearchInspectionCount: 0,
+    },
+    secondCall: {
+      reason,
+      outcome,
+      accounting: {
+        webSearchActionCount: secondActions,
+        webSearchQueryCount: secondActions,
+        webSearchInspectionCount: 0,
+      },
+    },
   };
 }
 
@@ -211,6 +246,7 @@ async function executeWith(options: {
   readonly input?: ResearchInput;
   readonly sourceVerifier?: SourceVerifier;
   readonly monotonicNow?: () => number;
+  readonly logger?: SafeLogger;
 } = {}): Promise<ResearchProgressEvent[]> {
   const events: ResearchProgressEvent[] = [];
   await executeResearch({
@@ -224,7 +260,7 @@ async function executeWith(options: {
     signal: new AbortController().signal,
     acceptedMs: 2,
     emit: (event) => events.push(event),
-    logger: { info: () => undefined },
+    logger: options.logger ?? { info: () => undefined },
     now: () => new Date(consultedAt),
     ...(options.monotonicNow === undefined
       ? {}
@@ -274,7 +310,7 @@ describe("provider multi-fact contract", () => {
       "identityStatus=ambiguous",
       "identityStatus=not_found",
       "aucune claim",
-      "jusqu’à huit actions Web Search",
+      "jusqu’à quatre actions Web Search",
       "candidateKey",
       "subjectKey",
       "entityScope",
@@ -313,7 +349,7 @@ describe("provider multi-fact contract", () => {
       ).rejects.toBeInstanceOf(ProviderInvocationError);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(requestBody).toMatchObject({
-        max_tool_calls: 6,
+        max_tool_calls: 4,
         parallel_tool_calls: false,
         store: false,
         reasoning: { effort: "low" },
@@ -1561,20 +1597,89 @@ describe("verified dossier service", () => {
     ]));
   });
 
-  it("fails technically when provider accounting exceeds the action ceiling", async () => {
+  it("completes on the first provider call without a second-call diagnostic", async () => {
+    const events = await executeWith({ result: providerResult() });
+    expect(events.at(-1)).toMatchObject({
+      state: "completed",
+      receipt: { providerHttpCalls: 1, toolCalls: 1 },
+    });
+  });
+
+  it.each(["failed", "rejected"] as const)(
+    "keeps the valid primary dossier when the recall supplement is %s",
+    async (outcome) => {
+      const result = providerResult(resolvedDocument(), {
+        providerHttpCalls: 2,
+        webSearchCalls: [
+          { toolCallId: "primary-search", sources: [{ url: sourceA }] },
+          { toolCallId: "supplement:search", sources: null },
+        ],
+        webSearchActions: [
+          { toolCallId: "primary-search", actionType: "search" },
+          { toolCallId: "supplement:search", actionType: "search" },
+        ],
+        webSearchActionCount: 2,
+        webSearchQueryCount: 2,
+        webSearchUniqueCallCount: 2,
+        toolCalls: 2,
+        orchestration: twoCallOrchestration("recall_supplement", outcome, 1),
+      });
+      const terminal = completed(await executeWith({ result }));
+      expect(terminal.dossier.identity.status).toBe("resolved");
+      expect(terminal.dossier.claims).not.toHaveLength(0);
+      expect(terminal.receipt).toMatchObject({ providerHttpCalls: 2, toolCalls: 2 });
+    },
+  );
+
+  it("admits a successful structural repair and logs its distinct reason", async () => {
+    const previousDiagnostics = process.env.RESEARCH_QUERY_DIAGNOSTICS;
+    process.env.RESEARCH_QUERY_DIAGNOSTICS = "1";
+    const records: Array<Readonly<Record<string, unknown>>> = [];
+    try {
+      const terminal = completed(await executeWith({
+        result: providerResult(resolvedDocument(), {
+          providerHttpCalls: 2,
+          orchestration: twoCallOrchestration("structural_repair", "succeeded"),
+        }),
+        logger: { info: (record) => records.push(record) },
+      }));
+      expect(terminal.receipt.providerHttpCalls).toBe(2);
+      expect(records).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          event: "research_query_diagnostics",
+          secondCallReason: "structural_repair",
+          secondCallOutcome: "succeeded",
+        }),
+      ]));
+    } finally {
+      if (previousDiagnostics === undefined) delete process.env.RESEARCH_QUERY_DIAGNOSTICS;
+      else process.env.RESEARCH_QUERY_DIAGNOSTICS = previousDiagnostics;
+    }
+  });
+
+  it("fails technically when provider accounting exceeds the four-action ceiling", async () => {
     const result = providerResult(resolvedDocument(), {
-      webSearchCalls: Array.from({ length: 9 }, (_, index) => ({
+      webSearchCalls: Array.from({ length: 5 }, (_, index) => ({
         toolCallId: `search-${index}`,
         sources: [{ url: sourceA }],
       })),
-      webSearchActions: Array.from({ length: 9 }, (_, index) => ({
+      webSearchActions: Array.from({ length: 5 }, (_, index) => ({
         toolCallId: `search-${index}`,
         actionType: "search" as const,
       })),
-      webSearchActionCount: 9,
-      webSearchQueryCount: 9,
-      webSearchUniqueCallCount: 9,
-      toolCalls: 9,
+      webSearchActionCount: 5,
+      webSearchQueryCount: 5,
+      webSearchUniqueCallCount: 5,
+      toolCalls: 5,
+      orchestration: {
+        primaryOutcome: "succeeded",
+        primaryAccounting: {
+          webSearchActionCount: 5,
+          webSearchQueryCount: 5,
+          webSearchInspectionCount: 0,
+        },
+        secondCall: null,
+      },
     });
     const events = await executeWith({ result });
     expect(events.map(({ state }) => state)).toEqual([
@@ -1585,13 +1690,17 @@ describe("verified dossier service", () => {
     expect(events.at(-1)).toMatchObject({ state: "failed" });
   });
 
-  it("admits one bounded supplemental provider call", async () => {
+  it("fails technically before a third provider call can be admitted", async () => {
     const events = await executeWith({
-      result: providerResult(resolvedDocument(), { providerHttpCalls: 2 }),
+      result: providerResult(resolvedDocument(), {
+        providerHttpCalls: 3,
+        orchestration: twoCallOrchestration("recall_supplement", "succeeded"),
+      }),
     });
-    expect(events.at(-1)).toMatchObject({
-      state: "completed",
-      receipt: { providerHttpCalls: 2 },
-    });
+    expect(events.map(({ state }) => state)).toEqual([
+      "accepted",
+      "researching_and_resolving",
+      "failed",
+    ]);
   });
 });

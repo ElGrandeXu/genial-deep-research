@@ -221,9 +221,35 @@ function assertProviderAdmission(result: ProviderResearchResult): void {
   const actionInspectionCount = actions.filter(
     ({ actionType }) => actionType === "open_page" || actionType === "find_in_page",
   ).length;
+  const orchestration = result.orchestration;
+  const secondCall = orchestration?.secondCall ?? null;
+  const providerCallShapeCoherent = orchestration === undefined ||
+    (secondCall === null
+      ? result.providerHttpCalls === 1
+      : result.providerHttpCalls >= 1 && result.providerHttpCalls <= 2);
+  const accountingPartitionCoherent = orchestration === undefined || (
+    result.webSearchActionCount ===
+      orchestration.primaryAccounting.webSearchActionCount +
+        (secondCall?.accounting.webSearchActionCount ?? 0) &&
+    result.webSearchQueryCount ===
+      orchestration.primaryAccounting.webSearchQueryCount +
+        (secondCall?.accounting.webSearchQueryCount ?? 0) &&
+    result.webSearchInspectionCount ===
+      orchestration.primaryAccounting.webSearchInspectionCount +
+        (secondCall?.accounting.webSearchInspectionCount ?? 0)
+  );
+  const supplementalFallback = secondCall?.reason === "recall_supplement" &&
+    (secondCall.outcome === "failed" || secondCall.outcome === "rejected");
+  const detailedActionsCoherent = supplementalFallback || (
+    result.webSearchUniqueCallCount === result.webSearchActionCount &&
+    actions.length === result.webSearchActionCount &&
+    actionQueryCount === result.webSearchQueryCount &&
+    actionInspectionCount === result.webSearchInspectionCount
+  );
   const coherent =
     result.providerHttpCalls >= 1 &&
     result.providerHttpCalls <= MAX_PROVIDER_HTTP_CALLS &&
+    providerCallShapeCoherent &&
     result.providerMetadataStatus === "supported" &&
     result.webSearchActionPolicyStatus === "supported" &&
     result.webSearchActionPolicyCode === null &&
@@ -231,11 +257,9 @@ function assertProviderAdmission(result: ProviderResearchResult): void {
     result.webSearchQueryCount >= 1 &&
     result.webSearchActionCount >= 1 &&
     result.webSearchActionCount <= MAX_WEB_SEARCH_ACTIONS &&
-    result.webSearchUniqueCallCount === result.webSearchActionCount &&
     result.toolCalls === result.webSearchActionCount &&
-    actions.length === result.webSearchActionCount &&
-    actionQueryCount === result.webSearchQueryCount &&
-    actionInspectionCount === result.webSearchInspectionCount &&
+    accountingPartitionCoherent &&
+    detailedActionsCoherent &&
     result.webSearchActionCount ===
       result.webSearchQueryCount + result.webSearchInspectionCount;
   if (!coherent) {
@@ -1775,6 +1799,13 @@ function safeLogQueryDiagnostics(options: {
       inspectionsExecuted: options.result.webSearchInspectionCount,
       actionsTotal: options.result.webSearchActionCount,
       providerCalls: options.result.providerHttpCalls,
+      primaryOutcome: options.result.orchestration?.primaryOutcome ?? "unknown",
+      secondCallReason: options.result.orchestration?.secondCall?.reason ?? null,
+      secondCallOutcome: options.result.orchestration?.secondCall?.outcome ?? null,
+      primaryActions:
+        options.result.orchestration?.primaryAccounting.webSearchActionCount ?? null,
+      secondCallActions:
+        options.result.orchestration?.secondCall?.accounting.webSearchActionCount ?? null,
       planDeviation: (options.result.executedQueries ?? []).filter(
         (query) => !(options.result.queryPlan ?? []).includes(query),
       ),

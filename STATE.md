@@ -1,11 +1,11 @@
 # État du sauvetage
 
-- Mission courante : R3 — alignement sur la Production réelle terminé.
+- Mission courante : R4 — orchestration fournisseur nettoyée.
 - Statut R1 : cadre installé et stratégie clarifiée.
 - Worktree : `C:\Users\maxer\Desktop\GENIAL_RESCUE`.
 - Branche : `rescue/minimal-recall`.
 - Baseline historique R2.1 : `f77631346f00c7ccf5c90792dc608966b0f8b6fe`.
-- Baseline fonctionnelle : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
+- Baseline fonctionnelle d'entrée : `8b778b1efe82161653319d729b18c9d27a6f49f0`.
 - Worktree original `GENIAL` : isolé et non modifié par ce sauvetage.
 - MVP : recherche personne/entreprise, contexte facultatif, dossier lisible et sourcé.
 - Régression obligatoire : `Erwan Simon` + `GENIAL` + `Bordeaux`.
@@ -20,11 +20,11 @@
 - Production : gelée jusqu'à validation explicite d'une Preview.
 - Installation : dépendances verrouillées installées localement, artefacts ignorés par Git.
 - Déploiement : non effectué.
-- Vérifications `8b778` : 725 tests, lint, typecheck et build réussis.
+- Vérifications R4 : 732 tests, lint, typecheck et build réussis.
 - Baseline : `TECHNICAL_FAILURE` — `web_search_action_invalid` en `source_verification`.
 - Résultat métier : aucune identité, 0 fait, 0 source, 0 domaine.
 - Mesure : 26 356 ms ; 2 appels fournisseur ; 4 actions Web Search (2 recherches, 2 inspections).
 - Coût : inconnu (`estimatedCostUsd: null`) ; aucun retry manuel.
 - Blocage observé : la politique d'actions Web Search rejette la séquence avant vérification de source.
-- Correction : aucune commencée.
+- Correction R4 : second appel exclusif et diagnostiqué, complément non fatal, plafond de 4 actions.
 - Prochaine action autorisée : attendre une nouvelle mission explicite.

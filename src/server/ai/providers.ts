@@ -19,7 +19,11 @@ import {
   type OpenAIWebSearchToolResult,
 } from "../research/provider-metadata";
 import type {
+  ProviderAttemptAccounting,
+  ProviderOrchestrationDiagnostics,
   ProviderResearchResult,
+  ProviderSecondCallOutcome,
+  ProviderSecondCallReason,
   ResearchInput,
   ResearchProvider,
 } from "../research/types";
@@ -284,6 +288,8 @@ export interface ProviderInvocationDiagnostics {
   readonly callsAttempted: number;
   readonly durationMs: number;
   readonly abortReasonName: string | null;
+  readonly secondCallReason?: ProviderSecondCallReason | null;
+  readonly secondCallOutcome?: ProviderSecondCallOutcome | null;
 }
 
 export class ProviderInvocationError extends Error {
@@ -338,7 +344,7 @@ export const PROVIDER_INSTRUCTIONS = [
     "Pour cette release, réserve une contradiction quantitative aux niveaux de revenue ou workforce sur une année civile ou fiscale unique, nommée comme telle dans chaque EXCERPT et factPeriodLabel ; une année nue est insuffisante. Écarte taux, croissance, valeurs approximatives, intervalles et sous-périodes ; pour workforce, exige la même base explicite (moyenne ou fin d’année), et pour toute métrique la même portée explicite (entité, groupe consolidé, filiale ou maison-mère).",
     "missingCategories liste uniquement les catégories utiles recherchées mais non prouvées.",
     "N’ajoute aucune synthèse, opinion, inférence, causalité ni information absente des extraits.",
-    "Tu peux effectuer jusqu’à huit actions Web Search au total, recherches et inspections comprises. Préserve du budget pour inspecter les pages utiles. Arrête dès que le dossier est démontrable ou que l’insuffisance est établie.",
+    "Tu peux effectuer jusqu’à quatre actions Web Search au total, recherches et inspections comprises. Préserve du budget pour inspecter les pages utiles. Arrête dès que le dossier est démontrable ou que l’insuffisance est établie.",
     "Respecte strictement le schéma de sortie fourni.",
   ].join("\n");
 
@@ -479,7 +485,7 @@ function providerEntityKey(displayName: string, entityType: "person" | "company"
     .toLocaleLowerCase("fr").replace(/\s+/gu, " ").trim()}`;
 }
 
-function mergeProviderDocuments(
+export function mergeProviderDocuments(
   primary: z.infer<typeof providerDocumentSchema>,
   supplement: z.infer<typeof providerDocumentSchema>,
 ): z.infer<typeof providerDocumentSchema> {
@@ -576,16 +582,113 @@ export function recoverProviderDocument(text: string | undefined):
   }
 }
 
+type NormalizedProviderMetadata = ReturnType<
+  typeof normalizeOpenAIProviderMetadata
+>;
+
+const EMPTY_ATTEMPT_ACCOUNTING: ProviderAttemptAccounting = {
+  webSearchActionCount: 0,
+  webSearchQueryCount: 0,
+  webSearchInspectionCount: 0,
+};
+
+export function beginSecondProviderCall(
+  current: ProviderSecondCallReason | null,
+  requested: ProviderSecondCallReason,
+): ProviderSecondCallReason {
+  if (current !== null) {
+    throw new Error("A provider second call has already been selected.");
+  }
+  return requested;
+}
+
+function attemptAccounting(
+  metadata: NormalizedProviderMetadata,
+): ProviderAttemptAccounting {
+  return {
+    webSearchActionCount: metadata.webSearchActionCount,
+    webSearchQueryCount: metadata.webSearchQueryCount,
+    webSearchInspectionCount: metadata.webSearchInspectionCount,
+  };
+}
+
+/**
+ * Keep the primary metadata authoritative while accounting for every observed
+ * supplemental Web Search action. Supplemental sources become bindable only
+ * when the supplemental document itself is retained.
+ */
+export function combineSupplementMetadata(options: {
+  readonly primary: NormalizedProviderMetadata;
+  readonly supplement: NormalizedProviderMetadata;
+  readonly retainSupplementContent: boolean;
+}): NormalizedProviderMetadata {
+  const supplementalToolCallId = (toolCallId: string): string =>
+    `supplement:${toolCallId}`;
+  const primary = options.primary;
+  const supplement = options.supplement;
+  return {
+    status: primary.status,
+    citations: primary.citations,
+    sources: options.retainSupplementContent
+      ? [...new Map([
+        ...primary.sources,
+        ...supplement.sources.map((source) => ({
+          ...source,
+          sourceId: `supplement:${source.sourceId}`,
+        })),
+      ].map((source) => [source.url, source] as const)).values()]
+      : primary.sources,
+    webSearchCalls: [
+      ...primary.webSearchCalls,
+      ...supplement.webSearchCalls.map((call) => ({
+        ...call,
+        toolCallId: supplementalToolCallId(call.toolCallId),
+      })),
+    ],
+    webSearchActions: [
+      ...primary.webSearchActions,
+      ...supplement.webSearchActions.map((action) => ({
+        ...action,
+        toolCallId: supplementalToolCallId(action.toolCallId),
+      })),
+    ],
+    webSearchInspections: [
+      ...primary.webSearchInspections,
+      ...supplement.webSearchInspections.map((inspection) => ({
+        ...inspection,
+        toolCallId: supplementalToolCallId(inspection.toolCallId),
+      })),
+    ],
+    webSearchActionCount:
+      primary.webSearchActionCount + supplement.webSearchActionCount,
+    webSearchQueryCount:
+      primary.webSearchQueryCount + supplement.webSearchQueryCount,
+    webSearchInspectionCount:
+      primary.webSearchInspectionCount + supplement.webSearchInspectionCount,
+    webSearchUniqueCallCount:
+      primary.webSearchUniqueCallCount + supplement.webSearchUniqueCallCount,
+    // Only retained content participates in admission. Rejected supplemental
+    // metadata remains observable through orchestration diagnostics and counts.
+    webSearchActionPolicyStatus: primary.webSearchActionPolicyStatus,
+    webSearchActionPolicyCode: primary.webSearchActionPolicyCode,
+  };
+}
+
 export function createOpenAIResearchProvider(): ResearchProvider {
   return {
     async research(input, signal): Promise<ProviderResearchResult> {
       let providerHttpCalls = 0;
+      let secondCallReason: ProviderSecondCallReason | null = null;
+      let secondCallOutcome: ProviderSecondCallOutcome | null = null;
       const startedAt = performance.now();
 
       try {
         const provider = createOpenAI({
           apiKey: requireOpenAIKey(),
           fetch: async (request, init) => {
+            if (providerHttpCalls >= MAX_PROVIDER_HTTP_CALLS) {
+              throw new Error("Provider HTTP call ceiling exceeded.");
+            }
             providerHttpCalls += 1;
             return fetch(request, init);
           },
@@ -604,6 +707,8 @@ export function createOpenAIResearchProvider(): ResearchProvider {
         let previousUsage: StepResult<typeof researchTools>["usage"] | undefined;
         let finishReason: StepResult<typeof researchTools>["finishReason"];
         let responseHeaders: Readonly<Record<string, string>> | undefined;
+        let primaryOutcome: ProviderOrchestrationDiagnostics["primaryOutcome"] = "succeeded";
+        let secondCallAccounting = EMPTY_ATTEMPT_ACCOUNTING;
 
         try {
           const result = await generateText({
@@ -626,7 +731,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           },
           providerOptions: {
             openai: {
-              maxToolCalls: 6,
+              maxToolCalls: MAX_WEB_SEARCH_ACTIONS,
               parallelToolCalls: false,
               reasoningEffort: "low",
               store: false,
@@ -646,6 +751,7 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           const recoveredStep = capturedSteps.at(-1);
           if (noObject === null || recoveredStep === undefined) throw error;
           if (recovered !== null) {
+            primaryOutcome = "recovered";
             generatedText = noObject.text ?? recoveredStep.text;
             rawDocument = recovered;
             steps = capturedSteps;
@@ -653,6 +759,11 @@ export function createOpenAIResearchProvider(): ResearchProvider {
             finishReason = noObject.finishReason ?? recoveredStep.finishReason;
             responseHeaders = noObject.response?.headers ?? recoveredStep.response.headers;
           } else {
+            secondCallReason = beginSecondProviderCall(
+              secondCallReason,
+              "structural_repair",
+            );
+            secondCallOutcome = "failed";
             const repair = await generateText({
               model: provider.responses(PRIMARY_RESEARCH_MODEL),
               instructions: [
@@ -682,6 +793,8 @@ export function createOpenAIResearchProvider(): ResearchProvider {
             generatedText = recoveredStep.text;
             rawDocument = repair.output;
             steps = capturedSteps;
+            primaryOutcome = "recovered";
+            secondCallOutcome = "succeeded";
             previousUsage = noObject.usage ?? recoveredStep.usage;
             usage = repair.usage;
             finishReason = repair.finishReason;
@@ -734,19 +847,27 @@ export function createOpenAIResearchProvider(): ResearchProvider {
 
         let document = normalizeProviderDocument(rawDocument);
         let normalizedMetadata = normalizeMetadataFor(generatedText, steps);
+        const primaryMetadata = normalizedMetadata;
+        const primaryAccounting = attemptAccounting(primaryMetadata);
+        const queryPlan = buildSearchQueryPlan(input);
         const remainingWebActions = Math.max(
           0,
-          MAX_WEB_SEARCH_ACTIONS - normalizedMetadata.webSearchActionCount,
+          MAX_WEB_SEARCH_ACTIONS - primaryMetadata.webSearchActionCount,
         );
         if (
-          previousUsage === undefined &&
+          secondCallReason === null &&
           (needsRecallSupplement(document) || normalizedMetadata.webSearchQueryCount < 2) &&
           normalizedMetadata.status === "supported" &&
           normalizedMetadata.webSearchActionPolicyStatus === "supported" &&
           remainingWebActions > 0
         ) {
+          secondCallReason = beginSecondProviderCall(
+            secondCallReason,
+            "recall_supplement",
+          );
+          secondCallOutcome = "failed";
+          const supplementalSteps: StepResult<typeof researchTools>[] = [];
           try {
-            const queryPlan = buildSearchQueryPlan(input);
             const supplementalRequiredQuery = input.hints?.role !== undefined
               ? queryPlan.find((query) => query.includes(`"${input.hints?.role}"`))
               : input.hints?.organization !== undefined
@@ -795,6 +916,9 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               maxRetries: 0,
               timeout: PROVIDER_TIMEOUT_MS,
               abortSignal: signal,
+              onStepEnd: (step) => {
+                supplementalSteps.push(step);
+              },
               providerOptions: {
                 openai: {
                   maxToolCalls: Math.min(2, remainingWebActions),
@@ -810,66 +934,53 @@ export function createOpenAIResearchProvider(): ResearchProvider {
               supplement.text,
               supplement.steps,
             );
+            secondCallAccounting = attemptAccounting(supplementMetadata);
             previousUsage = usage;
             usage = supplement.usage;
             finishReason = supplement.finishReason;
             responseHeaders = supplement.response.headers;
-            const combinedActionCount = normalizedMetadata.webSearchActionCount +
+            const combinedActionCount = primaryMetadata.webSearchActionCount +
               supplementMetadata.webSearchActionCount;
-            const supplementalToolCallId = (toolCallId: string): string =>
-              `supplement:${toolCallId}`;
             const supplementSupported =
               supplementMetadata.status === "supported" &&
               supplementMetadata.webSearchActionPolicyStatus === "supported" &&
               combinedActionCount <= MAX_WEB_SEARCH_ACTIONS;
             if (supplementSupported) {
               document = mergeProviderDocuments(document, supplementDocument);
+              secondCallOutcome = "succeeded";
+            } else {
+              secondCallOutcome = "rejected";
             }
-            normalizedMetadata = {
-              status: supplementMetadata.status === "supported" ? normalizedMetadata.status : "unknown",
-              citations: normalizedMetadata.citations,
-              sources: [...new Map([
-                ...normalizedMetadata.sources,
-                ...supplementMetadata.sources.map((source) => ({
-                  ...source,
-                  sourceId: `supplement:${source.sourceId}`,
-                })),
-              ].map((source) => [source.url, source] as const)).values()],
-              webSearchCalls: [
-                ...normalizedMetadata.webSearchCalls,
-                ...supplementMetadata.webSearchCalls.map((call) => ({
-                  ...call,
-                  toolCallId: supplementalToolCallId(call.toolCallId),
-                })),
-              ],
-              webSearchActions: [
-                ...normalizedMetadata.webSearchActions,
-                ...supplementMetadata.webSearchActions.map((action) => ({
-                  ...action,
-                  toolCallId: supplementalToolCallId(action.toolCallId),
-                })),
-              ],
-              webSearchInspections: [
-                ...normalizedMetadata.webSearchInspections,
-                ...supplementMetadata.webSearchInspections.map((inspection) => ({
-                  ...inspection,
-                  toolCallId: supplementalToolCallId(inspection.toolCallId),
-                })),
-              ],
-              webSearchActionCount: combinedActionCount,
-              webSearchQueryCount: normalizedMetadata.webSearchQueryCount +
-                supplementMetadata.webSearchQueryCount,
-              webSearchInspectionCount: normalizedMetadata.webSearchInspectionCount +
-                supplementMetadata.webSearchInspectionCount,
-              webSearchUniqueCallCount: normalizedMetadata.webSearchUniqueCallCount +
-                supplementMetadata.webSearchUniqueCallCount,
-              webSearchActionPolicyStatus: supplementSupported ? "supported" : "rejected",
-              webSearchActionPolicyCode: supplementSupported
-                ? null
-                : supplementMetadata.webSearchActionPolicyCode ?? "web_search_action_invalid",
-            };
+            normalizedMetadata = combineSupplementMetadata({
+              primary: primaryMetadata,
+              supplement: supplementMetadata,
+              retainSupplementContent: supplementSupported,
+            });
           } catch (supplementError) {
             if (signal.aborted) throw supplementError;
+            const noObject = NoObjectGeneratedError.isInstance(supplementError)
+              ? supplementError
+              : null;
+            if (noObject?.usage !== undefined) {
+              previousUsage = usage;
+              usage = noObject.usage;
+            }
+            if (supplementalSteps.length > 0) {
+              try {
+                const failedMetadata = normalizeMetadataFor(
+                  noObject?.text ?? supplementalSteps.at(-1)?.text ?? "",
+                  supplementalSteps,
+                );
+                secondCallAccounting = attemptAccounting(failedMetadata);
+                normalizedMetadata = combineSupplementMetadata({
+                  primary: primaryMetadata,
+                  supplement: failedMetadata,
+                  retainSupplementContent: false,
+                });
+              } catch {
+                // The valid primary result remains authoritative.
+              }
+            }
           }
         }
 
@@ -955,10 +1066,21 @@ export function createOpenAIResearchProvider(): ResearchProvider {
           providerDurationMs: Math.round(performance.now() - startedAt),
           finishReason,
           requestId: providerRequestId(responseHeaders),
-          queryPlan: buildSearchQueryPlan(input),
+          queryPlan,
           executedQueries: normalizedMetadata.webSearchActions.flatMap((action) =>
             action.actionType === "search" ? action.queries ?? [] : []
           ),
+          orchestration: {
+            primaryOutcome,
+            primaryAccounting,
+            secondCall: secondCallReason === null
+              ? null
+              : {
+                reason: secondCallReason,
+                outcome: secondCallOutcome ?? "failed",
+                accounting: secondCallAccounting,
+              },
+          },
         };
       } catch (error) {
         const reason = signal.reason;
@@ -969,6 +1091,8 @@ export function createOpenAIResearchProvider(): ResearchProvider {
             typeof reason === "object" && reason !== null && "name" in reason
               ? stringOrNull((reason as { readonly name?: unknown }).name)
               : null,
+          secondCallReason,
+          secondCallOutcome,
         });
       }
     },

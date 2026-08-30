@@ -45,9 +45,9 @@ Baseline fonctionnelle de R3 : le commit Production `8b778b1efe82161653319d729b1
 
 Simplifier en place le moteur existant en retirant uniquement les blocages prouvés par R2. Chaque correctif doit être isolé et validé par un test métier réel. Aucune réécriture ni aucun moteur parallèle ne sont autorisés sans décision explicite après R2.
 
-## R4 — Tests métier locaux
+## R4 — Orchestration fournisseur bornée
 
-Valider localement le MVP réel et la régression `Erwan Simon` + `GENIAL` + `Bordeaux`, puis aligner les tests historiques pertinents.
+Centraliser la comptabilité du provider : un appel principal, au plus un second appel exclusif de réparation ou de complément, et quatre actions Web Search maximum. Un complément échoué ou rejeté conserve désormais le dossier principal valide ; 732 tests, lint, typecheck et build passent sans appel réel.
 
 ## R5 — Preview
 

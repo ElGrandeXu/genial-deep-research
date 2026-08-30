@@ -18,7 +18,32 @@ export interface ResearchHints {
 }
 
 export const MAX_PROVIDER_HTTP_CALLS = 2;
-export const MAX_WEB_SEARCH_ACTIONS = 8;
+export const MAX_WEB_SEARCH_ACTIONS = 4;
+
+export interface ProviderAttemptAccounting {
+  readonly webSearchActionCount: number;
+  readonly webSearchQueryCount: number;
+  readonly webSearchInspectionCount: number;
+}
+
+export type ProviderSecondCallReason =
+  | "structural_repair"
+  | "recall_supplement";
+
+export type ProviderSecondCallOutcome =
+  | "succeeded"
+  | "failed"
+  | "rejected";
+
+export interface ProviderOrchestrationDiagnostics {
+  readonly primaryOutcome: "succeeded" | "recovered";
+  readonly primaryAccounting: ProviderAttemptAccounting;
+  readonly secondCall: null | {
+    readonly reason: ProviderSecondCallReason;
+    readonly outcome: ProviderSecondCallOutcome;
+    readonly accounting: ProviderAttemptAccounting;
+  };
+}
 
 export interface ProviderCitation {
   readonly provider: "openai";
@@ -297,6 +322,7 @@ export interface ProviderResearchResult {
   readonly requestId: string | null;
   readonly queryPlan?: readonly string[];
   readonly executedQueries?: readonly string[];
+  readonly orchestration?: ProviderOrchestrationDiagnostics;
 }
 
 export interface ResearchProvider {
