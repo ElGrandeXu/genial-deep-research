@@ -1834,6 +1834,29 @@ describe("M5-R3 verified document title binding", () => {
     expect(source.transport.requests).toHaveLength(1);
   });
 
+  it("drops a Web Search excerpt when the fetched page does not contain it", async () => {
+    const source = realSyntheticVerifier(
+      "<html><head><title>Airbus &amp; Space</title></head><body><p>Different verified content.</p></body></html>",
+    );
+    const events = await runPipeline({
+      result: webSearchResult(),
+      verifier: source.verifier,
+    });
+
+    expect(events.at(-1)).toMatchObject({
+      state: "completed",
+      dossier: {
+        global_status: "insufficient_evidence",
+        result_mode: "silence",
+        claims: [],
+        evidence: [],
+        sources: [],
+      },
+    });
+    expect(JSON.stringify(events)).not.toContain(claim);
+    expect(source.transport.requests).toHaveLength(1);
+  });
+
   it.each([
     ["absent", `<html><head></head><body><p>${claim}</p></body></html>`],
     ["empty", `<html><head><title> \n </title></head><body><p>${claim}</p></body></html>`],

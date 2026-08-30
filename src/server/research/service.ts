@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { validateResearchDossier } from "../../domain/contract-validator";
 import {
@@ -99,7 +99,6 @@ interface VerifiedCandidate<T extends ProviderClaimCandidate> {
 
 interface VerificationBatch<T extends ProviderClaimCandidate> {
   readonly verified: readonly VerifiedCandidate<T>[];
-  readonly grounded: readonly VerifiedCandidate<T>[];
   readonly documents: readonly {
     readonly candidate: T;
     readonly document: RetrievedSourceDocument;
@@ -122,68 +121,8 @@ function proofVerificationMethod(
   return proof.verificationMethod ?? "source_content";
 }
 
-function canRetainProviderGrounding(
-  citation: ProviderSourceBinding,
-  document: RetrievedSourceDocument | undefined,
-): boolean {
-  return document !== undefined &&
-    "bindingType" in citation &&
-    citation.bindingType === "web_search_source";
-}
-
 function rethrowSystemicVerificationFailure(error: unknown, signal: AbortSignal): void {
   if (signal.aborted || !(error instanceof ResearchPipelineError)) throw error;
-}
-
-function providerGroundedProof(options: {
-  readonly result: ProviderResearchResult;
-  readonly candidate: ProviderClaimCandidate;
-  readonly citation: ProviderSourceBinding;
-  readonly document?: RetrievedSourceDocument;
-}): VerifiedSourceProof | null {
-  if (!canRetainProviderGrounding(options.citation, options.document)) return null;
-  const url = options.document?.finalUrl ?? options.citation.url;
-  let title = "Source Web Search";
-  if ("title" in options.citation && typeof options.citation.title === "string") {
-    title = options.citation.title;
-  } else {
-    title = options.result.sources.find(({ url: sourceUrl }) => sourceUrl === options.citation.url)
-      ?.title ?? new URL(url).hostname;
-  }
-  const retrievedAt = options.document?.retrievedAt ?? new Date().toISOString();
-  const fingerprint = createHash("sha256")
-    .update(`provider-grounded\n${url}\n${options.candidate.excerpt}`, "utf8")
-    .digest("hex");
-  const verificationMethod = "bindingType" in options.citation &&
-      (options.citation.bindingType === "web_search_source" ||
-        options.citation.bindingType === "structured_output_url")
-    ? "search_snippet" as const
-    : "provider_annotation" as const;
-  return {
-    citation: options.citation,
-    citationUrl: options.citation.url,
-    finalUrl: url,
-    title,
-    verifiedExcerpt: options.candidate.excerpt,
-    documentText: options.document?.documentText ?? options.candidate.excerpt,
-    locator: {
-      exact: options.candidate.excerpt,
-      prefix: "",
-      suffix: "",
-      occurrenceIndex: 0,
-      finalUrl: url,
-      citationUrl: options.citation.url,
-      retrievedAt,
-      normalizedTextSha256: fingerprint,
-      contentType: options.document?.contentType ?? "application/x-provider-citation",
-      bytesRead: options.document?.bytesRead ?? 0,
-      redirectCount: options.document?.redirectCount ?? 0,
-    },
-    sourceFetchCount: options.document?.sourceFetchCount ?? 0,
-    sourceVerificationMs: options.document?.sourceVerificationMs ?? 0,
-    verificationMethod,
-    retrievalStatus: options.document === undefined ? "unavailable" : "retrieved",
-  };
 }
 
 function numberOrNull(value: number | undefined): number | null {
@@ -432,7 +371,6 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
             "LinkedIn reste une piste fournisseur non récupérée directement.",
           ),
           candidate,
-          grounded: providerGroundedProof({ result: options.result, candidate, citation }),
         };
       }
       const attributedDisplayNames = options.attributedDisplayNames?.(candidate);
@@ -453,11 +391,6 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
             status: "rejected" as const,
             error,
             candidate,
-            grounded: providerGroundedProof({
-              result: options.result,
-              candidate,
-              citation,
-            }),
           };
         }
         try {
@@ -474,12 +407,6 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
             error,
             candidate,
             document,
-            grounded: providerGroundedProof({
-              result: options.result,
-              candidate,
-              citation,
-              document,
-            }),
           };
         }
       }
@@ -497,13 +424,11 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
           status: "rejected" as const,
           error,
           candidate,
-          grounded: providerGroundedProof({ result: options.result, candidate, citation }),
         };
       }
     }),
   );
   const verified: VerifiedCandidate<T>[] = [];
-  const grounded: VerifiedCandidate<T>[] = [];
   const documents: Array<{ candidate: T; document: RetrievedSourceDocument }> = [];
   let rejectedCount = 0;
   let sourceFetchCount = 0;
@@ -521,14 +446,10 @@ async function verifyBatch<T extends ProviderClaimCandidate>(options: {
         documents.push({ candidate: item.candidate, document: item.document });
         sourceFetchCount += item.document.sourceFetchCount;
       }
-      if (item.candidate !== undefined && item.grounded !== null && item.grounded !== undefined) {
-        grounded.push({ candidate: item.candidate, proof: item.grounded });
-      }
     }
   }
   return {
     verified,
-    grounded,
     documents,
     rejectedCount,
     sourceFetchCount,
@@ -755,23 +676,6 @@ async function reconstructIdentityFromDocuments(options: {
   return reconstructed;
 }
 
-function groundedFactHasMinimumQuality(
-  item: VerifiedCandidate<ProviderFactCandidate>,
-): boolean {
-  const excerpt = normalizeVisibleText(item.proof.verifiedExcerpt);
-  if (item.candidate.category === "identity" || excerpt.length < 8 || /[?？]\s*$/u.test(excerpt)) {
-    return false;
-  }
-  if (item.candidate.category === "metric") {
-    return item.candidate.scopeLabel !== null &&
-      item.candidate.factPeriodLabel !== null &&
-      item.candidate.normalizedValue !== null &&
-      item.candidate.unit !== null &&
-      deriveFactPeriod(item.candidate).status === "stated";
-  }
-  return true;
-}
-
 const IDENTITY_ANCHOR_STOPWORDS = new Set([
   "avec", "chez", "dans", "des", "elle", "est", "for", "from", "les", "pour", "that",
   "the", "une", "with",
@@ -793,7 +697,6 @@ function buildDossier(options: {
   readonly verifiedIdentityCandidates: readonly VerifiedCandidate<ProviderIdentityCandidate>[];
   readonly verifiedFacts: readonly VerifiedCandidate<ProviderFactCandidate>[];
   readonly rejectedProofCount: number;
-  readonly retainedGroundedCount: number;
   readonly executionId: string;
   readonly startedAt: Date;
   readonly completedAt: Date;
@@ -875,9 +778,7 @@ function buildDossier(options: {
               proof: fact.proof,
               selectedDisplayName: selected.candidate.displayName,
             })
-          : groundedFactHasMinimumQuality(fact)
-            ? { accepted: true as const }
-            : { accepted: false as const, reasonCode: "weak_fragment" as const },
+          : { accepted: false as const, reasonCode: "weak_fragment" as const },
       }));
   const qualityAcceptedFacts = qualityDecisions.flatMap(({ fact, decision }) =>
     decision.accepted ? [fact] : [],
@@ -1362,13 +1263,6 @@ function buildDossier(options: {
       "URL non reliée, page inaccessible, format refusé ou extrait source vérifiable introuvable.",
     );
   }
-  if (options.retainedGroundedCount > 0) {
-    addUnknown(
-      "not_verified",
-      `${options.retainedGroundedCount} information(s) restent affichées avec une confiance dégradée.`,
-      "La citation Web Search est attribuable, mais l’extrait n’a pas été confirmé directement dans la page.",
-    );
-  }
   if (attributionRejectedCount > 0) {
     addUnknown(
       "out_of_scope",
@@ -1421,7 +1315,7 @@ function buildDossier(options: {
     identityStatus,
     admissibleBusinessFactCount: visibleBusinessClaims.length,
     completenessStatus: completeness.status,
-    forcePartial: options.retainedGroundedCount > 0,
+    forcePartial: false,
   });
   const globalStatus: ResearchDossier["global_status"] = admission.globalStatus;
   const resultMode: ResearchDossier["result_mode"] = admission.resultMode;
@@ -1858,16 +1752,8 @@ export async function executeResearch(options: {
       ...reconstructedIdentityCandidates,
     ];
     const sourceFirstFacts = deriveSourceFirstRoleFacts(directlyVerifiedIdentityCandidates);
-    const verifiedIdentityCandidates = [
-      ...directlyVerifiedIdentityCandidates,
-      ...candidateBatch.grounded.filter(({ candidate }) =>
-        !directlyVerifiedIdentityCandidates.some(
-          (verified) => verified.candidate.candidateKey === candidate.candidateKey,
-        )
-      ),
-    ];
-    const preFallbackFacts = [...factBatch.verified, ...sourceFirstFacts, ...factBatch.grounded];
-    const verifiedFacts = preFallbackFacts;
+    const verifiedIdentityCandidates = directlyVerifiedIdentityCandidates;
+    const verifiedFacts = [...factBatch.verified, ...sourceFirstFacts];
     sourceVerifyingMs = Math.max(
       0,
       Math.round(monotonicNow() - totalStart) - sourceVerifyingStartMs,
@@ -1898,10 +1784,7 @@ export async function executeResearch(options: {
       result,
       verifiedIdentityCandidates,
       verifiedFacts,
-      rejectedProofCount:
-        candidateBatch.rejectedCount + factBatch.rejectedCount -
-        candidateBatch.grounded.length - factBatch.grounded.length,
-      retainedGroundedCount: candidateBatch.grounded.length + factBatch.grounded.length,
+      rejectedProofCount: candidateBatch.rejectedCount + factBatch.rejectedCount,
       executionId,
       startedAt,
       completedAt,
@@ -1920,11 +1803,9 @@ export async function executeResearch(options: {
       reconstructedIdentityProofs: reconstructedIdentityCandidates.length,
       directFactProofs: factBatch.verified.length,
       sourceFirstFacts: sourceFirstFacts.length,
-      retainedGroundedIdentityProofs: candidateBatch.grounded.length,
-      retainedGroundedFactProofs: factBatch.grounded.length,
-      discardedProofs:
-        candidateBatch.rejectedCount + factBatch.rejectedCount -
-        candidateBatch.grounded.length - factBatch.grounded.length,
+      retainedGroundedIdentityProofs: 0,
+      retainedGroundedFactProofs: 0,
+      discardedProofs: candidateBatch.rejectedCount + factBatch.rejectedCount,
       displayedBusinessFacts: dossier.claims.filter(({ predicate, presentation_decision }) =>
         presentation_decision === "display_fact" && !predicate.startsWith("identity.")
       ).length,

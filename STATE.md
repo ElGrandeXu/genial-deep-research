@@ -44,4 +44,7 @@
 - Preview finale : `https://genial-deep-research-ozvoodsbl-el-grande-xue.vercel.app`, cible Preview, `Ready`, dry-run et smoke public réussis.
 - Matrice finale complémentaire : Thomas Martin → silence sûr, 0 fait/source, 18 767 ms, 4 actions ; Apolline Zéphyr-Nébuleuse → silence sûr, 0 fait/source, 7 929 ms, 3 actions.
 - Budget de soumissions réelles restant : 0 sur 6 ; aucune autre recherche réelle n'est autorisée dans cette mission.
-- Prochaine action : contre-examen neuf read-only du commit final et de la Preview.
+- Contre-examen neuf : 82/100, `NOT_READY` sur un P1 de fallback `search_snippet` après extrait absent.
+- Correction contre-examen : suppression complète des preuves fournisseur dégradées du runtime factuel ; une vérification échouée produit uniquement rejet, inconnue ou silence.
+- Preuve ciblée : page `web_search_source` récupérée mais extrait absent → 0 claim, 0 evidence, 0 source ; 743 tests, lint, typecheck, build et gate candidat réussis.
+- Prochaine action : commit, Preview finale sans nouvelle recherche, puis vérification précise du P1 par le contre-examinateur.

@@ -30,7 +30,7 @@ Les états d’attente correspondent à des événements serveur : demande reçu
 
 ## Frontière HTTP
 
-`src/app/api/research/route.ts` utilise le runtime Node, un plafond Vercel de 180 secondes et un abandon applicatif à 150 secondes. Le corps JSON est limité à 1 024 octets. `Origin` et `Sec-Fetch-Site` empêchent l’usage cross-site ; les réponses sont `no-store`. Les erreurs synchrones deviennent des statuts HTTP typés ; une exécution admise diffuse ensuite des événements SSE et un seul terminal `completed` ou `failed`.
+`src/app/api/research/route.ts` utilise le runtime Node, un plafond Vercel de 180 secondes et un abandon applicatif à 150 secondes. Le corps JSON est limité à 4 096 octets. `Origin` et `Sec-Fetch-Site` empêchent l’usage cross-site ; les réponses sont `no-store`. Les erreurs synchrones deviennent des statuts HTTP typés ; une exécution admise diffuse ensuite des événements SSE et un seul terminal `completed` ou `failed`.
 
 `src/server/research/request-guard.ts` accepte au plus huit requêtes par dix minutes et par empreinte IP, ainsi que deux exécutions simultanées par instance. L’IP brute n’est pas conservée : un SHA-256 avec sel éphémère sert de clé mémoire. Cette protection réduit l’abus du prototype ; elle n’est pas une limitation distribuée.
 
@@ -41,7 +41,7 @@ Le seul chemin fournisseur est OpenAI `gpt-5.6-luna`, via AI SDK Core, le provid
 - `store: false` ;
 - raisonnement bas ;
 - sortie structurée ;
-- un appel HTTP fournisseur ;
+- un appel HTTP fournisseur principal et au plus un second appel exclusif de réparation ou de complément ;
 - `max_tool_calls=4` côté fournisseur et au plus six actions Web Search observées côté serveur ;
 - délai fournisseur de 90 secondes ;
 - cible de trois à six faits et deux pages distinctes lorsque la matière existe.
